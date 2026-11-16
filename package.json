@@ -11,6 +11,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm --filter @no-blank/shared build && pnpm -r typecheck",
     "lint": "pnpm -r lint",
+    "test": "pnpm --filter @no-blank/shared build && pnpm -r test",
     "lint:fix": "pnpm -r lint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

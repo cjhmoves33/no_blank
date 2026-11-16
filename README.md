@@ -84,6 +84,7 @@ pnpm dev
 | `pnpm typecheck`    | shared를 빌드한 뒤 모든 패키지의 타입을 검사합니다. (server와 web은 shared의 빌드 결과에서 타입을 읽습니다) |
 | `pnpm lint`         | 모든 패키지에 ESLint를 실행합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다.                 |
 | `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                         |
+| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                               |
 | `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                   |
 | `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다. (CI 용도)                                                        |
 | `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                   |
@@ -94,18 +95,25 @@ pnpm dev
 
 코드 규칙과 커밋 메시지는 아래 단계에서 검사합니다. `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다.
 
-| 단계                      | 대상           | 검사 내용                                    | 실패하면                |
-| ------------------------- | -------------- | -------------------------------------------- | ----------------------- |
-| 커밋 직전 (pre-commit)    | staged 파일만  | ESLint 자동 수정 → Prettier 포맷             | 커밋이 중단됩니다.      |
-| 커밋 메시지 (commit-msg)  | 커밋 메시지    | Conventional Commits 형식 (commitlint)       | 커밋이 중단됩니다.      |
-| push 직전 (pre-push)      | 작업 트리 전체 | `pnpm typecheck`                             | push가 중단됩니다.      |
-| push, PR (GitHub Actions) | 저장소 전체    | `format:check`, `lint`, `typecheck`, `build` | PR에 실패가 표시됩니다. |
+| 단계                             | 대상           | 검사 내용                                                        | 실패하면                |
+| -------------------------------- | -------------- | ---------------------------------------------------------------- | ----------------------- |
+| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                 | 커밋이 중단됩니다.      |
+| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                           | 커밋이 중단됩니다.      |
+| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm typecheck`                                                 | push가 중단됩니다.      |
+| push, PR (CI: Code checks)       | 저장소 전체    | `format:check`, `lint`, `typecheck`, `test`, `build`             | PR에 실패가 표시됩니다. |
+| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`에서 Hello World 확인 | PR에 실패가 표시됩니다. |
 
 - **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류가 있으면 커밋이 중단되고, 경고(`complexity` 등)는 커밋을 막지 않습니다.
 - **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
 - **pre-push:** 커밋되지 않은 변경도 포함한 현재 작업 트리를 검사합니다.
 - **설정 파일:** `.husky/`의 각 훅 파일, `lint-staged.config.mjs`, `commitlint.config.mjs`, `.github/workflows/ci.yml`에서 관리합니다.
 - **CI:** 로컬 훅은 `--no-verify` 옵션으로 건너뛸 수 있으므로, 최종 검증은 CI가 담당합니다.
+
+## 테스트
+
+- **도구:** Vitest를 사용합니다. 테스트 파일은 대상 코드 옆에 `*.test.ts`로 둡니다. (예: `apps/server/src/env.test.ts`)
+- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 PGlite(프로세스 안에서 동작하는 PostgreSQL)에 운영과 같은 마이그레이션을 적용해서 사용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
+- **빌드 제외:** 테스트 파일은 `tsconfig.build.json`에서 제외되어 `dist`와 Docker 이미지에 포함되지 않습니다. 타입 검사와 lint에는 포함됩니다.
 
 ## DB 스키마 변경 방법
 
