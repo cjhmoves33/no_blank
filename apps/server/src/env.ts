@@ -35,7 +35,10 @@ function parseDatabaseUrl(raw: string | undefined): string {
   return raw;
 }
 
-/** 환경 변수(외부 입력)를 검증해서 Env 로 변환합니다. 이후 코드는 Env 를 그대로 신뢰합니다. */
+/**
+ * 환경 변수(외부 입력)를 검증해서 Env 로 변환합니다. 이후 코드는 Env 를 그대로 신뢰합니다.
+ * 실행 진입점(server.ts, db/migrate.ts)에서 process.env 를 넘겨 호출합니다.
+ */
 export function parseEnv(source: NodeJS.ProcessEnv): Env {
   return {
     HOST: source.HOST || "localhost",
@@ -43,5 +46,3 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
     DATABASE_URL: parseDatabaseUrl(source.DATABASE_URL),
   };
 }
-
-export const env = parseEnv(process.env);

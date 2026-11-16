@@ -1,10 +1,18 @@
 import { buildApp } from "./app.js";
-import { env } from "./env.js";
+import { createDb } from "./db/client.js";
+import { parseEnv } from "./env.js";
 
-const app = await buildApp({ databaseUrl: env.DATABASE_URL, logger: true });
+const env = parseEnv(process.env);
+const { db, pool } = createDb(env.DATABASE_URL);
+const app = await buildApp({ db, logger: true });
+
+app.addHook("onClose", async () => {
+  await pool.end();
+});
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   app.log.info({ signal }, "shutting down");
+
   try {
     await app.close();
     process.exit(0);
