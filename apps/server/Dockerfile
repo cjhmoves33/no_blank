@@ -2,7 +2,7 @@
 # 빌드 컨텍스트는 모노레포 루트입니다: docker build -f apps/server/Dockerfile .
 
 FROM node:24-alpine AS base
-RUN npm install -g pnpm@10.33.0
+RUN npm install -g pnpm@11.28.12
 WORKDIR /repo
 
 FROM base AS build

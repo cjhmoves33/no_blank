@@ -17,7 +17,9 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 
 - [Node.js](https://nodejs.org/) 24 이상 (24.x 최신 버전 권장)
   - Windows에서 프로젝트 경로에 한글이 있으면, 구버전 Node 24(예: 24.12.0)는 `fs.rmSync` 버그([nodejs/node#61067](https://github.com/nodejs/node/issues/61067))로 git hook 설치(`pnpm install`의 `prepare`)가 실패합니다.
-- [pnpm](https://pnpm.io/) 10.33 (`npm install -g pnpm@10.33.0`)
+- [pnpm](https://pnpm.io/) 11.28 (`npm install -g pnpm@11.28.12`)
+  - 다른 버전의 pnpm이 설치되어 있어도, 이 저장소에서는 `package.json`의 `packageManager` 필드에 따라 11.28.12로 실행됩니다.
+  - pnpm 11은 배포된 지 하루가 지나지 않은 패키지 버전을 설치하지 않습니다(`minimumReleaseAge`). 막 배포된 버전이 필요하면 하루 뒤에 추가합니다.
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows에서는 WSL 2 백엔드 사용)
 
 ## Docker로 전체 실행
@@ -65,7 +67,7 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. `pnpm-workspace.yaml`의 `verifyDepsBeforeRun: install` 설정에 따라, pnpm 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다.
+`git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. pnpm 11은 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다(`verifyDepsBeforeRun`의 기본값 `install`).
 
 | 서비스 | 주소                                                   |
 | ------ | ------------------------------------------------------ |
