@@ -114,9 +114,9 @@ pnpm dev
 ## 테스트
 
 - **도구:** Vitest를 사용합니다. 테스트 파일은 대상 코드 옆에 `*.test.ts`로 둡니다. (예: `apps/server/src/env.test.ts`)
-- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 `packages/test-postgres`가 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
+- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
 - **빌드 제외:** 테스트 파일은 `tsconfig.build.json`에서 제외되어 `dist`와 Docker 이미지에 포함되지 않습니다. 타입 검사와 lint에는 포함됩니다.
-- **PGlite 분리:** PGlite는 운영 이미지에 들어가지 않도록 server가 아닌 `packages/test-postgres`에만 설치합니다. drizzle-orm이 PGlite를 선택적 peer로 선언하고 있어서, `.pnpmfile.cjs`에서 이 peer 선언을 제거합니다.
+- **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
 
 ## DB 스키마 변경 방법
 
