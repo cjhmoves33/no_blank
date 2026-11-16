@@ -1,0 +1,77 @@
+name: no-blank
+
+x-server-build: &server-build
+  context: .
+  dockerfile: apps/server/Dockerfile
+
+x-database-url: &database-url postgres://${POSTGRES_USER:-no_blank}:${POSTGRES_PASSWORD:-no_blank}@db:5432/${POSTGRES_DB:-no_blank}
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-no_blank}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-no_blank}
+      POSTGRES_DB: ${POSTGRES_DB:-no_blank}
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18 이미지부터는 /var/lib/postgresql 을 마운트합니다. (데이터는 하위의 18/docker 에 저장)
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 마이그레이션을 1회 실행하고 종료합니다. server 는 이 작업이 성공해야 기동합니다.
+  migrate:
+    build: *server-build
+    command: ["node", "dist/db/migrate.js"]
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+
+  server:
+    build: *server-build
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *database-url
+    ports:
+      - "4000:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:4000/api/health",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # 컨테이너 네트워크 안에서는 서비스 이름(server)으로 접근합니다.
+      API_URL: http://server:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  db-data:
