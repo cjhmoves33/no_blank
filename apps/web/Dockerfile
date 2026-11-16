@@ -12,6 +12,9 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile --filter "@no-blank/web..."
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter "@no-blank/web..." build
+# git 은 빈 폴더를 저장하지 않으므로, public 에 파일이 없으면 clone 한 저장소에는 폴더 자체가 없습니다.
+# 아래 runtime 단계의 COPY 가 실패하지 않도록 폴더를 보장합니다.
+RUN mkdir -p apps/web/public
 
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production \
