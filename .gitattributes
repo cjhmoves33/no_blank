@@ -1,0 +1,2 @@
+# core.autocrlf 설정과 관계없이 텍스트 파일은 LF 로 체크아웃합니다. (Prettier 기본값 endOfLine: "lf" 와 일치)
+* text=auto eol=lf
