@@ -11,8 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 작업 이름(name)은 브랜치 보호의 필수 검사 항목으로 쓰이므로, 단계가 늘어나도 바꾸지 않습니다.
   check:
-    name: Format, lint, typecheck, build
+    name: Code checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -41,5 +42,43 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Test
+        run: pnpm test
+
       - name: Build
         run: pnpm build
+
+  # 운영과 같은 방식(docker compose)으로 전체 스택을 띄우고, 화면에 Hello World 가 나오는지 확인합니다.
+  docker:
+    name: Docker smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build images
+        run: docker compose build
+
+      # depends_on 조건(db healthy → migrate 완료 → server healthy)을 기다린 뒤 web 까지 기동합니다.
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for Hello World
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000 | grep -q "Hello World"; then
+              echo "Hello World is served on http://localhost:3000"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for Hello World"
+          exit 1
+
+      - name: Show logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v
