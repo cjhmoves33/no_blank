@@ -65,6 +65,8 @@ pnpm db:migrate
 pnpm dev
 ```
 
+`git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. `pnpm-workspace.yaml`의 `verifyDepsBeforeRun: install` 설정에 따라, pnpm 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다.
+
 | 서비스 | 주소                                                   |
 | ------ | ------------------------------------------------------ |
 | web    | http://localhost:3000                                  |
@@ -90,16 +92,20 @@ pnpm dev
 
 ## 커밋 검사와 CI
 
-코드 규칙(Prettier, ESLint)은 두 단계에서 검사합니다.
+코드 규칙과 커밋 메시지는 아래 단계에서 검사합니다. `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다.
 
-| 단계                      | 대상          | 검사 내용                                    | 실패하면                |
-| ------------------------- | ------------- | -------------------------------------------- | ----------------------- |
-| 커밋 직전 (pre-commit)    | staged 파일만 | ESLint 자동 수정 → Prettier 포맷             | 커밋이 중단됩니다.      |
-| push, PR (GitHub Actions) | 저장소 전체   | `format:check`, `lint`, `typecheck`, `build` | PR에 실패가 표시됩니다. |
+| 단계                      | 대상           | 검사 내용                                    | 실패하면                |
+| ------------------------- | -------------- | -------------------------------------------- | ----------------------- |
+| 커밋 직전 (pre-commit)    | staged 파일만  | ESLint 자동 수정 → Prettier 포맷             | 커밋이 중단됩니다.      |
+| 커밋 메시지 (commit-msg)  | 커밋 메시지    | Conventional Commits 형식 (commitlint)       | 커밋이 중단됩니다.      |
+| push 직전 (pre-push)      | 작업 트리 전체 | `pnpm typecheck`                             | push가 중단됩니다.      |
+| push, PR (GitHub Actions) | 저장소 전체    | `format:check`, `lint`, `typecheck`, `build` | PR에 실패가 표시됩니다. |
 
-- **커밋 훅:** `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다. 자동 수정 가능한 문제는 고쳐진 상태로 커밋되고, 고칠 수 없는 ESLint 오류가 있으면 커밋이 중단됩니다. 경고(`complexity` 등)는 커밋을 막지 않습니다.
-- **설정 파일:** 커밋 훅은 `.husky/pre-commit`과 `lint-staged.config.mjs`, CI는 `.github/workflows/ci.yml`에서 관리합니다.
-- **CI:** 커밋 훅은 `git commit --no-verify`로 건너뛸 수 있으므로, 최종 검증은 CI가 담당합니다.
+- **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류가 있으면 커밋이 중단되고, 경고(`complexity` 등)는 커밋을 막지 않습니다.
+- **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
+- **pre-push:** 커밋되지 않은 변경도 포함한 현재 작업 트리를 검사합니다.
+- **설정 파일:** `.husky/`의 각 훅 파일, `lint-staged.config.mjs`, `commitlint.config.mjs`, `.github/workflows/ci.yml`에서 관리합니다.
+- **CI:** 로컬 훅은 `--no-verify` 옵션으로 건너뛸 수 있으므로, 최종 검증은 CI가 담당합니다.
 
 ## DB 스키마 변경 방법
 
