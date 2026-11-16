@@ -22,8 +22,6 @@ catalogs:
       specifier: ^5.1.0
       version: 5.1.0
 
-pnpmfileChecksum: sha256-FO81FnfCxMQs6dm112+e+26jqMO2oZbW2u7vQXFgV9s=
-
 importers:
 
   .:
@@ -51,7 +49,7 @@ importers:
         version: link:../../packages/shared
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.16)(@types/pg@8.23.1)(pg@8.23.1)
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
@@ -62,12 +60,15 @@ importers:
         specifier: ^10.4.0
         version: 10.4.0
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: 0.5.16
+        version: 0.5.16
+      '@electric-sql/pglite-socket':
+        specifier: ^0.2.19
+        version: 0.2.19(@electric-sql/pglite-age@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_hashids@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_ivm@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_textsearch@0.0.18(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_uuidv7@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pgtap@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pgvector@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite@0.5.16)
       '@no-blank/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@no-blank/test-postgres':
-        specifier: workspace:*
-        version: link:../../packages/test-postgres
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -178,15 +179,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
-
-  packages/test-postgres:
-    dependencies:
-      '@electric-sql/pglite':
-        specifier: 0.5.16
-        version: 0.5.16
-      '@electric-sql/pglite-socket':
-        specifier: ^0.2.19
-        version: 0.2.19(@electric-sql/pglite-age@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_hashids@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_ivm@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_textsearch@0.0.18(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pg_uuidv7@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pgtap@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite-pgvector@0.0.17(@electric-sql/pglite@0.5.16))(@electric-sql/pglite@0.5.16)
 
 packages:
 
@@ -1943,6 +1935,7 @@ packages:
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
+      '@electric-sql/pglite': '>=0.2.0'
       '@libsql/client': '>=0.10.0'
       '@libsql/client-wasm': '>=0.10.0'
       '@neondatabase/serverless': '>=0.10.0'
@@ -1974,6 +1967,8 @@ packages:
       '@aws-sdk/client-rds-data':
         optional: true
       '@cloudflare/workers-types':
+        optional: true
+      '@electric-sql/pglite':
         optional: true
       '@libsql/client':
         optional: true
@@ -5022,8 +5017,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@types/pg@8.23.1)(pg@8.23.1):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.16)(@types/pg@8.23.1)(pg@8.23.1):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.16
       '@types/pg': 8.23.1
       pg: 8.23.1
 

@@ -26,8 +26,9 @@
     "pino": "^10.4.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@electric-sql/pglite-socket": "^0.2.19",
     "@no-blank/eslint-config": "workspace:*",
-    "@no-blank/test-postgres": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",

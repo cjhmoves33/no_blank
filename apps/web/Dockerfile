@@ -6,7 +6,7 @@ RUN npm install -g pnpm@11.28.12
 WORKDIR /repo
 
 FROM base AS build
-COPY pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch
 COPY . .
 RUN pnpm install --offline --frozen-lockfile --filter "@no-blank/web..."
