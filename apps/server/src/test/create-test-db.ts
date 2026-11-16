@@ -1,19 +1,24 @@
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import { startTestPostgres } from "@no-blank/test-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 
-import { migrationsFolder } from "../db/client.js";
-import * as schema from "../db/schema.js";
+import { createDb, migrationsFolder } from "../db/client.js";
 
 /**
- * 테스트용 인메모리 PostgreSQL(PGlite)을 만듭니다.
- * 운영과 같은 마이그레이션(seed 포함)을 적용하므로, 모킹 없이 실제 SQL 로 라우트를 검증할 수 있습니다.
+ * 테스트용 DB 를 만듭니다.
+ * 프로세스 안에서 띄운 PostgreSQL(PGlite)에 운영과 같은 드라이버(node-postgres)로 접속하고,
+ * 운영과 같은 마이그레이션(seed 포함)을 적용합니다. 그래서 모킹 없이 실제 SQL 로 라우트를 검증합니다.
  */
 export async function createTestDb() {
-  const client = new PGlite();
-  const db = drizzle({ client, schema });
+  const postgres = await startTestPostgres();
+  const { db, pool } = createDb(postgres.connectionString);
 
   await migrate(db, { migrationsFolder });
 
-  return { db, close: () => client.close() };
+  return {
+    db,
+    async close() {
+      await pool.end();
+      await postgres.stop();
+    },
+  };
 }

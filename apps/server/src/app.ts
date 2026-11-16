@@ -11,7 +11,7 @@ declare module "fastify" {
 }
 
 export interface AppOptions {
-  /** DB 연결은 호출하는 쪽이 만들고 닫습니다. (운영: server.ts, 테스트: PGlite) */
+  /** DB 연결은 호출하는 쪽이 만들고 닫습니다. (운영: server.ts, 테스트: test/create-test-db.ts) */
   db: Db;
   logger?: FastifyServerOptions["logger"];
 }
