@@ -2,12 +2,12 @@
 # 빌드 컨텍스트는 모노레포 루트입니다: docker build -f apps/server/Dockerfile .
 
 FROM node:24-alpine AS base
-RUN npm install -g pnpm@10.33.0
+RUN npm install -g pnpm@11.28.12
 WORKDIR /repo
 
 FROM base AS build
 # lockfile 만으로 패키지를 먼저 받아 둡니다. 소스 코드가 바뀌어도 이 레이어는 캐시됩니다.
-COPY pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch
 COPY . .
 RUN pnpm install --offline --frozen-lockfile --filter "@no-blank/server..."

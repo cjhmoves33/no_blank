@@ -17,7 +17,9 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 
 - [Node.js](https://nodejs.org/) 24 이상 (24.x 최신 버전 권장)
   - Windows에서 프로젝트 경로에 한글이 있으면, 구버전 Node 24(예: 24.12.0)는 `fs.rmSync` 버그([nodejs/node#61067](https://github.com/nodejs/node/issues/61067))로 git hook 설치(`pnpm install`의 `prepare`)가 실패합니다.
-- [pnpm](https://pnpm.io/) 10.33 (`npm install -g pnpm@10.33.0`)
+- [pnpm](https://pnpm.io/) 11.28 (`npm install -g pnpm@11.28.12`)
+  - 다른 버전의 pnpm이 설치되어 있어도, 이 저장소에서는 `package.json`의 `packageManager` 필드에 따라 11.28.12로 실행됩니다.
+  - pnpm 11은 배포된 지 하루가 지나지 않은 패키지 버전을 설치하지 않습니다(`minimumReleaseAge`). 막 배포된 버전이 필요하면 하루 뒤에 추가합니다.
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows에서는 WSL 2 백엔드 사용)
 
 ## Docker로 전체 실행
@@ -65,7 +67,7 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. `pnpm-workspace.yaml`의 `verifyDepsBeforeRun: install` 설정에 따라, pnpm 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다.
+`git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. pnpm 11은 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다(`verifyDepsBeforeRun`의 기본값 `install`).
 
 | 서비스 | 주소                                                   |
 | ------ | ------------------------------------------------------ |
@@ -112,9 +114,9 @@ pnpm dev
 ## 테스트
 
 - **도구:** Vitest를 사용합니다. 테스트 파일은 대상 코드 옆에 `*.test.ts`로 둡니다. (예: `apps/server/src/env.test.ts`)
-- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 `packages/test-postgres`가 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
+- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
 - **빌드 제외:** 테스트 파일은 `tsconfig.build.json`에서 제외되어 `dist`와 Docker 이미지에 포함되지 않습니다. 타입 검사와 lint에는 포함됩니다.
-- **PGlite 분리:** PGlite는 운영 이미지에 들어가지 않도록 server가 아닌 `packages/test-postgres`에만 설치합니다. drizzle-orm이 PGlite를 선택적 peer로 선언하고 있어서, `.pnpmfile.cjs`에서 이 peer 선언을 제거합니다.
+- **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
 
 ## DB 스키마 변경 방법
 

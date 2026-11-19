@@ -12,14 +12,7 @@ catalog:
   vitest: ^5.1.0
   vite: ^8.3.8
 
-# pnpm 스크립트(pnpm dev, pnpm exec 등)를 실행하기 전에 node_modules 가 lockfile 과 일치하는지 확인하고,
-# 다르면 pnpm install 을 자동으로 실행합니다. (예: git pull 로 팀원이 추가한 의존성을 받았을 때)
-verifyDepsBeforeRun: install
-
-# pnpm 10 은 의존성의 install 스크립트를 기본 차단합니다. 허용/무시할 패키지를 명시합니다.
-onlyBuiltDependencies:
-  - esbuild
-
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
