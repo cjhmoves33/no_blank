@@ -2,11 +2,9 @@ packages:
   - apps/*
   - packages/*
 
-# 여러 패키지가 공유하는 의존성 버전을 한 곳에서 관리합니다. (package.json 에서 "catalog:" 로 참조)
 catalog:
   typescript: ^5.9.3
   "@types/node": ^24.19.2
-  # 모든 패키지가 같은 eslint 를 써야 typescript-eslint 플러그인 인스턴스가 하나로 유지됩니다.
   eslint: ^9.39.5
   # Vitest 5 는 vite 를 peer 의존성으로 요구합니다.
   vitest: ^5.1.0
