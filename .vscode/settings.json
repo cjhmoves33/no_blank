@@ -5,10 +5,8 @@
   },
   "prettier.requireConfig": true,
 
-  // 저장할 때 ESLint 자동 수정(빈 줄, import 정렬 등)을 먼저 적용하고, 이어서 Prettier 로 포맷합니다.
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  // 모노레포: 파일이 속한 패키지(apps/web, apps/server …)의 eslint.config.mjs 를 사용합니다.
   "eslint.workingDirectories": [{ "mode": "auto" }]
 }

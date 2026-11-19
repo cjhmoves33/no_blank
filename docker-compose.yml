@@ -25,7 +25,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # 마이그레이션을 1회 실행하고 종료합니다. server 는 이 작업이 성공해야 기동합니다.
   migrate:
     build: *server-build
     command: ["node", "dist/db/migrate.js"]
@@ -65,7 +64,6 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
-      # 컨테이너 네트워크 안에서는 서비스 이름(server)으로 접근합니다.
       API_URL: http://server:4000
     ports:
       - "3000:3000"

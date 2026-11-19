@@ -5,28 +5,23 @@ on:
     branches: [main]
   pull_request:
 
-# 같은 브랜치에 새 커밋이 올라오면 이전 실행을 취소합니다.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # 작업 이름(name)은 브랜치 보호의 필수 검사 항목으로 쓰이므로, 단계가 늘어나도 바꾸지 않습니다.
   check:
     name: Code checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # CI 에서는 git hook 을 설치하지 않습니다.
       HUSKY: 0
       NEXT_TELEMETRY_DISABLED: 1
     steps:
       - uses: actions/checkout@v7
 
-      # package.json 의 packageManager(pnpm@10.33.0) 버전을 설치합니다.
       - uses: pnpm/action-setup@v6
 
-      # packageManager 필드를 보고 pnpm store 캐시를 자동으로 사용합니다.
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -48,7 +43,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # 운영과 같은 방식(docker compose)으로 전체 스택을 띄우고, 화면에 Hello World 가 나오는지 확인합니다.
   docker:
     name: Docker smoke test
     runs-on: ubuntu-latest
@@ -59,7 +53,6 @@ jobs:
       - name: Build images
         run: docker compose build
 
-      # depends_on 조건(db healthy → migrate 완료 → server healthy)을 기다린 뒤 web 까지 기동합니다.
       - name: Start stack
         run: docker compose up -d
 
