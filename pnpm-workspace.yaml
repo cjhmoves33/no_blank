@@ -16,3 +16,6 @@ allowBuilds:
   esbuild: true
   sharp: false
   unrs-resolver: false
+
+# Node 24.13.1 미만은 한글이 들어간 경로에서 fs.rmSync 가 실패합니다(nodejs/node#61067).
+engineStrict: true
