@@ -1,12 +1,17 @@
+import path from "node:path";
+
 import comments from "@eslint-community/eslint-plugin-eslint-comments/configs";
 import js from "@eslint/js";
 import stylistic from "@stylistic/eslint-plugin";
 import prettier from "eslint-config-prettier/flat";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import { importX } from "eslint-plugin-import-x";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 
-const TS_FILES = ["**/*.{ts,tsx,mts,cts}"];
+const TS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
+const TS_FILES = [`**/*{${TS_EXTENSIONS.join(",")}}`];
 
 /**
  * 프레임워크 설정이 없는 패키지(server, shared)의 기본 규칙입니다.
@@ -33,17 +38,28 @@ export const base = defineConfig(
 );
 
 /**
- * 타입 안전성 규칙입니다. 모든 패키지에서 사용하며, 패키지 디렉터리(import.meta.dirname)를 넘깁니다.
- * 타입 정보를 쓰는 규칙은 그 디렉터리의 tsconfig 로 파일을 해석합니다.
+ * 패키지 디렉터리(import.meta.dirname)를 받아, 그 디렉터리의 tsconfig.json 으로 타입 정보와 import 경로를 해석합니다.
  */
 export function typeChecked(tsconfigRootDir) {
   return defineConfig({
     files: TS_FILES,
     extends: [tseslint.configs.recommendedTypeChecked],
+    plugins: { "import-x": importX },
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir },
     },
+    settings: {
+      "import-x/extensions": [...TS_EXTENSIONS, ".js", ".jsx", ".mjs", ".cjs"],
+      "import-x/parsers": { "@typescript-eslint/parser": TS_EXTENSIONS },
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({
+          project: path.join(tsconfigRootDir, "tsconfig.json"),
+        }),
+      ],
+    },
     rules: {
+      "import-x/no-cycle": "error",
+      "import-x/no-relative-packages": "error",
       "@typescript-eslint/switch-exhaustiveness-check": "error",
       "@typescript-eslint/no-unnecessary-condition": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
@@ -52,7 +68,6 @@ export function typeChecked(tsconfigRootDir) {
         { assertionStyle: "never" },
       ],
       // Fastify 플러그인처럼 Promise 를 돌려줘야 하는 함수는 await 가 없어도 async 로 씁니다.
-      // 빠뜨린 await 는 no-floating-promises 가 잡습니다.
       "@typescript-eslint/require-await": "off",
     },
   });
@@ -100,12 +115,10 @@ export const readability = defineConfig(
       // import 정리
       "simple-import-sort/imports": "error",
 
-      // 복잡도
       "max-params": ["error", 3],
       "max-depth": ["error", 3],
       complexity: ["error", 10],
 
-      // 규칙을 끄는 주석에는 이유를 적습니다.
       "@eslint-community/eslint-comments/require-description": "error",
     },
   },
