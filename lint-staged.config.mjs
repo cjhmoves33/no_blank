@@ -5,7 +5,7 @@
 const eslintIn = (pkg) => (files) => {
   const paths = files.map((file) => `"${file.replaceAll("\\", "/")}"`);
 
-  return `pnpm --filter ${pkg} exec eslint --fix --no-warn-ignored ${paths.join(" ")}`;
+  return `pnpm --filter ${pkg} exec eslint --fix --max-warnings 0 --no-warn-ignored ${paths.join(" ")}`;
 };
 
 export default {

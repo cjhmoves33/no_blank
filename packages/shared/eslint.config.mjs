@@ -1,4 +1,8 @@
-import { base, readability } from "@no-blank/eslint-config";
+import { base, readability, typeChecked } from "@no-blank/eslint-config";
 import { defineConfig } from "eslint/config";
 
-export default defineConfig(base, readability);
+export default defineConfig(
+  base,
+  typeChecked(import.meta.dirname),
+  readability,
+);
