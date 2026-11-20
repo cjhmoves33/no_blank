@@ -1,3 +1,4 @@
+import comments from "@eslint-community/eslint-plugin-eslint-comments/configs";
 import js from "@eslint/js";
 import stylistic from "@stylistic/eslint-plugin";
 import prettier from "eslint-config-prettier/flat";
@@ -32,12 +33,42 @@ export const base = defineConfig(
 );
 
 /**
+ * 타입 안전성 규칙입니다. 모든 패키지에서 사용하며, 패키지 디렉터리(import.meta.dirname)를 넘깁니다.
+ * 타입 정보를 쓰는 규칙은 그 디렉터리의 tsconfig 로 파일을 해석합니다.
+ */
+export function typeChecked(tsconfigRootDir) {
+  return defineConfig({
+    files: TS_FILES,
+    extends: [tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir },
+    },
+    rules: {
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        { assertionStyle: "never" },
+      ],
+      // Fastify 플러그인처럼 Promise 를 돌려줘야 하는 함수는 await 가 없어도 async 로 씁니다.
+      // 빠뜨린 await 는 no-floating-promises 가 잡습니다.
+      "@typescript-eslint/require-await": "off",
+    },
+  });
+}
+
+/**
  * 읽기 좋은 코드를 위한 규칙입니다. 모든 패키지에서 다른 설정보다 뒤에 둡니다.
  * prettier 설정이 형식 규칙을 끈 뒤에 선언해야 curly 처럼 다시 켜는 규칙이 적용됩니다.
  */
 export const readability = defineConfig(
   prettier,
+  comments.recommended,
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+    },
     plugins: {
       "@stylistic": stylistic,
       "simple-import-sort": simpleImportSort,
@@ -69,10 +100,13 @@ export const readability = defineConfig(
       // import 정리
       "simple-import-sort/imports": "error",
 
-      // 복잡도: 자동 수정이 안 되므로 경고로 안내합니다.
-      "max-params": ["warn", 3],
-      "max-depth": ["warn", 3],
-      complexity: ["warn", 10],
+      // 복잡도
+      "max-params": ["error", 3],
+      "max-depth": ["error", 3],
+      complexity: ["error", 10],
+
+      // 규칙을 끄는 주석에는 이유를 적습니다.
+      "@eslint-community/eslint-comments/require-description": "error",
     },
   },
   {

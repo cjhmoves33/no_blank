@@ -8,6 +8,7 @@
   ],
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
@@ -16,7 +17,7 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "test": "vitest run"
   },
   "devDependencies": {
