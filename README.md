@@ -103,7 +103,7 @@ pnpm dev
 | -------------------------------- | -------------- | ---------------------------------------------------------------- | ----------------------- |
 | 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                 | 커밋이 중단됩니다.      |
 | 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                           | 커밋이 중단됩니다.      |
-| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm typecheck`                                                 | push가 중단됩니다.      |
+| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                     | push가 중단됩니다.      |
 | push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                     | PR에 실패가 표시됩니다. |
 | push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`에서 Hello World 확인 | PR에 실패가 표시됩니다. |
 
@@ -116,6 +116,7 @@ pnpm dev
 ## 테스트
 
 - **도구:** Vitest를 사용합니다. 테스트 파일은 대상 코드 옆에 `*.test.ts`로 둡니다. (예: `apps/server/src/env.test.ts`)
+- **web 테스트:** `apps/web/src/lib/api.test.ts`처럼 브라우저나 서버를 띄우지 않고 함수 단위로 검증합니다. 서버 호출은 `vi.stubGlobal("fetch", ...)`로 대신합니다.
 - **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
 - **빌드 제외:** 테스트 파일은 `tsconfig.build.json`에서 제외되어 `dist`와 Docker 이미지에 포함되지 않습니다. 타입 검사와 lint에는 포함됩니다.
 - **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.

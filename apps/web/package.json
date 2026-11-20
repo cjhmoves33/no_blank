@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@no-blank/shared": "workspace:*",
@@ -16,14 +17,16 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@no-blank/eslint-config": "workspace:*",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "catalog:",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@no-blank/eslint-config": "workspace:*",
     "eslint": "catalog:",
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
