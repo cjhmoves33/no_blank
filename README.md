@@ -79,19 +79,21 @@ pnpm dev
 
 루트에서 실행합니다.
 
-| 명령                | 설명                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`          | shared를 빌드한 뒤 shared, server, web을 watch 모드로 동시에 실행합니다.                                    |
-| `pnpm build`        | 모든 패키지를 의존성 순서(shared → server, web)대로 빌드합니다.                                             |
-| `pnpm typecheck`    | shared를 빌드한 뒤 모든 패키지의 타입을 검사합니다. (server와 web은 shared의 빌드 결과에서 타입을 읽습니다) |
-| `pnpm lint`         | 모든 패키지에 ESLint를 실행합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다.                 |
-| `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                         |
-| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                               |
-| `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                   |
-| `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다. (CI 용도)                                                        |
-| `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                   |
-| `pnpm db:generate`  | `apps/server/src/db/schema.ts` 변경 사항으로 마이그레이션 SQL을 생성합니다.                                 |
-| `pnpm db:migrate`   | 아직 적용하지 않은 마이그레이션을 DB에 적용합니다.                                                          |
+| 명령                | 설명                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`        | CI와 같은 검사를 모두 실행합니다. (`format:check` → `lint` → `knip` → `typecheck` → `test` → `build`)               |
+| `pnpm dev`          | shared를 빌드한 뒤 shared, server, web을 watch 모드로 동시에 실행합니다.                                            |
+| `pnpm build`        | 모든 패키지를 의존성 순서(shared → server, web)대로 빌드합니다.                                                     |
+| `pnpm typecheck`    | 모든 패키지의 타입을 검사합니다. shared의 타입은 빌드 결과가 아니라 소스에서 읽으므로 빌드가 필요 없습니다.         |
+| `pnpm lint`         | 모든 패키지에 ESLint를 실행하고, 경고도 실패로 처리합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다. |
+| `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                                 |
+| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                                       |
+| `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                           |
+| `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다.                                                                          |
+| `pnpm knip`         | 사용하지 않는 파일, export, 의존성이 있으면 실패합니다.                                                             |
+| `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                           |
+| `pnpm db:generate`  | `apps/server/src/db/schema.ts` 변경 사항으로 마이그레이션 SQL을 생성합니다.                                         |
+| `pnpm db:migrate`   | 아직 적용하지 않은 마이그레이션을 DB에 적용합니다.                                                                  |
 
 ## 커밋 검사와 CI
 
@@ -102,10 +104,10 @@ pnpm dev
 | 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                 | 커밋이 중단됩니다.      |
 | 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                           | 커밋이 중단됩니다.      |
 | push 직전 (pre-push)             | 작업 트리 전체 | `pnpm typecheck`                                                 | push가 중단됩니다.      |
-| push, PR (CI: Code checks)       | 저장소 전체    | `format:check`, `lint`, `typecheck`, `test`, `build`             | PR에 실패가 표시됩니다. |
+| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                     | PR에 실패가 표시됩니다. |
 | push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`에서 Hello World 확인 | PR에 실패가 표시됩니다. |
 
-- **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류가 있으면 커밋이 중단되고, 경고(`complexity` 등)는 커밋을 막지 않습니다.
+- **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류나 경고가 있으면 커밋이 중단됩니다.
 - **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
 - **pre-push:** 커밋되지 않은 변경도 포함한 현재 작업 트리를 검사합니다.
 - **설정 파일:** `.husky/`의 각 훅 파일, `lint-staged.config.mjs`, `commitlint.config.mjs`, `.github/workflows/ci.yml`에서 관리합니다.
