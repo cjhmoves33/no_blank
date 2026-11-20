@@ -79,21 +79,21 @@ pnpm dev
 
 루트에서 실행합니다.
 
-| 명령                | 설명                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `pnpm check`        | CI와 같은 검사를 모두 실행합니다. (`format:check` → `lint` → `knip` → `typecheck` → `test` → `build`)               |
-| `pnpm dev`          | shared를 빌드한 뒤 shared, server, web을 watch 모드로 동시에 실행합니다.                                            |
-| `pnpm build`        | 모든 패키지를 의존성 순서(shared → server, web)대로 빌드합니다.                                                     |
-| `pnpm typecheck`    | 모든 패키지의 타입을 검사합니다. shared의 타입은 빌드 결과가 아니라 소스에서 읽으므로 빌드가 필요 없습니다.         |
-| `pnpm lint`         | 모든 패키지에 ESLint를 실행하고, 경고도 실패로 처리합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다. |
-| `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                                 |
-| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                                       |
-| `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                           |
-| `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다.                                                                          |
-| `pnpm knip`         | 사용하지 않는 파일, export, 의존성이 있으면 실패합니다.                                                             |
-| `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                           |
-| `pnpm db:generate`  | `apps/server/src/db/schema.ts` 변경 사항으로 마이그레이션 SQL을 생성합니다.                                         |
-| `pnpm db:migrate`   | 아직 적용하지 않은 마이그레이션을 DB에 적용합니다.                                                                  |
+| 명령                | 설명                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`        | CI `Code checks` 작업과 같은 검사를 실행합니다. (`format:check` → `lint` → `knip` → `typecheck` → `test` → `build`) Docker smoke test는 포함하지 않습니다. |
+| `pnpm dev`          | shared를 빌드한 뒤 shared, server, web을 watch 모드로 동시에 실행합니다.                                                                                   |
+| `pnpm build`        | 모든 패키지를 의존성 순서(shared → server, web)대로 빌드합니다.                                                                                            |
+| `pnpm typecheck`    | 모든 패키지의 타입을 검사합니다. shared의 타입은 빌드 결과가 아니라 소스에서 읽으므로 빌드가 필요 없습니다.                                                |
+| `pnpm lint`         | 모든 패키지에 ESLint를 실행하고, 경고도 실패로 처리합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다.                                        |
+| `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                                                                        |
+| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                                                                              |
+| `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                                                                  |
+| `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다.                                                                                                                 |
+| `pnpm knip`         | 사용하지 않는 파일, export, 의존성이 있으면 실패합니다.                                                                                                    |
+| `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                                                                  |
+| `pnpm db:generate`  | `apps/server/src/db/schema.ts` 변경 사항으로 마이그레이션 SQL을 생성합니다.                                                                                |
+| `pnpm db:migrate`   | 아직 적용하지 않은 마이그레이션을 DB에 적용합니다.                                                                                                         |
 
 ## 커밋 검사와 CI
 
