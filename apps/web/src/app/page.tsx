@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { getGreeting } from "@/lib/api";
+import { HomeScene } from "@/scene/home-scene";
 
 async function Greeting() {
   const { message } = await getGreeting();
@@ -15,6 +16,7 @@ async function Greeting() {
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 font-sans dark:bg-black">
+      <HomeScene />
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
         <Greeting />
       </Suspense>
