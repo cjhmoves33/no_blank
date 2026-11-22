@@ -1,4 +1,4 @@
-import { Spherical, Vector3 } from "three";
+import { OrthographicCamera, Spherical, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import { GYM, RING_VIEW } from "../measurements";
@@ -7,6 +7,8 @@ import {
   LATE_AFTERNOON,
   shapeLightPosition,
   sunlightTravel,
+  sunPosition,
+  sunTarget,
 } from "./late-afternoon";
 
 const SHAPE = new Vector3(...GYM.shape.center);
@@ -123,7 +125,46 @@ function cameraPositions(): Vector3[] {
   );
 }
 
+function buildingCorners(): Vector3[] {
+  const { halfX, halfZ, ceilingY, wall } = GYM.building;
+  const outer = { x: halfX + wall, z: halfZ + wall };
+
+  return [-outer.x, outer.x].flatMap((x) =>
+    [-0.1, ceilingY + wall].flatMap((y) =>
+      [-outer.z, outer.z].map((z) => new Vector3(x, y, z)),
+    ),
+  );
+}
+
 describe("LATE_AFTERNOON", () => {
+  it("그림자를 계산하는 범위가 건물 전체를 덮는다", () => {
+    const bounds = LATE_AFTERNOON.sun.shadow.camera;
+    // three 의 DirectionalLightShadow 가 그림자 카메라를 놓는 방식과 같습니다.
+    const shadowCamera = new OrthographicCamera(
+      bounds.left,
+      bounds.right,
+      bounds.top,
+      bounds.bottom,
+      bounds.near,
+      bounds.far,
+    );
+
+    shadowCamera.position.set(...sunPosition());
+    shadowCamera.lookAt(sunTarget());
+    shadowCamera.updateMatrixWorld();
+
+    for (const corner of buildingCorners()) {
+      const seen = corner.applyMatrix4(shadowCamera.matrixWorldInverse);
+
+      expect(seen.x).toBeGreaterThanOrEqual(bounds.left);
+      expect(seen.x).toBeLessThanOrEqual(bounds.right);
+      expect(seen.y).toBeGreaterThanOrEqual(bounds.bottom);
+      expect(seen.y).toBeLessThanOrEqual(bounds.top);
+      expect(-seen.z).toBeGreaterThanOrEqual(bounds.near);
+      expect(-seen.z).toBeLessThanOrEqual(bounds.far);
+    }
+  });
+
   it("링 가운데의 도형에는 햇빛이 곧바로 닿지 않는다", () => {
     const lit = pointsOnShape(400).filter(passesWindowOpenings);
 
