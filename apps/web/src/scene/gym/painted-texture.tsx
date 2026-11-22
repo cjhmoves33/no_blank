@@ -54,7 +54,6 @@ export function PaintedTexture({
   );
 }
 
-// 같은 그림을 여러 재질이 쓰거나 StrictMode 가 두 번 그려도 캔버스는 하나만 그립니다.
 const painted = new WeakMap<Painting, HTMLCanvasElement>();
 
 function paintOnce(painting: Painting): HTMLCanvasElement {
@@ -82,7 +81,7 @@ function paintOnce(painting: Painting): HTMLCanvasElement {
   return canvas;
 }
 
-/** 같은 seed 면 같은 수열을 냅니다(mulberry32). 무늬가 새로고침마다 바뀌지 않습니다. */
+/** mulberry32 입니다. */
 export function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
 

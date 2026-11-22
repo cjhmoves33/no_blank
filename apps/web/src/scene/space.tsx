@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { NeutralToneMapping } from "three";
 
 import { Daylight } from "./gym/daylight";
+import { DustMotes } from "./gym/dust-motes";
 import { HeavyBags } from "./gym/heavy-bags";
 import { LATE_AFTERNOON } from "./gym/late-afternoon";
 import { VIEW } from "./gym/measurements";
@@ -48,6 +49,7 @@ export function Space({ reducedMotion, children }: SpaceProps) {
       <Ring />
       <HeavyBags />
       <WallClock />
+      <DustMotes drifting={!reducedMotion} />
       <OrbitRig inertia={!reducedMotion} limits={VIEW} />
       {children}
     </Canvas>

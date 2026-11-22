@@ -24,7 +24,6 @@ function vertices(boxes: readonly Box[]): Vertex[] {
   }));
 }
 
-/** point 에 있고 +z 를 보는 꼭짓점들입니다. 상자마다 하나씩 나옵니다. */
 function frontVerticesAt(boxes: readonly Box[], point: Point): Vertex[] {
   const at = new Vector3(...point);
   const front = new Vector3(0, 0, 1);

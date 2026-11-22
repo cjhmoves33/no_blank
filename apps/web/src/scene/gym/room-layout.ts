@@ -6,7 +6,6 @@ const { spans, sillY, headY, mullions, transoms } = GYM.windows;
 const FLOOR_Y = GYM.floorY;
 const RIGHT_OUTER_X = halfX + wall;
 
-/** 방의 네 모서리는 앞뒤 벽이 덮습니다. */
 export function brickWalls(): Box[] {
   return [
     {
@@ -53,11 +52,10 @@ export function ceiling(): Box[] {
   ];
 }
 
-const DADO = { top: FLOOR_Y + 2.4, thickness: 0.04 } as const;
+const PAINTED_WALL_BAND = { top: FLOOR_Y + 2.4, thickness: 0.04 } as const;
 
-/** 벽 아래쪽에 칠한 띠입니다. */
-export function dado(): Box[] {
-  const { top, thickness } = DADO;
+export function paintedWallBand(): Box[] {
+  const { top, thickness } = PAINTED_WALL_BAND;
 
   return [
     {
@@ -82,11 +80,11 @@ export function steelwork(): Box[] {
     RIGHT_OUTER_X - BAR.inset[0],
   ];
   const bars = spans.flatMap(([start, end]) => [
-    ...evenly(start, end, mullions).map((z): Box => ({
+    ...evenlySpacedInside(start, end, mullions).map((z): Box => ({
       min: [barX[0], sillY, z - BAR.half],
       max: [barX[1], headY, z + BAR.half],
     })),
-    ...evenly(sillY, headY, transoms).map((y): Box => ({
+    ...evenlySpacedInside(sillY, headY, transoms).map((y): Box => ({
       min: [barX[0], y - BAR.half, start],
       max: [barX[1], y + BAR.half, end],
     })),
@@ -99,8 +97,11 @@ export function steelwork(): Box[] {
   return [...bars, ...beams];
 }
 
-/** start 와 end 사이를 count + 1 등분하는 안쪽 점들입니다. */
-function evenly(start: number, end: number, count: number): number[] {
+function evenlySpacedInside(
+  start: number,
+  end: number,
+  count: number,
+): number[] {
   return Array.from(
     { length: count },
     (_, i) => start + ((end - start) * (i + 1)) / (count + 1),

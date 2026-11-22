@@ -17,7 +17,6 @@ const LOWEST_ROPE = ropes.heights[0];
 const HIGHEST_ROPE = ropes.heights[3];
 const PLATFORM_HEIGHT = mat.y - GYM.floorY;
 
-/** 글자는 넣지 않습니다. 가운데의 옅은 원만 남깁니다. */
 const MAT: Painting = {
   width: 2048,
   height: 2048,
@@ -97,7 +96,6 @@ interface Side {
   readonly to: Vector3;
 }
 
-/** 링의 네 변입니다. 높이는 onSide 가 정합니다. */
 const SIDES: readonly Side[] = CORNERS.map((corner, index) => {
   const next = CORNERS[(index + 1) % CORNERS.length] ?? corner;
 
@@ -111,8 +109,11 @@ function sagAt(along: number): number {
   return ropes.sag * 4 * along * (1 - along);
 }
 
-/** 변 위 along(0~1) 자리의, 매트에서 height 만큼 높고 로프만큼 처진 점입니다. */
-function onSide({ from, to }: Side, along: number, height: number): Vector3 {
+function ropePointAt(
+  { from, to }: Side,
+  along: number,
+  height: number,
+): Vector3 {
   return from
     .clone()
     .lerp(to, along)
@@ -123,7 +124,7 @@ const ROPES = SIDES.flatMap((side, sideIndex) =>
   ropes.heights.map((height) => ({
     key: `${sideIndex}:${height}`,
     curve: new CatmullRomCurve3(
-      Array.from({ length: 9 }, (_, i) => onSide(side, i / 8, height)),
+      Array.from({ length: 9 }, (_, i) => ropePointAt(side, i / 8, height)),
     ),
   })),
 );
@@ -136,16 +137,12 @@ const TIES = SIDES.flatMap((side, sideIndex) =>
 
     return {
       key: `${sideIndex}:${along}`,
-      position: onSide(side, along, (HIGHEST_ROPE + LOWEST_ROPE) / 2),
-      // 끈의 얇은 쪽(z)이 로프를 따라가게 돌립니다.
+      position: ropePointAt(side, along, (HIGHEST_ROPE + LOWEST_ROPE) / 2),
       turn: Math.atan2(direction.x, direction.z),
     };
   }),
 );
 
-/**
- * 단의 옆면은 바깥을 보고 카메라는 로프 안에만 있으므로, 옆면에는 그림을 두지 않습니다.
- */
 export function Ring() {
   return (
     <group>

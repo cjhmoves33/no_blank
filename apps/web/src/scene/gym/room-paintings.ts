@@ -20,7 +20,6 @@ interface BrickLayer {
 
 const BRICK_COURSES = { columns: 8, rows: 26, mortar: 3 } as const;
 
-// 색과 요철이 같은 seed 를 써야 밝은 벽돌이 도드라진 벽돌과 겹칩니다.
 const BRICK_SEED = 31;
 
 function paintBricks(context: CanvasRenderingContext2D, layer: BrickLayer) {
@@ -38,7 +37,6 @@ function paintBricks(context: CanvasRenderingContext2D, layer: BrickLayer) {
 
     for (let column = 0; column < columns; column++) {
       const x = column * brickWidth + offset;
-      // 오른쪽 끝을 넘는 벽돌은 왼쪽에도 그려서 반복해 깔아도 한 장처럼 이어집니다.
       const copies = x + brickWidth > width ? [x, x - width] : [x];
 
       context.fillStyle = layer.brick({
@@ -66,7 +64,6 @@ const BRICK_COLOR: BrickLayer = {
   brick: ({ tone, hue, saturation }) =>
     `hsl(${10 + hue * 14} ${30 + saturation * 16}% ${30 + tone * 14}%)`,
   finish: (context) => {
-    // 오래된 회칠이 군데군데 벗겨졌습니다.
     context.fillStyle = "rgba(222, 214, 198, 0.62)";
     context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     addBlotches(context, {
@@ -184,7 +181,6 @@ function strokeWoodGrain(
   }
 }
 
-/** 천장 밑과 바닥 위, 방의 네 구석을 어둡게 합니다. uv1(방 전체 좌표)에 깝니다. */
 export const WALL_OCCLUSION: Painting = {
   width: 256,
   height: 256,
@@ -212,7 +208,6 @@ export const WALL_OCCLUSION: Painting = {
   },
 };
 
-/** 링 둘레와 벽 밑의 바닥을 어둡게 합니다. uv1 에 깝니다. */
 export const FLOOR_OCCLUSION: Painting = {
   width: 512,
   height: 512,

@@ -2,10 +2,7 @@ import type { OrbitLimits } from "../orbit-rig";
 
 const FLOOR_Y = -4.6;
 
-/**
- * 체육관의 치수는 모두 여기에 둡니다. 1 = 0.5 m 이고, 원점은 링 가운데에 떠 있는 도형의 중심입니다.
- * 창은 오른쪽 벽(x = +room.halfX)에만 있습니다.
- */
+/** 1 = 0.5 m 이고, 원점은 링 가운데에 떠 있는 도형의 중심입니다. */
 export const GYM = {
   subject: { radius: 1 },
   floorY: FLOOR_Y,

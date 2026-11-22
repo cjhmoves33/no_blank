@@ -6,9 +6,9 @@ import { PaintedTexture } from "./painted-texture";
 import {
   brickWalls,
   ceiling,
-  dado,
   floor,
   glassPanes,
+  paintedWallBand,
   steelwork,
 } from "./room-layout";
 import {
@@ -22,13 +22,12 @@ import { Slabs } from "./slabs";
 
 const WALLS = brickWalls();
 const CEILING = ceiling();
-const DADO = dado();
+const PAINTED_WALL_BAND = paintedWallBand();
 const STEELWORK = steelwork();
 const FLOOR = floor();
 const PANES = glassPanes();
 
-// 유리는 빛을 받지 않고 스스로 밝아야 창 밖의 하늘처럼 보입니다.
-const GLASS = new Color(LATE_AFTERNOON.glass.color).multiplyScalar(
+const SELF_LIT_GLASS = new Color(LATE_AFTERNOON.glass.color).multiplyScalar(
   LATE_AFTERNOON.glass.gain,
 );
 
@@ -46,7 +45,7 @@ export function Room() {
         finish={{ color: "#6e655a", roughness: 0.95 }}
       />
       <Slabs
-        boxes={DADO}
+        boxes={PAINTED_WALL_BAND}
         tile={4}
         finish={{ color: "#56614f", roughness: 0.8 }}
       >
@@ -64,7 +63,7 @@ export function Room() {
           rotation-y={-Math.PI / 2}
         >
           <planeGeometry args={[pane.width, pane.height]} />
-          <meshBasicMaterial color={GLASS} fog={false} />
+          <meshBasicMaterial color={SELF_LIT_GLASS} fog={false} />
         </mesh>
       ))}
     </>

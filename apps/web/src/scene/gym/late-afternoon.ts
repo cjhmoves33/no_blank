@@ -2,15 +2,8 @@ import { Matrix4, Quaternion, Vector3 } from "three";
 
 import { GYM } from "./measurements";
 
-/**
- * 빛을 고칠 때는 이 표만 고칩니다. Space 가 노출과 환경광 세기를, Daylight 가 나머지를 읽습니다.
- * - exposure 는 화면 평균 밝기가 고른 프로토타입(ACES, 노출 1)과 같아지는 값입니다.
- * - sun.toward 는 빛이 나아가는 방향입니다. 링 가운데의 도형이 창 사이 벽 그림자에 들도록 골랐습니다.
- *   따뜻한 햇빛이 파란 면에 닿으면 보라색으로 뜨기 때문입니다.
- * - shapeLight 는 도형만 밝히는 흰 빛입니다. 카메라가 도는 쪽을 따라 돌아서 어디서 보아도 도형의 보이는 쪽을 밝히고,
- *   reach 너머에는 닿지 않아서 세트의 색을 바꾸지 않습니다.
- */
 export const LATE_AFTERNOON = {
+  // 화면 평균 밝기가 고른 프로토타입(ACES, 노출 1)과 같아지는 값입니다.
   exposure: 1.35,
   environmentIntensity: 0.3,
   background: "#141210",
@@ -38,6 +31,7 @@ export const LATE_AFTERNOON = {
     lookAt: [0, GYM.floorY + 5, 0],
   },
   sky: { color: "#f6e2cc", ground: "#8a5e3c", intensity: 0.5 },
+  haze: { color: "#ffd2a0", density: 0.02 },
   shapeLight: {
     color: "#ffffff",
     intensity: 3.4,
@@ -45,20 +39,48 @@ export const LATE_AFTERNOON = {
     radius: 1.7,
     reach: 4.2,
   },
+  dust: {
+    count: 1100,
+    color: "#ffe2bd",
+    opacity: 0.5,
+    size: 0.025,
+    min: [-12, GYM.mat.y - 1, -8],
+    max: [8, 7, 8],
+  },
 } as const;
 
-/** 빛이 나아가는 단위 방향입니다. */
-export function sunDirection(): Vector3 {
+export function sunlightTravel(): Vector3 {
   return new Vector3(...LATE_AFTERNOON.sun.toward).normalize();
 }
 
 export function sunPosition(): [x: number, y: number, z: number] {
-  const position = sunDirection().multiplyScalar(-LATE_AFTERNOON.sun.distance);
+  const position = sunlightTravel().multiplyScalar(
+    -LATE_AFTERNOON.sun.distance,
+  );
 
   return [position.x, position.y, position.z];
 }
 
-/** 카메라 쪽으로 돌리되 높이는 그대로 둡니다. 낮아지면 매트에 닿습니다. */
+export function hazeShaftFrames(): Matrix4[] {
+  const sun = sunlightTravel();
+  const { spans, sillY, headY } = GYM.windows;
+  const outerX = GYM.room.halfX + GYM.room.wall;
+  const centerY = (sillY + headY) / 2;
+  const along = sun.clone().multiplyScalar((centerY - GYM.floorY) / -sun.y);
+
+  return spans.map(([start, end]) => {
+    const origin = new Vector3(outerX, centerY, (start + end) / 2);
+
+    return new Matrix4()
+      .makeBasis(
+        new Vector3(0, 0, end - start),
+        new Vector3(0, headY - sillY, 0),
+        along,
+      )
+      .setPosition(origin.addScaledVector(along, 0.5));
+  });
+}
+
 export function shapeLightPosition(camera: {
   readonly x: number;
   readonly z: number;

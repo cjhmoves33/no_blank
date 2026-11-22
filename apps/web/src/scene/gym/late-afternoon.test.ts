@@ -2,14 +2,13 @@ import { Spherical, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import {
+  hazeShaftFrames,
   LATE_AFTERNOON,
   shapeLightPosition,
-  sunDirection,
+  sunlightTravel,
 } from "./late-afternoon";
 import { GYM, VIEW } from "./measurements";
 
-// 해 쪽으로 쏜 광선이 오른쪽 벽의 안쪽 면과 바깥 면을 모두 창으로 지나야 햇빛을 받는다고 봅니다.
-// 창살은 무시하므로 "그늘에 있다"는 판정은 실제보다 엄격합니다.
 function isInWindow(y: number, z: number): boolean {
   const { spans, sillY, headY } = GYM.windows;
 
@@ -18,8 +17,8 @@ function isInWindow(y: number, z: number): boolean {
   );
 }
 
-function isSunlit(point: Vector3): boolean {
-  const towardSun = sunDirection().negate();
+function passesWindowOpenings(point: Vector3): boolean {
+  const towardSun = sunlightTravel().negate();
   const wallFaces = [GYM.room.halfX, GYM.room.halfX + GYM.room.wall];
 
   return wallFaces.every((faceX) => {
@@ -31,8 +30,7 @@ function isSunlit(point: Vector3): boolean {
   });
 }
 
-// 피보나치 나선으로 구 표면을 고르게 찍습니다.
-function pointsOnSphere(radius: number, count: number): Vector3[] {
+function fibonacciSphere(radius: number, count: number): Vector3[] {
   return Array.from({ length: count }, (_, i) => {
     const y = 1 - (2 * (i + 0.5)) / count;
     const ring = Math.sqrt(1 - y * y);
@@ -78,7 +76,6 @@ function distanceToSegment(point: Vector3, [start, end]: Segment): number {
   return start.clone().addScaledVector(along, t).distanceTo(point);
 }
 
-// 로프는 가운데가 sag 만큼 처지므로, 처진 높이의 직선으로 잡아 빛에 더 가깝게 봅니다.
 function ropeSegments(): Segment[] {
   const half = GYM.ropes.half;
   const corners = [
@@ -117,14 +114,16 @@ function cameraPositions(): Vector3[] {
 
 describe("LATE_AFTERNOON", () => {
   it("링 가운데의 도형에는 햇빛이 곧바로 닿지 않는다", () => {
-    const lit = pointsOnSphere(GYM.subject.radius, 400).filter(isSunlit);
+    const lit = fibonacciSphere(GYM.subject.radius, 400).filter(
+      passesWindowOpenings,
+    );
 
     expect(lit).toEqual([]);
   });
 
   it("햇빛이 링 안 매트에 창 모양으로 떨어진다", () => {
     const points = matPointsInsideRopes();
-    const litShare = points.filter(isSunlit).length / points.length;
+    const litShare = points.filter(passesWindowOpenings).length / points.length;
 
     expect(litShare).toBeGreaterThan(0.2);
   });
@@ -135,7 +134,7 @@ describe("LATE_AFTERNOON", () => {
     for (const camera of cameraPositions()) {
       const light = new Vector3(...shapeLightPosition(camera));
       const nearestToCamera = camera.clone().setLength(GYM.subject.radius);
-      const facing = pointsOnSphere(GYM.subject.radius, 400).filter((point) =>
+      const facing = fibonacciSphere(GYM.subject.radius, 400).filter((point) =>
         isFacing(point, light),
       );
       const farthestFacing = Math.max(
@@ -159,6 +158,21 @@ describe("LATE_AFTERNOON", () => {
 
       expect(light.y - GYM.mat.y).toBeGreaterThan(reach);
       expect(nearestRope).toBeGreaterThan(reach);
+    }
+  });
+
+  it("빛기둥은 창 바깥면의 창 자리에서 시작해 바닥에서 끝난다", () => {
+    const frames = hazeShaftFrames();
+
+    expect(frames).toHaveLength(GYM.windows.spans.length);
+
+    for (const frame of frames) {
+      const start = new Vector3(0, 0, -0.5).applyMatrix4(frame);
+      const end = new Vector3(0, 0, 0.5).applyMatrix4(frame);
+
+      expect(start.x).toBeCloseTo(GYM.room.halfX + GYM.room.wall);
+      expect(isInWindow(start.y, start.z)).toBe(true);
+      expect(end.y).toBeCloseTo(GYM.floorY);
     }
   });
 });

@@ -5,13 +5,11 @@ import { PaintedTexture, type Painting } from "./painted-texture";
 const RIM = { radius: 0.75, depth: 0.12 } as const;
 const FACE_RADIUS = 0.68;
 
-// 늦은 오후 5시 20분입니다.
 const HANDS = [
   { turn: (5 + 20 / 60) / 12, length: 0.22, width: 9 },
   { turn: 20 / 60, length: 0.34, width: 6 },
 ] as const;
 
-/** 글자는 넣지 않습니다. 눈금과 바늘만 그립니다. */
 const FACE: Painting = {
   width: 256,
   height: 256,
@@ -36,7 +34,6 @@ const FACE: Painting = {
   },
 };
 
-/** 판 가운데에서 12시부터 시계 방향으로 turn 바퀴 돈 쪽으로, 판 너비에 대한 비율 구간을 긋습니다. */
 function strokeFromCenter(
   context: CanvasRenderingContext2D,
   turn: number,
@@ -56,7 +53,6 @@ function strokeFromCenter(
   context.stroke();
 }
 
-/** 그림 텍스처는 그것을 쓰는 소품 파일에 둡니다. */
 export function WallClock() {
   return (
     <group position={[-4.5, GYM.floorY + 6.4, -GYM.room.halfZ + RIM.depth / 2]}>
