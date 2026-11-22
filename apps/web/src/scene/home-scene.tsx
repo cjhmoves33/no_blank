@@ -8,7 +8,6 @@ import { strikeSound } from "@/audio/sounds";
 
 import { Gym } from "./gym/gym";
 import { LATE_AFTERNOON } from "./gym/light/late-afternoon";
-import { WreckingBall } from "./gym/wrecking-ball/wrecking-ball";
 
 const HideOnError = catchError(() => null);
 
@@ -22,14 +21,12 @@ export function HomeScene() {
   return (
     <div className="h-dvh w-full" style={PAGE}>
       <HideOnError>
-        <Gym reducedMotion={reducedMotion}>
-          <WreckingBall
-            reducedMotion={reducedMotion}
-            onStrike={() => {
-              playSound(strikeSound);
-            }}
-          />
-        </Gym>
+        <Gym
+          reducedMotion={reducedMotion}
+          onStrike={() => {
+            playSound(strikeSound);
+          }}
+        />
       </HideOnError>
     </div>
   );

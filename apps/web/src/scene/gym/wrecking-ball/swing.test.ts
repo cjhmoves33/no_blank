@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GYM } from "../measurements";
 import {
   advance,
+  type Blow,
   CHAIN_REACH,
   farthestReach,
   restingSwing,
@@ -20,10 +21,25 @@ const RIGHT = new Vector3(radius, 0, 0);
 const UNDER = new Vector3(0, -radius, 0);
 const FRAME = 1 / 60;
 const UP = new Vector3(0, 1, 0);
+const TO_THE_RIGHT = new Vector3(1, 0, 0);
+const FASTEST_SWIPE = 100;
 const { normal, reduced } = SWING_FEEL;
 
-function hit(swing: Swing, offset: Vector3, feel: SwingFeel): Swing {
-  return strike(swing, swing.fromPivot.clone().add(offset), feel);
+function jab(at: Vector3): Blow {
+  return { kind: "jab", at, fist: at.clone().negate().normalize() };
+}
+
+function swipe(fist: Vector3, speed: number): Blow {
+  return {
+    kind: "swipe",
+    at: fist.clone().negate().setLength(radius),
+    fist,
+    speed,
+  };
+}
+
+function hit(swing: Swing, at: Vector3, feel: SwingFeel): Swing {
+  return strike(swing, jab(at), feel).swing;
 }
 
 function track(swing: Swing, seconds: number, feel: SwingFeel): Vector3[] {
@@ -53,7 +69,7 @@ describe("swing", () => {
     expect(after.fromPivot.distanceTo(REST)).toBeLessThan(1e-9);
   });
 
-  it("앞면 가운데를 치면 뒤로 밀린다", () => {
+  it("앞면 가운데를 잽으로 치면 뒤로 밀린다", () => {
     const struck = hit(restingSwing(), FRONT, normal);
     const after = advance(struck, 0.4, normal);
 
@@ -61,7 +77,7 @@ describe("swing", () => {
     expect(Math.abs(after.fromPivot.x)).toBeLessThan(1e-9);
   });
 
-  it("오른쪽 가장자리를 치면 왼쪽으로 밀린다", () => {
+  it("오른쪽 가장자리를 잽으로 치면 왼쪽으로 밀린다", () => {
     const struck = hit(restingSwing(), RIGHT, normal);
     const after = advance(struck, 0.4, normal);
 
@@ -81,11 +97,46 @@ describe("swing", () => {
     expect(fallen.fromPivot.length()).toBeCloseTo(CHAIN_REACH, 9);
   });
 
+  it("휘두르면 맞은 자리와 관계없이 끈 방향으로 밀린다", () => {
+    const blow: Blow = {
+      kind: "swipe",
+      at: FRONT,
+      fist: TO_THE_RIGHT,
+      speed: 2,
+    };
+    const after = advance(
+      strike(restingSwing(), blow, normal).swing,
+      0.4,
+      normal,
+    );
+
+    expect(after.fromPivot.x).toBeGreaterThan(0.2);
+    expect(Math.abs(after.fromPivot.z)).toBeLessThan(1e-9);
+  });
+
+  it("빨리 휘두를수록 멀리 밀리지만, 아주 빠르게 휘둘러도 정해진 빠르기 이상으로 밀지 않는다", () => {
+    const reach = (speed: number) =>
+      largestOffset(
+        track(
+          strike(restingSwing(), swipe(TO_THE_RIGHT, speed), normal).swing,
+          2,
+          normal,
+        ),
+      );
+
+    expect(reach(1.5)).toBeLessThan(reach(2.5));
+    expect(reach(FASTEST_SWIPE)).toBeCloseTo(reach(FASTEST_SWIPE / 10), 9);
+  });
+
   it("사슬은 늘어나지 않는다", () => {
     let swing = restingSwing();
 
     for (const offset of hitOffsets(60)) {
-      swing = hit(swing, offset, normal);
+      swing = strike(
+        swing,
+        swipe(offset.clone().negate(), FASTEST_SWIPE),
+        normal,
+      ).swing;
 
       for (const position of track(swing, 0.3, normal)) {
         expect(position.length()).toBeLessThanOrEqual(CHAIN_REACH + 1e-9);
@@ -119,12 +170,16 @@ describe("swing", () => {
     );
   });
 
-  it("어디를 몇 번 치든 공은 정해진 범위 안에서 흔들린다", () => {
+  it("어디로 몇 번 휘두르든 공은 정해진 범위 안에서 흔들린다", () => {
     let swing = restingSwing();
     let farthest = 0;
 
     for (const [i, offset] of hitOffsets(400).entries()) {
-      swing = hit(swing, offset, normal);
+      swing = strike(
+        swing,
+        swipe(offset.clone().negate(), FASTEST_SWIPE),
+        normal,
+      ).swing;
 
       for (const position of track(swing, 0.05 + (i % 7) * 0.12, normal)) {
         farthest = Math.max(farthest, Math.hypot(position.x, position.z));
@@ -168,12 +223,14 @@ describe("swing", () => {
   });
 
   it("동작 줄이기에서는 조금만 밀리고 1초 안에 제자리로 돌아온다", () => {
-    const struck = hit(restingSwing(), RIGHT, reduced);
+    for (const blow of [jab(RIGHT), swipe(TO_THE_RIGHT, FASTEST_SWIPE)]) {
+      const struck = strike(restingSwing(), blow, reduced).swing;
 
-    expect(largestOffset(track(struck, 1, reduced))).toBeLessThan(0.03);
-    expect(advance(struck, 1, reduced).fromPivot.distanceTo(REST)).toBeLessThan(
-      0.001,
-    );
+      expect(largestOffset(track(struck, 1, reduced))).toBeLessThan(0.03);
+      expect(
+        advance(struck, 1, reduced).fromPivot.distanceTo(REST),
+      ).toBeLessThan(0.001);
+    }
   });
 
   it("프레임 속도와 관계없이 같은 흔들림이 된다", () => {
@@ -188,6 +245,49 @@ describe("swing", () => {
       }
 
       expect(byFrames.fromPivot.distanceTo(atOnce)).toBeLessThan(0.01);
+    }
+  });
+});
+
+describe("타격 세기", () => {
+  const strengthOf = (swing: Swing, blow: Blow, feel: SwingFeel = normal) =>
+    strike(swing, blow, feel).strike.strength;
+
+  it("가장 빠른 휘두르기로 멈춘 공을 치면 1 이고, 잽은 그보다 약하다", () => {
+    const jabbed = strengthOf(restingSwing(), jab(RIGHT));
+
+    expect(strengthOf(restingSwing(), swipe(TO_THE_RIGHT, FASTEST_SWIPE))).toBe(
+      1,
+    );
+    expect(jabbed).toBeGreaterThan(0.2);
+    expect(jabbed).toBeLessThan(0.6);
+  });
+
+  it("빨리 휘두를수록 세다", () => {
+    expect(strengthOf(restingSwing(), swipe(TO_THE_RIGHT, 1.5))).toBeLessThan(
+      strengthOf(restingSwing(), swipe(TO_THE_RIGHT, 2.5)),
+    );
+  });
+
+  it("멀어지는 공을 쫓아가 치면 약하고, 되돌아오는 공을 맞받아치면 세다", () => {
+    const still = strengthOf(restingSwing(), jab(RIGHT));
+    const chased = strengthOf(moving(new Vector3(-1, 0, 0)), jab(RIGHT));
+    const met = strengthOf(moving(new Vector3(1, 0, 0)), jab(RIGHT));
+
+    expect(chased).toBeLessThan(still * 0.5);
+    expect(met).toBeGreaterThan(still * 1.5);
+  });
+
+  it("주먹보다 빨리 멀어지는 공을 치면 0 이다", () => {
+    expect(strengthOf(moving(new Vector3(-1.4, 0, 0)), jab(RIGHT))).toBe(0);
+  });
+
+  it("동작 줄이기에서도 같은 손놀림이면 같은 세기다", () => {
+    for (const blow of [jab(RIGHT), swipe(TO_THE_RIGHT, 2)]) {
+      expect(strengthOf(restingSwing(), blow, reduced)).toBeCloseTo(
+        strengthOf(restingSwing(), blow, normal),
+        9,
+      );
     }
   });
 });

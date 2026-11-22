@@ -1,6 +1,6 @@
-import { type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useRef } from "react";
-import { type Group, type Mesh, Quaternion, Vector3 } from "three";
+import { useFrame } from "@react-three/fiber";
+import { type Ref, useImperativeHandle, useRef } from "react";
+import { type Group, type Mesh, Quaternion, Sphere, Vector3 } from "three";
 
 import { addBlotches, addGrain } from "../brushes";
 import type { Box } from "../building/slabs";
@@ -9,16 +9,27 @@ import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 import {
   advance,
+  type Blow,
   CHAIN_REACH,
   farthestReach,
   restingSwing,
+  type Strike,
   strike,
   SWING_FEEL,
 } from "./swing";
+import { restingTwist, TWIST_FEEL, twistBy, unwind } from "./twist";
+
+/** 레킹볼을 다루는 손잡이입니다. 레킹볼의 움직임은 이 둘로만 읽히고 바뀝니다. */
+export interface WreckingBallHandle {
+  /** 지금 가죽 공이 차지한 구(월드 좌표)입니다. 아직 장면에 붙지 않았으면 null 입니다. */
+  readonly sphere: () => Sphere | null;
+  /** 주먹을 받아 흔들림과 비틀림을 바꾸고 그 타격을 돌려줍니다. 맞힌 순간에 한 번 부릅니다. */
+  readonly take: (blow: Blow) => Strike;
+}
 
 export interface WreckingBallProps {
   readonly reducedMotion: boolean;
-  readonly onStrike: () => void;
+  readonly ref: Ref<WreckingBallHandle>;
 }
 
 const { radius, pivotY } = GYM.wreckingBall;
@@ -34,7 +45,6 @@ const ROD_RADIUS = 0.02;
 const CHAIN_BOTTOM = radius + CAP.height + SHACKLE.radius * 2;
 const CHAIN_LENGTH = CHAIN_REACH - CHAIN_BOTTOM;
 const LINKS = 12;
-const PRIMARY_BUTTON = 0;
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
 const UP = new Vector3(0, 1, 0);
@@ -70,24 +80,45 @@ export const WRECKING_BALL_SIZE: Box = {
 
 const REST_LINKS = chainLinks(restingSwing().fromPivot);
 
-export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
-  const pivot = useRef<Group>(null);
+/** 메시는 모두 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다. */
+export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
   const ball = useRef<Group>(null);
   const links = useRef<(Mesh | null)[]>([]);
   const swing = useRef(restingSwing());
-  const feel = reducedMotion ? SWING_FEEL.reduced : SWING_FEEL.normal;
+  const twist = useRef(restingTwist());
+  const feel = reducedMotion ? "reduced" : "normal";
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      sphere: () =>
+        ball.current
+          ? new Sphere(ball.current.getWorldPosition(new Vector3()), radius)
+          : null,
+      take: (blow) => {
+        const struck = strike(swing.current, blow, SWING_FEEL[feel]);
+
+        swing.current = struck.swing;
+        twist.current = twistBy(twist.current, blow, struck.strike.strength);
+
+        return struck.strike;
+      },
+    }),
+    [feel],
+  );
 
   useFrame((_state, delta) => {
-    swing.current = advance(
-      swing.current,
-      Math.min(delta, LONGEST_FRAME),
-      feel,
-    );
+    const seconds = Math.min(delta, LONGEST_FRAME);
+
+    swing.current = advance(swing.current, seconds, SWING_FEEL[feel]);
+    twist.current = unwind(twist.current, seconds, TWIST_FEEL[feel]);
 
     const { fromPivot } = swing.current;
 
     ball.current?.position.copy(fromPivot);
-    ball.current?.quaternion.copy(facingPivot(fromPivot));
+    ball.current?.quaternion.copy(
+      facingPivot(fromPivot).multiply(aroundCap(twist.current.angle)),
+    );
     chainLinks(fromPivot).forEach((link, i) => {
       const mesh = links.current[i];
 
@@ -97,30 +128,13 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
     });
   });
 
-  function handlePointerDown(event: ThreeEvent<PointerEvent>) {
-    if (event.button !== PRIMARY_BUTTON || !pivot.current) {
-      return;
-    }
-
-    // R3F 는 광선이 지나는 모든 오브젝트에 이벤트를 보내므로, 가장 앞의 오브젝트만 맞도록 여기서 멈춥니다.
-    event.stopPropagation();
-    event.nativeEvent.stopPropagation();
-
-    const hitFromPivot = event.point
-      .clone()
-      .sub(pivot.current.getWorldPosition(new Vector3()));
-
-    swing.current = strike(swing.current, hitFromPivot, feel);
-    onStrike();
-  }
-
   return (
     <>
       <mesh castShadow receiveShadow position-y={CHAIN_REACH + TO_CEILING / 2}>
         <cylinderGeometry args={[ROD_RADIUS, ROD_RADIUS, TO_CEILING, 8]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
-      <group ref={pivot} position-y={CHAIN_REACH}>
+      <group position-y={CHAIN_REACH}>
         {REST_LINKS.map((link, i) => (
           <mesh
             key={i}
@@ -138,7 +152,7 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
           </mesh>
         ))}
         <group ref={ball} position-y={-CHAIN_REACH}>
-          <mesh castShadow receiveShadow onPointerDown={handlePointerDown}>
+          <mesh castShadow receiveShadow>
             <sphereGeometry args={[radius, 48, 32]} />
             <meshStandardMaterial roughness={LEATHER_ROUGHNESS}>
               <PaintedTexture attach="map" painting={LEATHER} />
@@ -190,6 +204,10 @@ function facingPivot(fromPivot: Vector3): Quaternion {
     UP,
     fromPivot.clone().negate().normalize(),
   );
+}
+
+function aroundCap(angle: number): Quaternion {
+  return new Quaternion().setFromAxisAngle(UP, angle);
 }
 
 interface ChainLink {
