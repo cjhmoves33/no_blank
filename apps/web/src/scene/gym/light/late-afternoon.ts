@@ -1,6 +1,6 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 
-import { GYM } from "./measurements";
+import { GYM } from "../measurements";
 
 export const LATE_AFTERNOON = {
   // 화면 평균 밝기가 고른 프로토타입(ACES, 노출 1)과 같아지는 값입니다.
@@ -27,7 +27,7 @@ export const LATE_AFTERNOON = {
     intensity: 0.9,
     width: 18,
     height: 9,
-    at: [GYM.room.halfX - 0.1, GYM.floorY + 7, 0],
+    at: [GYM.building.halfX - 0.1, GYM.floorY + 7, 0],
     lookAt: [0, GYM.floorY + 5, 0],
   },
   sky: { color: "#f6e2cc", ground: "#8a5e3c", intensity: 0.5 },
@@ -64,7 +64,7 @@ export function sunPosition(): [x: number, y: number, z: number] {
 export function hazeShaftFrames(): Matrix4[] {
   const sun = sunlightTravel();
   const { spans, sillY, headY } = GYM.windows;
-  const outerX = GYM.room.halfX + GYM.room.wall;
+  const outerX = GYM.building.halfX + GYM.building.wall;
   const centerY = (sillY + headY) / 2;
   const along = sun.clone().multiplyScalar((centerY - GYM.floorY) / -sun.y);
 

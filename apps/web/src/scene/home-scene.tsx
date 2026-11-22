@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 import { playSound } from "@/audio/play-sound";
 import { clickSound } from "@/audio/sounds";
 
-import { Space } from "./space";
+import { Gym } from "./gym/gym";
 import { SpinningShape } from "./spinning-shape";
 
 const HideOnError = catchError(() => null);
@@ -19,14 +19,14 @@ export function HomeScene() {
   return (
     <div className="h-dvh w-full">
       <HideOnError>
-        <Space reducedMotion={reducedMotion}>
+        <Gym reducedMotion={reducedMotion}>
           <SpinningShape
             spinning={!reducedMotion}
             onPress={() => {
               playSound(clickSound);
             }}
           />
-        </Space>
+        </Gym>
       </HideOnError>
     </div>
   );

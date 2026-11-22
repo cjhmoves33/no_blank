@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { GYM } from "./measurements";
-import { brickWalls } from "./room-layout";
+import { GYM } from "../measurements";
+import { brickWalls } from "./layout";
 
 const { spans, sillY, headY } = GYM.windows;
-const MIDDLE_OF_RIGHT_WALL_X = GYM.room.halfX + GYM.room.wall / 2;
+const MIDDLE_OF_RIGHT_WALL_X = GYM.building.halfX + GYM.building.wall / 2;
 const WALLS = brickWalls();
 
 function isBricked(y: number, z: number): boolean {
@@ -36,12 +36,12 @@ describe("brickWalls", () => {
 
   it("창 밖의 오른쪽 벽은 모두 막혀 있어 햇빛이 창으로만 든다", () => {
     const step = 0.25;
-    const zCount = Math.floor((2 * GYM.room.halfZ) / step);
-    const yCount = Math.floor((GYM.room.ceilingY - GYM.floorY) / step);
+    const zCount = Math.floor((2 * GYM.building.halfZ) / step);
+    const yCount = Math.floor((GYM.building.ceilingY - GYM.floorY) / step);
 
     for (let i = 0; i < zCount; i++) {
       for (let j = 0; j < yCount; j++) {
-        const z = -GYM.room.halfZ + 0.1 + i * step;
+        const z = -GYM.building.halfZ + 0.1 + i * step;
         const y = GYM.floorY + 0.1 + j * step;
 
         expect(isBricked(y, z)).toBe(!isInWindow(y, z));

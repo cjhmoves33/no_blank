@@ -1,6 +1,6 @@
-import { STEEL } from "./finishes";
-import { GYM } from "./measurements";
-import { PaintedTexture, type Painting } from "./painted-texture";
+import { STEEL } from "../finishes";
+import { GYM } from "../measurements";
+import { PaintedTexture, type Painting } from "../painted-texture";
 
 const RIM = { radius: 0.75, depth: 0.12 } as const;
 const FACE_RADIUS = 0.68;
@@ -55,7 +55,9 @@ function strokeFromCenter(
 
 export function WallClock() {
   return (
-    <group position={[-4.5, GYM.floorY + 6.4, -GYM.room.halfZ + RIM.depth / 2]}>
+    <group
+      position={[-4.5, GYM.floorY + 6.4, -GYM.building.halfZ + RIM.depth / 2]}
+    >
       <mesh castShadow receiveShadow rotation-x={Math.PI / 2}>
         <cylinderGeometry args={[RIM.radius, RIM.radius, RIM.depth, 48]} />
         <meshStandardMaterial {...STEEL} />

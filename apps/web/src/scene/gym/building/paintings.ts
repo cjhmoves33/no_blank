@@ -1,10 +1,6 @@
-import { GYM } from "./measurements";
-import {
-  addBlotches,
-  addGrain,
-  type Painting,
-  seededRandom,
-} from "./painted-texture";
+import { addBlotches, addGrain, seededRandom } from "../brushes";
+import { GYM } from "../measurements";
+import type { Painting } from "../painted-texture";
 
 interface BrickShade {
   readonly tone: number;
@@ -214,8 +210,8 @@ export const FLOOR_OCCLUSION: Painting = {
   tiles: false,
   paint: (context) => {
     const { width, height } = context.canvas;
-    const ringX = (GYM.mat.half / GYM.room.halfX) * (width / 2);
-    const ringZ = (GYM.mat.half / GYM.room.halfZ) * (height / 2);
+    const ringX = (GYM.mat.half / GYM.building.halfX) * (width / 2);
+    const ringZ = (GYM.mat.half / GYM.building.halfZ) * (height / 2);
 
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, width, height);
