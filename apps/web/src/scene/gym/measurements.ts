@@ -1,5 +1,3 @@
-import type { OrbitLimits } from "../orbit-rig";
-
 /** 길이는 미터입니다. 원점은 링 가운데 아래의 건물 바닥이고, y 가 위쪽입니다. */
 export const GYM = {
   wreckingBall: { restCenter: [0, 2.3, 0], radius: 0.3, pivotY: 3.8 },
@@ -27,6 +25,18 @@ export const GYM = {
 } as const;
 
 const ROPE_CLEARANCE = 0.15;
+
+interface Range {
+  readonly min: number;
+  readonly max: number;
+}
+
+/** target 을 바라보는 카메라가 머무를 수 있는 곳입니다. distance 는 target 에서 잰 거리, polar 는 바로 위(0)에서 잰 각도(라디안)입니다. */
+export interface OrbitLimits {
+  readonly target: readonly [x: number, y: number, z: number];
+  readonly distance: Range;
+  readonly polar: Range;
+}
 
 export interface RingView extends OrbitLimits {
   readonly fov: number;

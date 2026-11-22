@@ -1,58 +1,75 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
-import { Box3, Vector3 } from "three";
+import { createRef } from "react";
+import { Mesh, Quaternion, SphereGeometry, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
-import { WreckingBall } from "./wrecking-ball";
+import type { Blow } from "./swing";
+import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
 // 테스트는 캔버스가 없는 node 환경에서 돌므로, 가죽 그림만 빼고 그립니다.
 vi.mock("../painted-texture", () => ({ PaintedTexture: () => null }));
 
 type Renderer = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>;
 
-const PRIMARY_BUTTON = 0;
-const SECONDARY_BUTTON = 2;
 const FRAME = 1 / 60;
 const { radius } = GYM.wreckingBall;
+const INTO_SCREEN = new Vector3(0, 0, -1);
 const FRONT = new Vector3(0, 0, radius);
 const RIGHT = new Vector3(radius, 0, 0);
 
 let mounted: Renderer | undefined;
 
 async function renderBall({ reducedMotion = false } = {}) {
-  const strikes: string[] = [];
+  const handle = createRef<WreckingBallHandle>();
   const renderer = await ReactThreeTestRenderer.create(
-    <WreckingBall
-      reducedMotion={reducedMotion}
-      onStrike={() => {
-        strikes.push("strike");
-      }}
-    />,
+    <WreckingBall reducedMotion={reducedMotion} ref={handle} />,
   );
 
   mounted = renderer;
 
-  return { renderer, strikes };
-}
+  const ball = handle.current;
 
-function strikeable(renderer: Renderer) {
-  return renderer.scene.findAll(
-    (node) => typeof node.props.onPointerDown === "function",
-  );
-}
-
-function theBall(renderer: Renderer) {
-  const [ball, ...others] = strikeable(renderer);
-
-  if (!ball || others.length > 0) {
-    throw new Error("칠 수 있는 것이 하나가 아닙니다.");
+  if (!ball) {
+    throw new Error("레킹볼 손잡이가 없습니다.");
   }
 
-  return ball;
+  return { renderer, ball };
 }
 
-function ballOffset(renderer: Renderer): Vector3 {
-  return theBall(renderer).instance.getWorldPosition(new Vector3());
+function jab(at: Vector3): Blow {
+  return { kind: "jab", at, fist: INTO_SCREEN };
+}
+
+function centerOf(ball: WreckingBallHandle): Vector3 {
+  const sphere = ball.sphere();
+
+  if (!sphere) {
+    throw new Error("레킹볼이 장면에 없습니다.");
+  }
+
+  return sphere.center;
+}
+
+/** 가죽 공이 위에서 볼 때 사슬 축으로 얼마나 돌았는지입니다(라디안). 흔들려 기울어진 것은 빼고 봅니다. */
+function heading(renderer: Renderer): number {
+  const [leather] = renderer.scene
+    .findAll(
+      (node) =>
+        node.instance instanceof Mesh &&
+        node.instance.geometry instanceof SphereGeometry,
+    )
+    .map((node) => node.instance);
+
+  if (!leather) {
+    throw new Error("가죽 공이 없습니다.");
+  }
+
+  const side = new Vector3(1, 0, 0).applyQuaternion(
+    leather.getWorldQuaternion(new Quaternion()),
+  );
+
+  return Math.atan2(-side.z, side.x);
 }
 
 describe("WreckingBall", () => {
@@ -67,91 +84,64 @@ describe("WreckingBall", () => {
     vi.unstubAllGlobals();
   });
 
-  it("주 버튼으로 치는 순간 한 번 알리고, 그 타격은 카메라 궤도로 올라가지 않는다", async () => {
-    const { renderer, strikes } = await renderBall();
-    const ball = theBall(renderer);
-    const press = pointerDown(PRIMARY_BUTTON, FRONT);
+  it("손잡이는 가죽 공이 지금 차지한 구를 알려 준다", async () => {
+    const { ball } = await renderBall();
+    const sphere = ball.sphere();
 
-    await renderer.fireEvent(ball, "pointerDown", press);
-
-    expect(strikes).toEqual(["strike"]);
-    expect(press.nativeEvent.cancelBubble).toBe(true);
+    expect(sphere?.radius).toBe(radius);
+    expect(sphere?.center.length()).toBeLessThan(1e-9);
   });
 
-  it("다른 버튼으로 누르면 알리지 않고, 그 누른 동작은 카메라 궤도로 올라간다", async () => {
-    const { renderer, strikes } = await renderBall();
-    const ball = theBall(renderer);
-    const press = pointerDown(SECONDARY_BUTTON, FRONT);
+  it("오른쪽 가장자리를 잽으로 치면 왼쪽으로 밀려 흔들린다", async () => {
+    const { renderer, ball } = await renderBall();
 
-    await renderer.fireEvent(ball, "pointerDown", press);
-
-    expect(strikes).toEqual([]);
-    expect(press.nativeEvent.cancelBubble).toBe(false);
-  });
-
-  it("칠 수 있는 것은 공 하나뿐이라, 사슬과 걸이를 누르면 카메라가 돈다", async () => {
-    const { renderer } = await renderBall();
-
-    await renderer.advanceFrames(1, FRAME);
-
-    expect(strikeable(renderer)).toHaveLength(1);
-
-    const reach = new Box3().setFromObject(theBall(renderer).instance);
-
-    expect(reach.max.y).toBeLessThan(radius * 1.5);
-  });
-
-  it("오른쪽 가장자리를 치면 왼쪽으로 밀려 흔들린다", async () => {
-    const { renderer } = await renderBall();
-
-    await renderer.fireEvent(
-      theBall(renderer),
-      "pointerDown",
-      pointerDown(PRIMARY_BUTTON, RIGHT),
-    );
+    ball.take(jab(RIGHT));
     await renderer.advanceFrames(24, FRAME);
 
-    expect(ballOffset(renderer).x).toBeLessThan(-0.2);
+    expect(centerOf(ball).x).toBeLessThan(-0.2);
   });
 
-  it("공이 흔들리는 동안에도 치는 순간마다 알린다", async () => {
-    const { renderer, strikes } = await renderBall();
+  it("칠 때마다 그 타격의 세기를 돌려준다", async () => {
+    const { renderer, ball } = await renderBall();
+    const first = ball.take(jab(RIGHT));
 
-    for (let i = 0; i < 3; i++) {
-      await renderer.fireEvent(
-        theBall(renderer),
-        "pointerDown",
-        pointerDown(PRIMARY_BUTTON, ballOffset(renderer).add(RIGHT)),
-      );
-      await renderer.advanceFrames(2, FRAME);
-    }
+    await renderer.advanceFrames(2, FRAME);
 
-    expect(strikes).toEqual(["strike", "strike", "strike"]);
+    const second = ball.take(jab(RIGHT));
+
+    expect(first.strength).toBeGreaterThan(0);
+    expect(second.strength).toBeLessThan(first.strength);
+  });
+
+  it("옆 가장자리를 치면 사슬 축으로 비틀리고, 정면 가운데를 치면 비틀리지 않는다", async () => {
+    const side = await renderBall();
+
+    side.ball.take(jab(RIGHT));
+    await side.renderer.advanceFrames(18, FRAME);
+
+    expect(Math.abs(heading(side.renderer))).toBeGreaterThan(0.1);
+
+    await side.renderer.unmount();
+
+    const front = await renderBall();
+
+    front.ball.take(jab(FRONT));
+    await front.renderer.advanceFrames(18, FRAME);
+
+    expect(Math.abs(heading(front.renderer))).toBeLessThan(1e-6);
   });
 
   it("동작 줄이기를 켜면 조금만 밀렸다가 1초 안에 제자리로 돌아온다", async () => {
-    const { renderer } = await renderBall({ reducedMotion: true });
+    const { renderer, ball } = await renderBall({ reducedMotion: true });
 
-    await renderer.fireEvent(
-      theBall(renderer),
-      "pointerDown",
-      pointerDown(PRIMARY_BUTTON, RIGHT),
-    );
+    ball.take(jab(RIGHT));
     await renderer.advanceFrames(6, FRAME);
 
-    expect(ballOffset(renderer).length()).toBeGreaterThan(0.005);
-    expect(ballOffset(renderer).length()).toBeLessThan(0.03);
+    expect(centerOf(ball).length()).toBeGreaterThan(0.005);
+    expect(centerOf(ball).length()).toBeLessThan(0.03);
 
     await renderer.advanceFrames(54, FRAME);
 
-    expect(ballOffset(renderer).length()).toBeLessThan(0.001);
+    expect(centerOf(ball).length()).toBeLessThan(0.001);
   });
 });
-
-function pointerDown(button: number, point: Vector3) {
-  return {
-    button,
-    point,
-    nativeEvent: new Event("pointerdown", { bubbles: true }),
-  };
-}

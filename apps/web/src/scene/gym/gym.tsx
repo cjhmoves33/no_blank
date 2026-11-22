@@ -1,8 +1,7 @@
 import { Canvas } from "@react-three/fiber";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { Euler, Matrix4, NeutralToneMapping, Vector3 } from "three";
 
-import { OrbitRig } from "../orbit-rig";
 import { Building } from "./building/building";
 import { Daylight } from "./light/daylight";
 import { DustMotes } from "./light/dust-motes";
@@ -12,13 +11,19 @@ import { HeavyBags } from "./props/heavy-bags";
 import { ceilingMount, PLAN, wallMount } from "./props/plan";
 import { WallClock } from "./props/wall-clock";
 import { Ring } from "./ring";
+import { RingControls } from "./ring-controls";
+import type { Strike } from "./wrecking-ball/swing";
+import {
+  WreckingBall,
+  type WreckingBallHandle,
+} from "./wrecking-ball/wrecking-ball";
 
 const HEAVY_BAGS = ceilingMount(PLAN.heavyBags);
 const WALL_CLOCK = wallMount(PLAN.wallClock);
 
 export interface GymProps {
   readonly reducedMotion: boolean;
-  readonly children: ReactNode;
+  readonly onStrike: (strike: Strike) => void;
 }
 
 // R3F 기본값 ACES 는 노출에 1/0.6 을 곱하고 밝은 색의 채도를 뺍니다. Neutral 은 밝지 않은 색을 그대로 내서 레킹볼의 가죽이 제 색으로 보입니다.
@@ -54,16 +59,13 @@ function facing(
   return [rotation.x, rotation.y, rotation.z];
 }
 
-/**
- * - children 은 레킹볼입니다. 레킹볼이 멈춰 있을 때의 중심(GYM.wreckingBall.restCenter)을 원점으로 두고 그리며, 그 공은 레킹볼을 비추는 빛이 밝힙니다.
- * - children 의 메시는 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다.
- * - 포인터 이벤트 핸들러를 달지 않습니다. 칠 수 있는 것은 children 이 정합니다. 타격으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
- */
-export function Gym({ reducedMotion, children }: GymProps) {
-  const [orbitSurface, setOrbitSurface] = useState<HTMLDivElement | null>(null);
+/** 레킹볼을 치는 마우스 입력은 장면 위에 덮인 surface 하나에서 RingControls 가 모두 받습니다. */
+export function Gym({ reducedMotion, onStrike }: GymProps) {
+  const [surface, setSurface] = useState<HTMLDivElement | null>(null);
+  const [ball, setBall] = useState<WreckingBallHandle | null>(null);
 
   return (
-    <div ref={setOrbitSurface} className="h-full w-full">
+    <div ref={setSurface} className="h-full w-full">
       <Canvas
         dpr={[1, 2]}
         shadows="percentage"
@@ -81,14 +83,18 @@ export function Gym({ reducedMotion, children }: GymProps) {
           <WallClock />
         </group>
         <DustMotes drifting={!reducedMotion} />
-        {orbitSurface ? (
-          <OrbitRig
-            surface={orbitSurface}
-            inertia={!reducedMotion}
+        {surface && ball ? (
+          <RingControls
+            surface={surface}
+            ball={ball}
+            reducedMotion={reducedMotion}
             limits={RING_VIEW}
+            onStrike={onStrike}
           />
         ) : null}
-        <group position={GYM.wreckingBall.restCenter}>{children}</group>
+        <group position={GYM.wreckingBall.restCenter}>
+          <WreckingBall ref={setBall} reducedMotion={reducedMotion} />
+        </group>
       </Canvas>
     </div>
   );

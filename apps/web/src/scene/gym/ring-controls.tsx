@@ -1,0 +1,198 @@
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useEffectEvent, useRef } from "react";
+import { type Camera, MOUSE, type Ray, Raycaster, Vector2 } from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+import type { OrbitLimits } from "./measurements";
+import {
+  dragTo,
+  type PointerSample,
+  type Press,
+  pressDown,
+  type PressStep,
+  touches,
+} from "./wrecking-ball/press";
+import type { Strike } from "./wrecking-ball/swing";
+import type { WreckingBallHandle } from "./wrecking-ball/wrecking-ball";
+
+export interface RingControlsProps {
+  readonly surface: HTMLElement;
+  readonly ball: WreckingBallHandle;
+  readonly reducedMotion: boolean;
+  readonly limits: OrbitLimits;
+  readonly onStrike: (strike: Strike) => void;
+}
+
+type Cursor = "default" | "pointer" | "grabbing";
+
+const PRIMARY_BUTTON = 0;
+// PointerEvent.buttons 에서 각 버튼이 눌려 있는지 나타내는 비트입니다.
+const PRIMARY_HELD = 1;
+const SECONDARY_HELD = 2;
+
+/**
+ * 링 시점에서 마우스가 하는 일을 모두 맡습니다. 카메라와 surface 의 커서는 여기서만 바꿉니다.
+ * - 주 버튼: 레킹볼 위에서 누르면 잽, 밖에서 눌러 끌다 레킹볼에 들어가면 휘두르기입니다. 한 번 누르는 동안 한 번만 칩니다.
+ * - 오른쪽 끌기: 카메라가 limits.target 둘레를 돕니다. 휠과 가운데 끌기: 다가가거나 물러납니다.
+ * - 커서: 오른쪽으로 끄는 동안 grabbing, 레킹볼 위에서 pointer, 그 밖에는 기본 화살표입니다.
+ * 타격은 ball.take 가 돌려준 그대로 onStrike 로 알립니다. 맞힌 포인터 이벤트 안에서 부르므로 소리는 맞힌 순간에 납니다.
+ */
+export function RingControls({
+  surface,
+  ball,
+  reducedMotion,
+  limits,
+  onStrike,
+}: RingControlsProps) {
+  const camera = useThree((state) => state.camera);
+  const controls = useRef<OrbitControls>(null);
+  const orbiting = useRef(false);
+  const pointer = useRef<Vector2 | null>(null);
+  const reportStrike = useEffectEvent(onStrike);
+
+  useEffect(() => {
+    const orbit = new OrbitControls(camera, surface);
+
+    orbit.target.set(...limits.target);
+    orbit.enablePan = false;
+    orbit.minDistance = limits.distance.min;
+    orbit.maxDistance = limits.distance.max;
+    orbit.minPolarAngle = limits.polar.min;
+    orbit.maxPolarAngle = limits.polar.max;
+    orbit.mouseButtons = {
+      LEFT: null,
+      MIDDLE: MOUSE.DOLLY,
+      RIGHT: MOUSE.ROTATE,
+    };
+    orbit.enableDamping = !reducedMotion;
+    orbit.update();
+    controls.current = orbit;
+
+    return () => {
+      orbit.dispose();
+      controls.current = null;
+    };
+  }, [camera, surface, reducedMotion, limits]);
+
+  useEffect(() => {
+    let press: Press | null = null;
+
+    const sampleOf = (event: PointerEvent): PointerSample => ({
+      ray: rayThrough(camera, pointerOn(surface, event)),
+      seconds: event.timeStamp / 1000,
+    });
+
+    const land = (step: PressStep): void => {
+      press = step.press;
+
+      if (step.blow) {
+        reportStrike(ball.take(step.blow));
+      }
+    };
+
+    const handleDown = (event: PointerEvent): void => {
+      orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
+
+      const sphere = ball.sphere();
+
+      if (event.button !== PRIMARY_BUTTON || !sphere) {
+        return;
+      }
+
+      // 끄는 커서가 캔버스나 창 밖으로 나가도 놓을 때까지 움직임을 받습니다.
+      surface.setPointerCapture(event.pointerId);
+      land(pressDown(sampleOf(event), sphere));
+    };
+
+    const handleMove = (event: PointerEvent): void => {
+      const sphere = ball.sphere();
+
+      orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
+      pointer.current = pointerOn(surface, event);
+
+      if (press && sphere) {
+        land(dragTo(press, sampleOf(event), sphere));
+      }
+    };
+
+    const handleUp = (event: PointerEvent): void => {
+      orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
+
+      if ((event.buttons & PRIMARY_HELD) === 0) {
+        press = null;
+      }
+    };
+
+    const handleCancel = (): void => {
+      orbiting.current = false;
+      press = null;
+    };
+
+    const handleLeave = (): void => {
+      pointer.current = null;
+    };
+
+    surface.addEventListener("pointerdown", handleDown);
+    surface.addEventListener("pointermove", handleMove);
+    surface.addEventListener("pointerup", handleUp);
+    surface.addEventListener("pointercancel", handleCancel);
+    surface.addEventListener("pointerleave", handleLeave);
+
+    return () => {
+      surface.removeEventListener("pointerdown", handleDown);
+      surface.removeEventListener("pointermove", handleMove);
+      surface.removeEventListener("pointerup", handleUp);
+      surface.removeEventListener("pointercancel", handleCancel);
+      surface.removeEventListener("pointerleave", handleLeave);
+    };
+  }, [surface, camera, ball]);
+
+  useFrame(() => {
+    // 관성은 매 프레임 update 를 불러야 줄어들며 멈춥니다.
+    controls.current?.update();
+
+    const sphere = ball.sphere();
+    const over =
+      pointer.current !== null &&
+      sphere !== null &&
+      touches(rayThrough(camera, pointer.current), sphere);
+
+    // 커서가 가만히 있어도 레킹볼이 그 밑으로 흔들려 오가므로, 이벤트가 아니라 프레임마다 정합니다.
+    showCursor(surface, cursorFor(orbiting.current, over));
+  });
+
+  return null;
+}
+
+function cursorFor(orbiting: boolean, overBall: boolean): Cursor {
+  if (orbiting) {
+    return "grabbing";
+  }
+
+  return overBall ? "pointer" : "default";
+}
+
+function showCursor(surface: HTMLElement, cursor: Cursor): void {
+  // OrbitControls 는 없어질 때 커서를 auto 로 되돌리므로(개발 모드에서 effect 를 두 번 돌릴 때 포함), 실제 값과 견주어 다르면 다시 씁니다.
+  if (surface.style.cursor !== cursor) {
+    surface.style.cursor = cursor;
+  }
+}
+
+/** 커서 자리를 정규화 장치 좌표(-1~1, y 는 위쪽)로 바꿉니다. 캡처 중에는 이벤트 대상이 surface 라 offsetX 를 쓰지 않습니다. */
+function pointerOn(surface: HTMLElement, event: PointerEvent): Vector2 {
+  const box = surface.getBoundingClientRect();
+
+  return new Vector2(
+    ((event.clientX - box.left) / box.width) * 2 - 1,
+    -((event.clientY - box.top) / box.height) * 2 + 1,
+  );
+}
+
+function rayThrough(camera: Camera, at: Vector2): Ray {
+  const raycaster = new Raycaster();
+
+  raycaster.setFromCamera(at, camera);
+
+  return raycaster.ray;
+}
