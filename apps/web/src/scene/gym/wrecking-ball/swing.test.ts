@@ -172,7 +172,7 @@ describe("swing", () => {
     }
   });
 
-  it("다가오던 공을 맞받아치면 한 번에 되밀지 못하고 늦추기만 한다", () => {
+  it("다가오던 공을 맞받아치면 방향을 바꾸지 못하고 늦추기만 한다", () => {
     const coming = moving(new Vector3(0.5, 0, 0));
     const struck = hit(coming, RIGHT, normal);
 
@@ -346,8 +346,9 @@ describe("덜컹", () => {
         ?.strength ?? 0;
 
     expect(firstJolt(swipe(UP, FASTEST_SWIPE))).toBeGreaterThan(
-      firstJolt(jab(UNDER)),
+      firstJolt(swipe(UP, 2.5)),
     );
+    expect(firstJolt(swipe(UP, 2.5))).toBeGreaterThan(0);
     expect(firstJolt(swipe(UP, FASTEST_SWIPE))).toBeGreaterThan(0.8);
   });
 
