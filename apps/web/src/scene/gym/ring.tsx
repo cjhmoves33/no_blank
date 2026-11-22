@@ -3,6 +3,7 @@ import { CatmullRomCurve3, Vector3 } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 import { addBlotches, addGrain } from "./brushes";
+import type { Box } from "./building/slabs";
 import { GYM } from "./measurements";
 import { PaintedTexture, type Painting } from "./painted-texture";
 
@@ -12,6 +13,15 @@ const { ropes, mat } = GYM;
 const LOWEST_ROPE = ropes.heights[0];
 const HIGHEST_ROPE = ropes.heights[3];
 const PLATFORM_HEIGHT = mat.y;
+const POST_HEIGHT = HIGHEST_ROPE + 0.175;
+const STEP_COUNT = 4;
+const STEP_DEPTH = 0.275;
+
+/** 링은 원점에 놓이고, 이 상자가 매트와 코너 기둥, 계단을 덮습니다. */
+export const RING_SIZE: Box = {
+  min: [-mat.half, 0, -mat.half],
+  max: [mat.half, mat.y + POST_HEIGHT, mat.half + STEP_DEPTH * STEP_COUNT],
+};
 
 const MAT: Painting = {
   width: 2048,
@@ -191,7 +201,6 @@ interface CornerProps {
 }
 
 function Corner({ x, z, pad }: CornerProps) {
-  const postHeight = HIGHEST_ROPE + 0.175;
   const padBottom = LOWEST_ROPE - 0.125;
   const padTop = HIGHEST_ROPE + 0.125;
 
@@ -199,10 +208,10 @@ function Corner({ x, z, pad }: CornerProps) {
     <>
       <mesh
         castShadow
-        position={[x * GYM.posts.at, mat.y + postHeight / 2, z * GYM.posts.at]}
+        position={[x * GYM.posts.at, mat.y + POST_HEIGHT / 2, z * GYM.posts.at]}
       >
         <cylinderGeometry
-          args={[GYM.posts.radius, GYM.posts.radius, postHeight, 24]}
+          args={[GYM.posts.radius, GYM.posts.radius, POST_HEIGHT, 24]}
         />
         <meshStandardMaterial
           color="#5a5f63"
@@ -232,8 +241,6 @@ function Corner({ x, z, pad }: CornerProps) {
   );
 }
 
-const STEP_COUNT = 4;
-
 function Steps() {
   const rise = PLATFORM_HEIGHT / STEP_COUNT;
 
@@ -241,7 +248,7 @@ function Steps() {
     <group position-x={-mat.half + 0.7}>
       {Array.from({ length: STEP_COUNT }, (_, i) => {
         const height = rise * (i + 1);
-        const depth = 0.275 * (STEP_COUNT - i);
+        const depth = STEP_DEPTH * (STEP_COUNT - i);
 
         return (
           <mesh
