@@ -40,6 +40,7 @@ V=.claude/skills/verify-no-blank/scripts/verify.mjs
 ```sh
 node $V run --before origin/main --after WORKTREE            # 기본 시점 7개
 node $V run --before <ref> --after <ref> --views home,near    # 시점 고르기
+node $V run --before <ref> --after <ref> --views home --no-webgl  # WebGL 없이
 ```
 
 `run` 은 두 빌드를 준비하고, 같은 입력으로 찍고, 비교표와 증거 폴더 경로를 출력합니다. 2분쯤 걸립니다. 부분만 필요하면 아래 명령을 씁니다.
@@ -76,10 +77,20 @@ node $V run --before <ref> --after <ref> --views home,near    # 시점 고르기
 - 증명 기준: 앱 코드에 시험용 갈고리를 넣지 않고, 사용자 입력으로만 조작합니다. 효과음은 페이지에 넣은 분석기(AudioContext 출력에 덧붙인 `AnalyserNode`)로 관찰만 합니다. 보고할 때는 두 커밋 해시와 비교표, 바뀐 시점의 diff 이미지 경로를 함께 적습니다.
 - 알려진 경고: `THREE.Clock: This module has been deprecated` 는 fiber 9.8.2 에서 나는 경고라 모든 시점에 한 번씩 찍힙니다. 그 밖의 경고와 오류는 결과에 적습니다.
 
+### PR 본문에 붙이기
+
+화면이 바뀐 시점이 하나라도 있으면 그 이미지를 PR 본문의 Evidence 에 붙입니다. 바뀐 시점이 없으면 `report.md` 의 비교표를 붙입니다.
+
+1. `node $V publish <before 폴더> <after 폴더> --pr <번호> --dry-run` 으로 올릴 이미지를 만듭니다. 바뀐 시점마다 before, after, 바뀐 픽셀을 반으로 줄여 한 장에 붙이고, `<after 폴더>/../publish-preview/` 에 둡니다. 이미지를 열어 확인합니다.
+2. `--dry-run` 을 빼고 다시 실행합니다. GitHub API 로 `pr-assets` 브랜치에 이미지를 커밋하고(로컬 push 와 git hook 을 거치지 않습니다), 커밋 해시로 고정한 주소가 든 마크다운을 출력합니다. `--views a,b` 를 주면 바뀌지 않은 시점도 올립니다.
+3. 출력된 마크다운을 PR 본문의 Evidence 에 넣고 `gh pr edit <번호> --body-file <파일>` 로 고칩니다.
+
+`pr-assets` 는 이미지만 쌓는 브랜치이고 main 에 합치지 않습니다. 저장소가 공개되어 있으므로 올린 이미지도 공개됩니다. 움직임 자체를 바꾼 PR 에 필요한 영상(GIF)은 아직 만들 수 없으며, 그런 PR 이 처음 생길 때 이 명령에 더합니다.
+
 ## Cleanup
 
 `node $V cleanup` 은 `%TEMP%/no-blank-verify/state.json` 에 기록된 PID(이 스크립트가 띄운 서버와 Chrome)만 종료하고, 빌드 worktree 와 Chrome 프로필, 로그를 지웁니다. 증거 폴더는 남깁니다. `shoot` 과 `run` 은 실패해도 자기가 띄운 서버와 Chrome 을 내리므로, `cleanup` 은 빌드를 지울 때와 `doctor` 가 남은 PID 를 보여 줄 때 실행합니다. pnpm 의 `node_modules` 가 junction 이라 `git worktree remove` 가 실패하면 `rmdir /s /q` 로 지우고 `git worktree prune` 합니다.
 
 ## Helpers
 
-`scripts/verify.mjs` 하나가 전부입니다. 하위 명령은 `doctor`, `prepare`, `shoot`, `compare`, `diff`, `run`, `cleanup` 이고, 인자 없이 실행하면 사용법을 출력합니다. 시점을 더하려면 파일 위쪽의 `VIEWS` 에 입력 목록을 더하고, 이 문서의 시점 표와 해당 기능 파일을 함께 고칩니다.
+`scripts/verify.mjs` 하나가 전부입니다. 하위 명령은 `doctor`, `prepare`, `shoot`, `compare`, `diff`, `run`, `publish`, `cleanup` 이고, 인자 없이 실행하면 사용법을 출력합니다. 시점을 더하려면 파일 위쪽의 `VIEWS` 에 입력 목록을 더하고, 이 문서의 시점 표와 해당 기능 파일을 함께 고칩니다.

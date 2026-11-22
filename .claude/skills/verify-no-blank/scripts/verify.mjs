@@ -31,6 +31,13 @@ const CHROME =
   process.env.CHROME_PATH ??
   "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const USER_DEV_PORT = 3000;
+// PR 본문에 붙일 이미지는 코드와 섞이지 않게 이 브랜치에만 쌓습니다. main 으로 합치지 않습니다.
+const ASSET_BRANCH = "pr-assets";
+const GH =
+  process.env.GH_PATH ??
+  (existsSync("C:/Program Files/GitHub CLI/gh.exe")
+    ? "C:/Program Files/GitHub CLI/gh.exe"
+    : "gh");
 const VIEWPORT = { width: 1280, height: 800 };
 const SETTLE_FRAMES = 30;
 // 한 채널이라도 이만큼 넘게 달라야 바뀐 픽셀로 셉니다. 같은 빌드를 두 번 찍었을 때의 차이는 0 입니다.
@@ -91,7 +98,16 @@ const AUDIO_TAP = `(() => {
   };
 })();`;
 
-const commands = { doctor, prepare, shoot, compare, diff, run, cleanup };
+const commands = {
+  doctor,
+  prepare,
+  shoot,
+  compare,
+  diff,
+  run,
+  publish,
+  cleanup,
+};
 
 main().catch((error) => {
   console.error(`verify: ${error instanceof Error ? error.message : error}`);
@@ -734,6 +750,16 @@ function diffImages(fileA, fileB, outFile) {
     );
   }
 
+  const { stats, image } = diffDecoded(a, b);
+
+  if (outFile) {
+    writeFileSync(outFile, encodePng(image));
+  }
+
+  return stats;
+}
+
+function diffDecoded(a, b) {
   const out = new Uint8Array(a.pixels.length);
   let changed = 0;
   let maxDelta = 0;
@@ -758,25 +784,267 @@ function diffImages(fileA, fileB, outFile) {
     }
   }
 
-  if (outFile) {
-    writeFileSync(
-      outFile,
-      encodePng({ width: a.width, height: a.height, pixels: out }),
-    );
-  }
-
   const pixelCount = a.pixels.length / 4;
 
   return {
-    changed,
-    percent: (changed / pixelCount) * 100,
-    maxDelta,
-    meanDelta: totalDelta / pixelCount,
+    stats: {
+      changed,
+      percent: (changed / pixelCount) * 100,
+      maxDelta,
+      meanDelta: totalDelta / pixelCount,
+    },
+    image: { width: a.width, height: a.height, pixels: out },
   };
 }
 
 function formatStats(stats) {
   return `changed ${stats.changed} px (${stats.percent.toFixed(3)}%), max delta ${stats.maxDelta}, mean delta ${stats.meanDelta.toFixed(3)}`;
+}
+
+// ---------------------------------------------------------------- publish
+
+async function publish({ positional, flags }) {
+  const [beforeDir, afterDir] = positional;
+
+  if (!beforeDir || !afterDir || !flags.pr) {
+    throw new Error(
+      "usage: publish <before-dir> <after-dir> --pr <number> [--views a,b]",
+    );
+  }
+
+  const picked = typeof flags.views === "string";
+  const views = picked
+    ? flags.views.split(",")
+    : readdirSync(afterDir)
+        .filter((file) => file.endsWith(".png"))
+        .map((file) => file.slice(0, -4));
+  const panels = [];
+
+  for (const view of views) {
+    const before = decodePng(readFileSync(path.join(beforeDir, `${view}.png`)));
+    const after = decodePng(readFileSync(path.join(afterDir, `${view}.png`)));
+    const { stats, image } = diffDecoded(before, after);
+
+    // 고르지 않았으면 바뀐 시점만 올립니다.
+    if (picked || stats.changed > 0) {
+      panels.push({
+        view,
+        stats,
+        png: encodePng(sideBySide([before, after, image])),
+      });
+    }
+  }
+
+  if (panels.length === 0) {
+    console.log(
+      "no view changed; nothing to publish. Put the zero-change table from report.md in the PR body instead.",
+    );
+
+    return;
+  }
+
+  if (flags["dry-run"]) {
+    const preview = path.join(path.dirname(afterDir), "publish-preview");
+
+    mkdirSync(preview, { recursive: true });
+
+    for (const panel of panels) {
+      writeFileSync(path.join(preview, `${panel.view}.png`), panel.png);
+    }
+
+    console.log(
+      `dry run: ${panels.length} image(s) in ${preview}; nothing uploaded`,
+    );
+
+    return;
+  }
+
+  const folder = `pr-${flags.pr}/${stamp()}`;
+  const commit = uploadAssets(
+    panels.map((panel) => ({
+      path: `${folder}/${panel.view}.png`,
+      content: panel.png,
+    })),
+    `pr #${flags.pr}: before/after screenshots`,
+  );
+  const repo = gh([
+    "repo",
+    "view",
+    "--json",
+    "nameWithOwner",
+    "-q",
+    ".nameWithOwner",
+  ]);
+  const commitOf = (dir) => {
+    const meta = path.join(dir, `${panels[0].view}.json`);
+
+    return existsSync(meta)
+      ? JSON.parse(readFileSync(meta, "utf8")).commit.slice(0, 7)
+      : "?";
+  };
+  const lines = [
+    `before \`${commitOf(beforeDir)}\` → after \`${commitOf(afterDir)}\`. 이미지는 왼쪽부터 before, after, 바뀐 픽셀(빨간색)입니다.`,
+    "",
+    "| 시점 | 바뀐 픽셀 | 최대 채널 차이 |",
+    "| ---- | --------- | -------------- |",
+    ...panels.map(
+      ({ view, stats }) =>
+        `| ${view} | ${stats.changed} (${stats.percent.toFixed(3)}%) | ${stats.maxDelta} |`,
+    ),
+    "",
+    ...panels.flatMap(({ view }) => [
+      `**${view}**`,
+      "",
+      `![${view}: before, after, diff](https://raw.githubusercontent.com/${repo}/${commit}/${folder}/${view}.png)`,
+      "",
+    ]),
+  ];
+
+  console.log(lines.join("\n"));
+}
+
+// 세 장을 반으로 줄여 가로로 붙입니다. PR 본문에서 한눈에 견주기 좋은 크기입니다.
+function sideBySide(images) {
+  const halves = images.map(halve);
+  const gap = 8;
+  const width =
+    halves.reduce((sum, image) => sum + image.width, 0) +
+    gap * (halves.length - 1);
+  const height = Math.max(...halves.map((image) => image.height));
+  const pixels = new Uint8Array(width * height * 4).fill(40);
+  let left = 0;
+
+  for (const image of halves) {
+    for (let y = 0; y < image.height; y++) {
+      pixels.set(
+        image.pixels.subarray(y * image.width * 4, (y + 1) * image.width * 4),
+        (y * width + left) * 4,
+      );
+    }
+
+    left += image.width + gap;
+  }
+
+  for (let i = 3; i < pixels.length; i += 4) {
+    pixels[i] = 255;
+  }
+
+  return { width, height, pixels };
+}
+
+function halve({ width, height, pixels }) {
+  const halfWidth = Math.floor(width / 2);
+  const halfHeight = Math.floor(height / 2);
+  const out = new Uint8Array(halfWidth * halfHeight * 4);
+
+  for (let y = 0; y < halfHeight; y++) {
+    for (let x = 0; x < halfWidth; x++) {
+      for (let channel = 0; channel < 4; channel++) {
+        const at = (dy, dx) =>
+          pixels[((2 * y + dy) * width + 2 * x + dx) * 4 + channel];
+
+        out[(y * halfWidth + x) * 4 + channel] =
+          (at(0, 0) + at(0, 1) + at(1, 0) + at(1, 1)) / 4;
+      }
+    }
+  }
+
+  return { width: halfWidth, height: halfHeight, pixels: out };
+}
+
+// 로컬에서 push 하지 않고 GitHub API 로 커밋합니다. 사용자의 작업 트리와 git hook 은 건드리지 않습니다.
+function uploadAssets(files, message) {
+  const ref = ghApi(
+    "GET",
+    `repos/{owner}/{repo}/git/ref/heads/${ASSET_BRANCH}`,
+  );
+  const parent = ref?.object.sha;
+  const baseTree = parent
+    ? ghApi("GET", `repos/{owner}/{repo}/git/commits/${parent}`, null, true)
+        .tree.sha
+    : undefined;
+  const tree = files.map((file) => ({
+    path: file.path,
+    mode: "100644",
+    type: "blob",
+    sha: ghApi(
+      "POST",
+      "repos/{owner}/{repo}/git/blobs",
+      { content: file.content.toString("base64"), encoding: "base64" },
+      true,
+    ).sha,
+  }));
+  const treeSha = ghApi(
+    "POST",
+    "repos/{owner}/{repo}/git/trees",
+    { ...(baseTree ? { base_tree: baseTree } : {}), tree },
+    true,
+  ).sha;
+  const commit = ghApi(
+    "POST",
+    "repos/{owner}/{repo}/git/commits",
+    { message, tree: treeSha, parents: parent ? [parent] : [] },
+    true,
+  ).sha;
+
+  if (parent) {
+    ghApi(
+      "PATCH",
+      `repos/{owner}/{repo}/git/refs/heads/${ASSET_BRANCH}`,
+      { sha: commit },
+      true,
+    );
+  } else {
+    ghApi(
+      "POST",
+      "repos/{owner}/{repo}/git/refs",
+      { ref: `refs/heads/${ASSET_BRANCH}`, sha: commit },
+      true,
+    );
+  }
+
+  return commit;
+}
+
+function ghApi(method, endpoint, body = null, required = false) {
+  const input = path.join(HOME, "gh-input.json");
+  const args = ["api", "--method", method, endpoint];
+
+  if (body) {
+    mkdirSync(HOME, { recursive: true });
+    writeFileSync(input, JSON.stringify(body));
+    args.push("--input", input);
+  }
+
+  const result = spawnSync(GH, args, {
+    cwd: REPO,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+
+  rmSync(input, { force: true });
+
+  if (result.status !== 0) {
+    if (required) {
+      throw new Error(
+        `gh api ${method} ${endpoint} failed: ${result.stderr.trim()}`,
+      );
+    }
+
+    return null;
+  }
+
+  return JSON.parse(result.stdout);
+}
+
+function gh(args) {
+  const result = spawnSync(GH, args, { cwd: REPO, encoding: "utf8" });
+
+  if (result.status !== 0) {
+    throw new Error(`gh ${args.join(" ")} failed: ${result.stderr.trim()}`);
+  }
+
+  return result.stdout.trim();
 }
 
 // Chrome 이 저장하는 8비트 RGB/RGBA, 비인터레이스 PNG 만 읽습니다.
@@ -923,6 +1191,7 @@ async function run({ flags }) {
   const after = flags.after ?? "WORKTREE";
   const views = parseViews(flags.views);
   const motion = flags.motion === true;
+  const webgl = flags["no-webgl"] !== true;
   const out = path.join(EVIDENCE, stamp());
 
   prepareBuild("before", before);
@@ -931,14 +1200,14 @@ async function run({ flags }) {
     port: 3101,
     views,
     motion,
-    webgl: true,
+    webgl,
     out: path.join(out, "before"),
   });
   await shootBuild("after", {
     port: 3102,
     views,
     motion,
-    webgl: true,
+    webgl,
     out: path.join(out, "after"),
   });
   console.log(
