@@ -39,7 +39,8 @@ const VIEWPORT = { width: 1280, height: 800 };
 const SETTLE_FRAMES = 30;
 const CHANGED_DELTA = 8;
 
-const ON_SHAPE = [0.5, 0.5];
+const ON_BALL = [0.5, 0.5];
+const ON_CHAIN = [0.5, 0.15];
 const ON_BACKGROUND = [0.12, 0.85];
 
 const VIEWS = {
@@ -50,11 +51,15 @@ const VIEWS = {
   low: [{ drag: { from: [0.12, 0.8], to: [0.12, 0.3] } }],
   near: [{ wheel: { at: ON_BACKGROUND, deltaY: -120, times: 40 } }],
   far: [{ wheel: { at: ON_BACKGROUND, deltaY: 120, times: 40 } }],
-  pressed: [{ press: ON_SHAPE }],
-  "shape-drag": [
-    { drag: { from: ON_SHAPE, to: [0.6, 0.5] } },
+  struck: [{ press: ON_BALL }],
+  "ball-drag": [
+    { drag: { from: ON_BALL, to: [0.6, 0.5] } },
     { move: [0.02, 0.02] },
     { wait: 2000 },
+  ],
+  "chain-drag": [
+    { drag: { from: ON_CHAIN, to: [0.6, 0.15] } },
+    { move: [0.02, 0.02] },
   ],
   "home-later": [{ wait: 2000 }],
 };
