@@ -44,6 +44,7 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
   return (
     <mesh
       ref={mesh}
+      receiveShadow
       rotation={REST_ROTATION}
       onClick={handleClick}
       onPointerOver={() => {
