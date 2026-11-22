@@ -4,6 +4,7 @@ import { type Camera, MOUSE, type Ray, Raycaster, Vector2 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import type { OrbitLimits } from "./measurements";
+import { calmed, shaken, tiltOf } from "./screen-shake";
 import {
   dragTo,
   type PointerSample,
@@ -36,6 +37,7 @@ const SECONDARY_HELD = 2;
  * - 오른쪽 끌기: 카메라가 limits.target 둘레를 돕니다. 휠과 가운데 끌기: 다가가거나 물러납니다.
  * - 커서: 오른쪽으로 끄는 동안 grabbing, 레킹볼 위에서 pointer, 그 밖에는 기본 화살표입니다.
  * 타격은 ball.take 가 돌려준 그대로 onStrike 로 알립니다. 맞힌 포인터 이벤트 안에서 부르므로 소리는 맞힌 순간에 납니다.
+ * 타격 세기만큼 화면이 떨립니다. 동작 줄이기에서는 떨리지 않습니다.
  */
 export function RingControls({
   surface,
@@ -48,6 +50,7 @@ export function RingControls({
   const controls = useRef<OrbitControls>(null);
   const orbiting = useRef(false);
   const pointer = useRef<Vector2 | null>(null);
+  const trauma = useRef(0);
   const reportStrike = useEffectEvent(onStrike);
 
   useEffect(() => {
@@ -85,9 +88,17 @@ export function RingControls({
     const land = (step: PressStep): void => {
       press = step.press;
 
-      if (step.blow) {
-        reportStrike(ball.take(step.blow));
+      if (!step.blow) {
+        return;
       }
+
+      const strike = ball.take(step.blow);
+
+      if (!reducedMotion) {
+        trauma.current = shaken(trauma.current, strike.strength);
+      }
+
+      reportStrike(strike);
     };
 
     const handleDown = (event: PointerEvent): void => {
@@ -145,11 +156,19 @@ export function RingControls({
       surface.removeEventListener("pointercancel", handleCancel);
       surface.removeEventListener("pointerleave", handleLeave);
     };
-  }, [surface, camera, ball]);
+  }, [surface, camera, ball, reducedMotion]);
 
-  useFrame(() => {
+  useFrame(({ clock }, delta) => {
     // 관성은 매 프레임 update 를 불러야 줄어들며 멈춥니다.
     controls.current?.update();
+    trauma.current = calmed(trauma.current, delta);
+
+    // update 가 매번 카메라를 target 쪽으로 다시 돌려 놓으므로, 그 뒤에 더한 떨림은 쌓이지 않습니다.
+    if (trauma.current > 0) {
+      const { pitch, yaw, roll } = tiltOf(trauma.current, clock.elapsedTime);
+
+      camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
+    }
 
     const sphere = ball.sphere();
     const over =
