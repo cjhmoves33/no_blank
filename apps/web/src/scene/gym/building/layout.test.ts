@@ -35,14 +35,14 @@ describe("brickWalls", () => {
   });
 
   it("창 밖의 오른쪽 벽은 모두 막혀 있어 햇빛이 창으로만 든다", () => {
-    const step = 0.25;
+    const step = 0.125;
     const zCount = Math.floor((2 * GYM.building.halfZ) / step);
     const yCount = Math.floor((GYM.building.ceilingY - GYM.floorY) / step);
 
     for (let i = 0; i < zCount; i++) {
       for (let j = 0; j < yCount; j++) {
-        const z = -GYM.building.halfZ + 0.1 + i * step;
-        const y = GYM.floorY + 0.1 + j * step;
+        const z = -GYM.building.halfZ + 0.05 + i * step;
+        const y = GYM.floorY + 0.05 + j * step;
 
         expect(isBricked(y, z)).toBe(!isInWindow(y, z));
       }

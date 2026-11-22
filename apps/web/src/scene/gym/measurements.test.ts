@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { GYM, RING_VIEW } from "./measurements";
 
-// 로프 반지름 바깥으로 카메라 near 면(0.1)이 로프에 닿지 않을 여유입니다.
-const ROPE_MARGIN = 0.2;
+// 로프 반지름 바깥으로 카메라 near 면(0.05)이 로프에 닿지 않을 여유입니다.
+const ROPE_MARGIN = 0.1;
 // 0.75 m 보다 낮으면 매트 무늬만 보입니다.
-const EYE_ABOVE_MAT = 1.5;
+const EYE_ABOVE_MAT = 0.75;
 
 function allowedCameraPositions(): Vector3[] {
   const positions: Vector3[] = [];

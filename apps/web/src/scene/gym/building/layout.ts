@@ -52,7 +52,7 @@ export function ceiling(): Box[] {
   ];
 }
 
-const PAINTED_WALL_BAND = { top: FLOOR_Y + 2.4, thickness: 0.04 } as const;
+const PAINTED_WALL_BAND = { top: FLOOR_Y + 1.2, thickness: 0.02 } as const;
 
 export function paintedWallBand(): Box[] {
   const { top, thickness } = PAINTED_WALL_BAND;
@@ -71,8 +71,8 @@ export function paintedWallBand(): Box[] {
   ];
 }
 
-const BAR = { half: 0.05, inset: [0.14, 0.26] } as const;
-const CEILING_BEAMS = { at: [-8, -3, 2, 7], halfWidth: 0.15, depth: 0.8 };
+const BAR = { half: 0.025, inset: [0.07, 0.13] } as const;
+const CEILING_BEAMS = { at: [-4, -1.5, 1, 3.5], halfWidth: 0.075, depth: 0.4 };
 
 export function steelwork(): Box[] {
   const barX: readonly [number, number] = [
@@ -110,7 +110,7 @@ function evenlySpacedInside(
 
 export function floor(): Box[] {
   return [
-    { min: [-halfX, FLOOR_Y - 0.2, -halfZ], max: [halfX, FLOOR_Y, halfZ] },
+    { min: [-halfX, FLOOR_Y - 0.1, -halfZ], max: [halfX, FLOOR_Y, halfZ] },
   ];
 }
 
@@ -122,7 +122,7 @@ export interface Pane {
 
 export function glassPanes(): Pane[] {
   return spans.map(([start, end]) => ({
-    center: [RIGHT_OUTER_X - 0.05, (sillY + headY) / 2, (start + end) / 2],
+    center: [RIGHT_OUTER_X - 0.025, (sillY + headY) / 2, (start + end) / 2],
     width: end - start,
     height: headY - sillY,
   }));

@@ -25,7 +25,14 @@ const RENDERER = {
 
 const SCENE = { environmentIntensity: LATE_AFTERNOON.environmentIntensity };
 
-const CAMERA = { fov: RING_VIEW.fov, position: RING_VIEW.home };
+// 카메라는 로프에서 15 cm 까지 다가가므로 near 면을 R3F 기본값(0.1)보다 앞에 둡니다.
+// far 는 near 와의 비율(1:10000)을 지켜, 벽 앞 2 cm 에 칠한 띠가 벽과 깊이를 다투지 않게 합니다.
+const CAMERA = {
+  fov: RING_VIEW.fov,
+  position: RING_VIEW.home,
+  near: 0.05,
+  far: 500,
+};
 
 /**
  * 늦은 오후의 오래된 복싱 체육관입니다. 캔버스와 색 처리, 링 시점, 빛, 건물, 링, 소품을 여기서 정합니다.
