@@ -1,5 +1,5 @@
 import { type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { MathUtils, type Mesh, type MeshStandardMaterial } from "three";
 
 export interface SpinningShapeProps {
@@ -18,18 +18,6 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
   const material = useRef<MeshStandardMaterial>(null);
   const pressGlow = useRef(0);
   const [hovered, setHovered] = useState(false);
-
-  useEffect(() => {
-    if (!hovered) {
-      return;
-    }
-
-    document.body.style.cursor = "pointer";
-
-    return () => {
-      document.body.style.cursor = "";
-    };
-  }, [hovered]);
 
   useFrame((_state, delta) => {
     if (!mesh.current || !material.current) {
