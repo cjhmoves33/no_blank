@@ -12,6 +12,8 @@
 - `dent`: 맞은 자리가 패였다가 0.12초쯤에 돌아옵니다. 솔기도 함께 패입니다.
 - `strike-dust`: 맞은 자리에서 먼지가 퍼졌다가 2초쯤에 가라앉아 사라집니다. 동작 줄이기에서는 피지 않습니다.
 - `screen-shake`: 센 타격일수록 화면이 작게 떨리고 0.4초 안에 멈춥니다. 동작 줄이기에서는 떨리지 않습니다.
+- `jolt`: 들린 공이 떨어져 사슬이 팽팽해지면 덜컹 되튀고, 점점 작게 몇 번 덜컹하다 멈춥니다. 덜컹마다 사슬의 철컥 소리가 납니다. 동작 줄이기에서는 되튀지 않습니다.
+- `lean`: 옆구리를 맞으면 공이 걸이를 축으로 기우뚱했다가 1.5초쯤에 돌아옵니다. 동작 줄이기에서는 기울지 않습니다.
 - `swing-fades`: 흔들림과 비틀림은 10초쯤 지나면 거의 멈춥니다.
 - `strike-no-orbit`: 왼쪽 버튼으로 어디를 끌어도 카메라는 그대로입니다.
 - `strike-cursor`: 커서는 레킹볼 위에서 `pointer`, 오른쪽 버튼으로 카메라를 돌리는 동안 `grabbing`, 그 밖에는 기본 화살표입니다.
@@ -39,6 +41,7 @@ Preconditions:
 - **배경에서 시작한 왼쪽 드래그.** `node $V shoot <이름> --views home,left-background-drag --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개이고 `audioPeak` 는 0 입니다.
 - **히트스톱과 패임.** 둘 다 0.1초보다 짧아서 이 스크립트의 스틸(10프레임쯤 늦게 찍힘)로는 잡히지 않습니다. `impact.ts` 의 `HIT_STOP` 을 `{ shortest: 3, longest: 3 }` 으로 바꾼 빌드를 따로 준비해(`prepare slowed WORKTREE` 뒤 원래대로 되돌림, 커밋하지 않음) `--motion --views near,near-struck-side` 로 찍습니다. 공이 맞은 자리에 멈춰 있고, 맞은 자리 둘레에 그늘진 패임과 먼지 알이 보입니다(2026-11-22 확인). 규칙 자체는 `impact.test.ts` 와 `wrecking-ball.test.tsx` 가 확인합니다.
 - **타격 먼지.** `--motion --views swipe-0.3s` 에서 맞은 자리 둘레에 밝은 먼지 알이 보입니다. 동작 줄이기를 켠 기본 설정에서는 `ball-drag` 가 `home` 과 0 개 다릅니다.
+- **덜컹과 기우뚱.** 덜컹은 0.5초 안에 끝나고 되튀는 높이가 몇 cm 라 스틸로 잡기 어렵습니다. 규칙은 `swing.test.ts`(덜컹), `lean.test.ts`(기우뚱), `wrecking-ball.test.tsx`(덜컹 알림, 기운 각)가 확인합니다. `--motion --views struck-side-0.2s` 에서는 마개 축이 사슬과 조금 어긋나 있습니다(2026-11-22 확인). 철컥 소리는 `uppercut-0.15s` 의 `audioPeak` 에 타격 소리와 섞여 들어가므로 따로 재지 않습니다.
 - **화면 떨림.** 스틸로는 확인할 수 없습니다. 규칙은 `screen-shake.test.ts` 가 확인하고, 느낌은 사용자가 개발 서버에서 판단합니다.
 - **커서.** `node $V shoot <이름> --views home,hover-ball,orbiting --out <폴더>` 에서 JSON 의 `cursor` 가 차례로 `default`, `pointer`, `grabbing` 입니다.
 

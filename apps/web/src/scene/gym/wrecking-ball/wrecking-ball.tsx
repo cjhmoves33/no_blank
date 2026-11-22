@@ -6,19 +6,31 @@ import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
+import {
+  type Lean,
+  LEAN_FEEL,
+  leanBy,
+  leanByJolt,
+  leanTurn,
+  settleLean,
+  UPRIGHT,
+} from "./lean";
 import { HANGING_POINT, Leather, type LeatherHandle } from "./leather";
+import { RESTING_SPRING, settle } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
   type Blow,
   CHAIN_REACH,
   farthestReach,
+  type Jolt,
+  joltOf,
   restingSwing,
   type Strike,
   strike,
   SWING_FEEL,
 } from "./swing";
-import { restingTwist, TWIST_FEEL, twistBy, unwind } from "./twist";
+import { TWIST_FEEL, twistBy } from "./twist";
 
 /** 레킹볼을 다루는 손잡이입니다. 레킹볼의 움직임은 이 둘로만 읽히고 바뀝니다. */
 export interface WreckingBallHandle {
@@ -31,6 +43,8 @@ export interface WreckingBallHandle {
 export interface WreckingBallProps {
   readonly reducedMotion: boolean;
   readonly ref: Ref<WreckingBallHandle>;
+  /** 덜컹할 때마다 그 프레임 안에서 한 번 불립니다. */
+  readonly onJolt: (jolt: Jolt) => void;
 }
 
 const { radius, pivotY } = GYM.wreckingBall;
@@ -54,13 +68,18 @@ export const WRECKING_BALL_SIZE: Box = {
 const REST_LINKS = chainLinks(restingSwing().fromPivot);
 
 /** 메시는 모두 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다. */
-export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
+export function WreckingBall({
+  reducedMotion,
+  ref,
+  onJolt,
+}: WreckingBallProps) {
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
   const links = useRef<(Mesh | null)[]>([]);
   const swing = useRef(restingSwing());
-  const twist = useRef(restingTwist());
+  const twist = useRef(RESTING_SPRING);
+  const lean = useRef<Lean>(UPRIGHT);
   const impact = useRef<Impact | null>(null);
   const feel = reducedMotion ? "reduced" : "normal";
 
@@ -82,9 +101,16 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
 
         swing.current = struck.swing;
         twist.current = twistBy(twist.current, blow, strength);
+        lean.current = leanBy(
+          lean.current,
+          { at: blow.at, push: struck.push, strength },
+          LEAN_FEEL[feel],
+        );
         impact.current = dent ?? impact.current;
         dust.current?.burst(
-          PIVOT.clone().add(struck.swing.fromPivot).add(blow.at),
+          PIVOT.clone()
+            .add(ball.current?.position ?? struck.swing.fromPivot)
+            .add(blow.at),
           blow.at.clone().normalize(),
           strength,
         );
@@ -104,7 +130,20 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
 
     impact.current = aged.impact;
     swing.current = advance(swing.current, aged.moving, SWING_FEEL[feel]);
-    twist.current = unwind(twist.current, aged.moving, TWIST_FEEL[feel]);
+    twist.current = settle(twist.current, aged.moving, TWIST_FEEL[feel]);
+    lean.current = settleLean(lean.current, aged.moving, LEAN_FEEL[feel]);
+
+    const jolt = joltOf(swing.current);
+
+    if (jolt) {
+      lean.current = leanByJolt(
+        lean.current,
+        swing.current.velocity,
+        LEAN_FEEL[feel],
+      );
+      onJolt(jolt);
+    }
+
     leather.current?.dent(
       impact.current
         ? {
@@ -115,11 +154,10 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
     );
 
     const { fromPivot } = swing.current;
+    const pose = hangingPose(fromPivot, lean.current, twist.current.angle);
 
-    ball.current?.position.copy(fromPivot);
-    ball.current?.quaternion.copy(
-      facingPivot(fromPivot).multiply(aroundCap(twist.current.angle)),
-    );
+    ball.current?.position.copy(pose.position);
+    ball.current?.quaternion.copy(pose.quaternion);
     chainLinks(fromPivot).forEach((link, i) => {
       const mesh = links.current[i];
 
@@ -159,6 +197,31 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
       {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
+}
+
+/**
+ * 사슬 끝에 매달린 가죽 공의 자리와 방향입니다. 공은 사슬 쪽으로 마개를 향하고, 마개 축으로 비틀리고,
+ * 걸이를 축으로 기우뚱합니다. 사슬은 걸이까지만 닿으므로 기우뚱해도 사슬은 그대로입니다.
+ */
+function hangingPose(
+  fromPivot: Vector3,
+  lean: Lean,
+  twist: number,
+): { readonly position: Vector3; readonly quaternion: Quaternion } {
+  const tilt = leanTurn(lean);
+  const toPivot = fromPivot.clone().negate().normalize();
+  const hinge = fromPivot.clone().addScaledVector(toPivot, HANGING_POINT);
+
+  return {
+    position: toPivot
+      .clone()
+      .multiplyScalar(-HANGING_POINT)
+      .applyQuaternion(tilt)
+      .add(hinge),
+    quaternion: tilt
+      .multiply(facingPivot(fromPivot))
+      .multiply(aroundCap(twist)),
+  };
 }
 
 function facingPivot(fromPivot: Vector3): Quaternion {

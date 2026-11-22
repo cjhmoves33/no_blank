@@ -6,6 +6,8 @@ export interface Swing {
   readonly fromPivot: Vector3;
   readonly velocity: Vector3;
   readonly unsimulatedSeconds: number;
+  /** 지난 advance 동안 덜컹이 있었다면, 팽팽해진 사슬이 받아 낸 빠르기(m/s)입니다. 없었으면 0 입니다. */
+  readonly jolt: number;
 }
 
 export interface SwingFeel {
@@ -13,6 +15,8 @@ export interface SwingFeel {
   readonly maxBottomSpeed: number;
   readonly gravity: number;
   readonly drag: number;
+  /** 덜컹 때 사슬이 받아 낸 빠르기 가운데 공이 되튀는 비율입니다. */
+  readonly rebound: number;
 }
 
 /**
@@ -36,9 +40,17 @@ export interface Strike {
   readonly strength: number;
 }
 
+/** 덜컹입니다. 효과음은 이것만 보고 크기를 정합니다. */
+export interface Jolt {
+  /** 0 이면 겨우 덜컹했고, 1 이면 가장 센 어퍼컷 뒤의 덜컹만큼 이상입니다. */
+  readonly strength: number;
+}
+
 export interface Struck {
   readonly swing: Swing;
   readonly strike: Strike;
+  /** 주먹이 레킹볼을 미는 방향(단위 벡터)입니다. 타격 세기가 0 이어도 정해집니다. */
+  readonly push: Vector3;
 }
 
 export const CHAIN_REACH =
@@ -50,12 +62,19 @@ const JAB_SPEED = 1.3;
 /** 잽보다 이 배수만큼 빠른 주먹이 멈춘 레킹볼에 더하는 속도를 타격 세기 1 로 봅니다. 더 빠른 주먹도 세기는 1 이고, 흔들림은 에너지 한도에 묶입니다. */
 const FULL_STRENGTH_IN_JABS = 2.5;
 
+// 팽팽한 사슬에 매달려 흔들리는 동안에도 사슬은 매 계산마다 중력과 원운동 때문에 바깥으로 가려는 속도를 받아 냅니다. 그보다 이만큼 더 빠를 때만 덜컹으로 봅니다.
+const JOLT_THRESHOLD = 0.3;
+
+/** 이 빠르기로 사슬이 팽팽해지는 덜컹을 세기 1 로 봅니다. 가장 센 어퍼컷 뒤에 떨어지는 빠르기쯤입니다. */
+const FULLEST_JOLT = 2.4;
+
 export const SWING_FEEL = {
   normal: {
     fistSpeed: JAB_SPEED,
     maxBottomSpeed: 2.4,
     gravity: 9.81,
     drag: 0.6,
+    rebound: 0.35,
   },
   reduced: criticallyDamped({ fistSpeed: 0.4, gravity: 96 }),
 } as const satisfies Record<string, SwingFeel>;
@@ -67,6 +86,7 @@ export function restingSwing(): Swing {
     fromPivot: new Vector3(0, -CHAIN_REACH, 0),
     velocity: new Vector3(),
     unsimulatedSeconds: 0,
+    jolt: 0,
   };
 }
 
@@ -79,10 +99,10 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   const along = swing.velocity.dot(push);
 
   if (along >= speed) {
-    return { swing, strike: { strength: 0 } };
+    return { swing, strike: { strength: 0 }, push };
   }
 
-  const added = push.multiplyScalar(speed - along);
+  const added = push.clone().multiplyScalar(speed - along);
   const velocity = capSwingEnergy(
     swing.fromPivot,
     swing.velocity.clone().add(added),
@@ -97,6 +117,7 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
         1,
       ),
     },
+    push,
   };
 }
 
@@ -105,16 +126,28 @@ export function advance(swing: Swing, seconds: number, feel: SwingFeel): Swing {
   const velocity = swing.velocity.clone();
   const slowdown = Math.exp(-feel.drag * STEP);
   let unsimulatedSeconds = swing.unsimulatedSeconds + seconds;
+  const chain = {
+    rebound: feel.rebound,
+    joltAbove: JOLT_THRESHOLD + feel.gravity * STEP,
+  };
+  let jolt = 0;
 
   while (unsimulatedSeconds >= STEP) {
     velocity.y -= feel.gravity * STEP;
     velocity.multiplyScalar(slowdown);
     fromPivot.addScaledVector(velocity, STEP);
-    keepOnChain(fromPivot, velocity);
+    jolt = Math.max(jolt, keepOnChain(fromPivot, velocity, chain));
     unsimulatedSeconds -= STEP;
   }
 
-  return { fromPivot, velocity, unsimulatedSeconds };
+  return { fromPivot, velocity, unsimulatedSeconds, jolt };
+}
+
+/** 지난 advance 동안 덜컹이 있었다면 그 세기입니다. */
+export function joltOf(swing: Swing): Jolt | null {
+  return swing.jolt > 0
+    ? { strength: Math.min(swing.jolt / FULLEST_JOLT, 1) }
+    : null;
 }
 
 export function farthestReach(): number {
@@ -150,6 +183,7 @@ function criticallyDamped({
     maxBottomSpeed: fistSpeed,
     gravity,
     drag: 2 * Math.sqrt(gravity / CHAIN_REACH),
+    rebound: 0,
   };
 }
 
@@ -157,11 +191,19 @@ function highestRise({ maxBottomSpeed, gravity }: SwingFeel): number {
   return maxBottomSpeed ** 2 / (2 * gravity);
 }
 
-function keepOnChain(fromPivot: Vector3, velocity: Vector3): void {
+/** 사슬보다 멀리 간 공을 사슬 끝으로 되돌리고, 덜컹이었다면 사슬이 받아 낸 빠르기를 돌려줍니다. 아니면 0 입니다. */
+function keepOnChain(
+  fromPivot: Vector3,
+  velocity: Vector3,
+  {
+    rebound,
+    joltAbove,
+  }: { readonly rebound: number; readonly joltAbove: number },
+): number {
   const distance = fromPivot.length();
 
   if (distance <= CHAIN_REACH) {
-    return;
+    return 0;
   }
 
   fromPivot.multiplyScalar(CHAIN_REACH / distance);
@@ -169,9 +211,15 @@ function keepOnChain(fromPivot: Vector3, velocity: Vector3): void {
   const outward = fromPivot.clone().divideScalar(CHAIN_REACH);
   const away = velocity.dot(outward);
 
-  if (away > 0) {
-    velocity.addScaledVector(outward, -away);
+  if (away <= 0) {
+    return 0;
   }
+
+  const jolted = away > joltAbove;
+
+  velocity.addScaledVector(outward, -away * (jolted ? 1 + rebound : 1));
+
+  return jolted ? away : 0;
 }
 
 function capSwingEnergy(

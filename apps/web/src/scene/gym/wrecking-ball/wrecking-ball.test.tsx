@@ -12,7 +12,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
-import type { Blow } from "./swing";
+import { type Blow, CHAIN_REACH, type Jolt } from "./swing";
 import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
 // 테스트는 캔버스가 없는 node 환경에서 돌므로, 가죽 그림만 빼고 그립니다.
@@ -25,13 +25,23 @@ const { radius } = GYM.wreckingBall;
 const INTO_SCREEN = new Vector3(0, 0, -1);
 const FRONT = new Vector3(0, 0, radius);
 const RIGHT = new Vector3(radius, 0, 0);
+const UNDER = new Vector3(0, -radius, 0);
+const PIVOT = new Vector3(0, CHAIN_REACH, 0);
+const UP = new Vector3(0, 1, 0);
 
 let mounted: Renderer | undefined;
 
 async function renderBall({ reducedMotion = false } = {}) {
   const handle = createRef<WreckingBallHandle>();
+  const jolts: Jolt[] = [];
   const renderer = await ReactThreeTestRenderer.create(
-    <WreckingBall reducedMotion={reducedMotion} ref={handle} />,
+    <WreckingBall
+      reducedMotion={reducedMotion}
+      ref={handle}
+      onJolt={(jolt) => {
+        jolts.push(jolt);
+      }}
+    />,
   );
 
   mounted = renderer;
@@ -42,7 +52,7 @@ async function renderBall({ reducedMotion = false } = {}) {
     throw new Error("레킹볼 손잡이가 없습니다.");
   }
 
-  return { renderer, ball };
+  return { renderer, ball, jolts };
 }
 
 function jab(at: Vector3): Blow {
@@ -137,6 +147,29 @@ function dustGrains(renderer: Renderer): number {
           : 0),
       0,
     );
+}
+
+/** 마개가 매단 지점을 곧게 보지 않고 기운 각(라디안)입니다. 기우뚱하면 커집니다. */
+function leaning(renderer: Renderer, ball: WreckingBallHandle): number {
+  const cap = UP.clone().applyQuaternion(leatherOf(renderer).turn);
+
+  return cap.angleTo(PIVOT.clone().sub(centerOf(ball)));
+}
+
+/** frames 동안 한 프레임씩 흘려 보내며 기운 각을 모읍니다. */
+async function leaningOver(
+  renderer: Renderer,
+  ball: WreckingBallHandle,
+  frames: number,
+): Promise<number[]> {
+  const seen: number[] = [];
+
+  for (let i = 0; i < frames; i++) {
+    await renderer.advanceFrames(1, FRAME);
+    seen.push(leaning(renderer, ball));
+  }
+
+  return seen;
 }
 
 /** 가죽 공이 위에서 볼 때 사슬 축으로 얼마나 돌았는지입니다(라디안). 흔들려 기울어진 것은 빼고 봅니다. */
@@ -257,6 +290,49 @@ describe("WreckingBall", () => {
     await front.renderer.advanceFrames(18, FRAME);
 
     expect(Math.abs(heading(front.renderer))).toBeLessThan(1e-6);
+  });
+
+  it("옆구리를 맞으면 걸이를 축으로 기우뚱했다가 돌아온다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    ball.take(jab(RIGHT));
+
+    expect(
+      Math.max(...(await leaningOver(renderer, ball, 30))),
+    ).toBeGreaterThan(0.03);
+
+    await renderer.advanceFrames(150, FRAME);
+
+    expect(leaning(renderer, ball)).toBeLessThan(0.005);
+  });
+
+  it("들린 공이 떨어져 사슬이 팽팽해지면 덜컹을 알리고, 옆으로만 흔들리면 알리지 않는다", async () => {
+    const lifted = await renderBall();
+
+    lifted.ball.take(jab(UNDER));
+    await lifted.renderer.advanceFrames(90, FRAME);
+
+    expect(lifted.jolts.length).toBeGreaterThan(0);
+    expect(lifted.jolts[0]?.strength).toBeGreaterThan(0);
+
+    await lifted.renderer.unmount();
+
+    const swung = await renderBall();
+
+    swung.ball.take(jab(RIGHT));
+    await swung.renderer.advanceFrames(180, FRAME);
+
+    expect(swung.jolts).toEqual([]);
+  });
+
+  it("동작 줄이기에서는 기우뚱하지 않는다", async () => {
+    const { renderer, ball } = await renderBall({ reducedMotion: true });
+
+    ball.take(jab(RIGHT));
+
+    expect(Math.max(...(await leaningOver(renderer, ball, 30)))).toBeLessThan(
+      1e-6,
+    );
   });
 
   it("동작 줄이기를 켜면 조금만 밀렸다가 1초 안에 제자리로 돌아온다", async () => {
