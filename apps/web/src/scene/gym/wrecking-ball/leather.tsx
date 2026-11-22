@@ -14,14 +14,12 @@ import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 import { dentedNormal, sinking } from "./impact";
 
-/** 가죽 공의 패임입니다. at 은 공의 좌표에서 본 맞은 자리의 방향, depth 는 그 자리가 들어간 깊이(m)입니다. */
 interface Dent {
   readonly at: Vector3;
   readonly depth: number;
 }
 
 export interface LeatherHandle {
-  /** 가죽과 솔기를 이 패임 모양으로 바꿉니다. null 이면 둥근 모양으로 되돌립니다. 매 프레임 불러도 됩니다. */
   readonly dent: (dent: Dent | null) => void;
 }
 
@@ -42,7 +40,6 @@ const CAP_LEATHER = "#5a3420";
 const CAP = { radius: 0.07, height: 0.04 } as const;
 const SHACKLE = { radius: 0.03, tube: 0.008 } as const;
 
-/** 공의 중심에서 사슬이 걸리는 걸이 꼭대기까지의 높이(m)입니다. */
 export const HANGING_POINT = radius + CAP.height + SHACKLE.radius * 2;
 
 const LEATHER: Painting = {
@@ -70,14 +67,12 @@ const LEATHER: Painting = {
 
 type Attribute = BufferAttribute | InterleavedBufferAttribute;
 
-/** 패이기 전의 정점입니다. 솔기는 자기 좌표로 그려지므로 공의 좌표로 옮기는 회전을 함께 둡니다. */
 interface Rest {
   readonly geometry: BufferGeometry;
   readonly positions: Float32Array;
   readonly toBall: Quaternion;
 }
 
-/** 가죽 공입니다. 가죽, 솔기 셋, 마개, 걸이로 이루어지고, 원점이 공의 중심입니다. */
 export function Leather({ ref }: LeatherProps) {
   const sphere = useRef<Mesh>(null);
   const seams = useRef<(Mesh | null)[]>([]);
@@ -176,7 +171,6 @@ function restOfMesh(mesh: Mesh): Rest {
 const point = new Vector3();
 const direction = new Vector3();
 
-/** 가죽은 중심 쪽으로 들어가고, 법선도 패인 모양을 따라 기울어 그늘이 집니다. 둥근 가죽의 법선은 중심에서 본 방향입니다. */
 function dentLeather(rest: Rest, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const normals = rest.geometry.getAttribute("normal");
@@ -200,7 +194,6 @@ function dentLeather(rest: Rest, dent: Dent | null): void {
   changed(positions, normals);
 }
 
-/** 솔기는 가죽과 같은 만큼 들어가 가죽 위에 떠 보이지 않습니다. */
 function dentSeam(rest: Rest, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const toSeam = rest.toBall.clone().invert();

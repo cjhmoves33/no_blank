@@ -26,7 +26,6 @@ function struck(strength: number): Impact {
   return impact;
 }
 
-/** 프레임마다 흘려 보내며 패인 깊이를 모읍니다. */
 function play(impact: Impact, seconds: number, feel: DentFeel = normal) {
   const depths: number[] = [];
   let current: Impact | null = impact;

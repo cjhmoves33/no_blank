@@ -152,7 +152,6 @@ function deepestDentDirection(renderer: Renderer): Vector3 {
   return deepest.normalize().applyQuaternion(turn);
 }
 
-/** 지금 그려지는 타격 먼지 알 수입니다. */
 function dustGrains(renderer: Renderer): number {
   return renderer.scene
     .findAll(() => true)
@@ -167,14 +166,12 @@ function dustGrains(renderer: Renderer): number {
     );
 }
 
-/** 마개가 매단 지점을 곧게 보지 않고 기운 각(라디안)입니다. 기우뚱하면 커집니다. */
 function leaning(renderer: Renderer, ball: WreckingBallHandle): number {
   const cap = UP.clone().applyQuaternion(leatherOf(renderer).turn);
 
   return cap.angleTo(PIVOT.clone().sub(centerOf(ball)));
 }
 
-/** frames 동안 한 프레임씩 흘려 보내며 기운 각을 모읍니다. */
 async function leaningOver(
   renderer: Renderer,
   ball: WreckingBallHandle,
@@ -190,7 +187,6 @@ async function leaningOver(
   return seen;
 }
 
-/** 가죽 공이 위에서 볼 때 사슬 축으로 얼마나 돌았는지입니다(라디안). 흔들려 기울어진 것은 빼고 봅니다. */
 function heading(renderer: Renderer): number {
   const side = new Vector3(1, 0, 0).applyQuaternion(leatherOf(renderer).turn);
 

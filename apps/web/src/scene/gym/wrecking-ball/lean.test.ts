@@ -22,7 +22,6 @@ const DOWN = new Vector3(0, -1, 0);
 const FRAME = 1 / 60;
 const { normal, reduced } = LEAN_FEEL;
 
-/** 걸이에서 본 공의 아래쪽 방향입니다. 기울면 바로 아래에서 벗어납니다. */
 function bottomOf(lean: Lean): Vector3 {
   return DOWN.clone().applyQuaternion(leanTurn(lean));
 }

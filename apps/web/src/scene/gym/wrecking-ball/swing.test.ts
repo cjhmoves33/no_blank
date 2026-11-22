@@ -251,7 +251,6 @@ describe("swing", () => {
 });
 
 describe("덜컹", () => {
-  /** 프레임마다 흘려 보내며, 덜컹한 시각과 세기, 그리고 공의 높이를 모읍니다. */
   function watch(swing: Swing, seconds: number, feel: SwingFeel = normal) {
     const jolts: { at: number; strength: number }[] = [];
     const heights: number[] = [];

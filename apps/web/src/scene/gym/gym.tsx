@@ -60,7 +60,6 @@ function facing(
   return [rotation.x, rotation.y, rotation.z];
 }
 
-/** 레킹볼을 치는 마우스 입력은 장면 위에 덮인 surface 하나에서 RingControls 가 모두 받습니다. */
 export function Gym({ reducedMotion, onStrike, onJolt }: GymProps) {
   const [surface, setSurface] = useState<HTMLDivElement | null>(null);
   const [ball, setBall] = useState<WreckingBallHandle | null>(null);

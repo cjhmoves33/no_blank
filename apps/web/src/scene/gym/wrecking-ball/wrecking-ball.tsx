@@ -32,18 +32,14 @@ import {
 } from "./swing";
 import { TWIST_FEEL, twistBy } from "./twist";
 
-/** 레킹볼을 다루는 손잡이입니다. 레킹볼의 움직임은 이 둘로만 읽히고 바뀝니다. */
 export interface WreckingBallHandle {
-  /** 지금 가죽 공이 차지한 구(월드 좌표)입니다. 아직 장면에 붙지 않았으면 null 입니다. */
   readonly sphere: () => Sphere | null;
-  /** 주먹을 받아 흔들림과 비틀림을 바꾸고 그 타격을 돌려줍니다. 맞힌 순간에 한 번 부릅니다. */
   readonly take: (blow: Blow) => Strike;
 }
 
 export interface WreckingBallProps {
   readonly reducedMotion: boolean;
   readonly ref: Ref<WreckingBallHandle>;
-  /** 덜컹할 때마다 그 프레임 안에서 한 번 불립니다. */
   readonly onJolt: (jolt: Jolt) => void;
 }
 
@@ -67,7 +63,6 @@ export const WRECKING_BALL_SIZE: Box = {
 
 const REST_LINKS = chainLinks(restingSwing().fromPivot);
 
-/** 메시는 모두 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다. */
 export function WreckingBall({
   reducedMotion,
   ref,
@@ -93,7 +88,6 @@ export function WreckingBall({
       take: (blow) => {
         const struck = strike(swing.current, blow, SWING_FEEL[feel]);
         const { strength } = struck.strike;
-        // 패임은 공에 남아 함께 비틀리도록, 맞은 자리를 공의 좌표로 옮겨 둡니다.
         const toLeather = ball.current?.quaternion.clone().invert();
         const dent = toLeather
           ? impactOf(blow.at.clone().applyQuaternion(toLeather), strength)
@@ -123,7 +117,6 @@ export function WreckingBall({
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
-    // 히트스톱 동안에는 공과 사슬이 멈추고, 그 시간은 흔들림에 쓰이지 않습니다.
     const aged = impact.current
       ? age(impact.current, seconds)
       : { impact: null, moving: seconds };
@@ -199,10 +192,6 @@ export function WreckingBall({
   );
 }
 
-/**
- * 사슬 끝에 매달린 가죽 공의 자리와 방향입니다. 공은 사슬 쪽으로 마개를 향하고, 마개 축으로 비틀리고,
- * 걸이를 축으로 기우뚱합니다. 사슬은 걸이까지만 닿으므로 기우뚱해도 사슬은 그대로입니다.
- */
 function hangingPose(
   fromPivot: Vector3,
   lean: Lean,

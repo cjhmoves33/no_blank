@@ -16,7 +16,6 @@ const EYE = new Vector3(0, 0, 5);
 const BALL = new Sphere(new Vector3(), radius);
 const EVENT_GAP = 0.008;
 
-/** 레킹볼 중심 깊이에서 (x, y) 를 가리키는 커서입니다. 카메라는 +z 쪽 5 m 에서 레킹볼을 봅니다. */
 function cursorAt(x: number, y: number, seconds: number): PointerSample {
   return {
     ray: new Ray(EYE.clone(), new Vector3(x, y, 0).sub(EYE).normalize()),
@@ -30,7 +29,6 @@ interface Stroke {
   readonly seconds: number;
 }
 
-/** 버튼을 누른 채 from 에서 to 까지 seconds 동안 고르게 끕니다. 그사이 처음 맞힌 주먹과 마지막 상태를 돌려줍니다. */
 function drag(
   press: Press,
   { from, to, seconds }: Stroke,
