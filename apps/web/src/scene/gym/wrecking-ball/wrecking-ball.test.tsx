@@ -229,7 +229,7 @@ describe("WreckingBall", () => {
     ball.take(jab(RIGHT));
     await renderer.advanceFrames(24, FRAME);
 
-    expect(centerOf(ball).x).toBeLessThan(-0.2);
+    expect(centerOf(ball).x).toBeLessThan(-0.05);
   });
 
   it("맞으면 히트스톱 동안 멈췄다가 밀려 나간다", async () => {
@@ -242,7 +242,7 @@ describe("WreckingBall", () => {
 
     await renderer.advanceFrames(21, FRAME);
 
-    expect(centerOf(ball).x).toBeLessThan(-0.2);
+    expect(centerOf(ball).x).toBeLessThan(-0.05);
   });
 
   it("맞은 자리가 잠깐 패였다가 둥글게 돌아온다", async () => {
@@ -261,10 +261,15 @@ describe("WreckingBall", () => {
   it("이미 비틀리거나 기운 공을 쳐도 패임은 맞은 자리에 생긴다", async () => {
     const { renderer, ball } = await renderBall();
 
-    ball.take(jab(RIGHT));
-    await renderer.advanceFrames(18, FRAME);
+    ball.take({
+      kind: "swipe",
+      hitFromCenter: FRONT,
+      fist: new Vector3(1, 0, 0),
+      speed: 100,
+    });
+    await renderer.advanceFrames(40, FRAME);
 
-    expect(Math.abs(heading(renderer))).toBeGreaterThan(0.1);
+    expect(Math.abs(heading(renderer))).toBeGreaterThan(0.15);
 
     ball.take(jab(FRONT));
     await renderer.advanceFrames(1, FRAME);
@@ -318,7 +323,7 @@ describe("WreckingBall", () => {
     side.ball.take(jab(RIGHT));
     await side.renderer.advanceFrames(18, FRAME);
 
-    expect(Math.abs(heading(side.renderer))).toBeGreaterThan(0.1);
+    expect(Math.abs(heading(side.renderer))).toBeGreaterThan(0.03);
 
     await side.renderer.unmount();
 
@@ -337,17 +342,22 @@ describe("WreckingBall", () => {
 
     expect(
       Math.max(...(await leaningOver(renderer, ball, 30))),
-    ).toBeGreaterThan(0.03);
+    ).toBeGreaterThan(0.004);
 
     await renderer.advanceFrames(150, FRAME);
 
-    expect(leaning(renderer, ball)).toBeLessThan(0.005);
+    expect(leaning(renderer, ball)).toBeLessThan(0.001);
   });
 
-  it("들린 공이 떨어져 사슬이 팽팽해지면 덜컹을 알리고, 옆으로만 흔들리면 알리지 않는다", async () => {
+  it("세게 올려 친 공이 떨어져 사슬이 팽팽해지면 덜컹을 알리고, 옆으로만 흔들리면 알리지 않는다", async () => {
     const lifted = await renderBall();
 
-    lifted.ball.take(jab(UNDER));
+    lifted.ball.take({
+      kind: "swipe",
+      hitFromCenter: UNDER,
+      fist: UP,
+      speed: 100,
+    });
     await lifted.renderer.advanceFrames(90, FRAME);
 
     expect(lifted.jolts.length).toBeGreaterThan(0);

@@ -1,16 +1,31 @@
 import { criticallyDamped, type Spring, type SpringFeel } from "./spring";
-import { type Blow, STRAIGHT_CHAIN_AXIS, type SWING_FEEL } from "./swing";
+import { type Blow, STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing";
 
 export type Twist = Spring;
 
+export interface TwistFeel extends SpringFeel {
+  readonly kickAtFullStrength: number;
+}
+
+const KICK_BEFORE_FIST_SHARE = 3;
+
 export const TWIST_FEEL = {
-  normal: { stiffness: 6, damping: 0.5 },
-  reduced: criticallyDamped(96),
-} as const satisfies Record<keyof typeof SWING_FEEL, SpringFeel>;
+  normal: {
+    stiffness: 6,
+    damping: 0.5,
+    kickAtFullStrength: KICK_BEFORE_FIST_SHARE * SWING_FEEL.normal.fistShare,
+  },
+  reduced: {
+    ...criticallyDamped(96),
+    kickAtFullStrength: KICK_BEFORE_FIST_SHARE * SWING_FEEL.reduced.fistShare,
+  },
+} as const satisfies Record<keyof typeof SWING_FEEL, TwistFeel>;
 
-const KICK_AT_FULL_STRENGTH = 3;
-
-export function twistBy(twist: Twist, blow: Blow, strength: number): Twist {
+export function twistBy(
+  twist: Twist,
+  { blow, strength }: { readonly blow: Blow; readonly strength: number },
+  feel: TwistFeel,
+): Twist {
   const turn = blow.hitFromCenter
     .clone()
     .normalize()
@@ -19,6 +34,6 @@ export function twistBy(twist: Twist, blow: Blow, strength: number): Twist {
 
   return {
     angle: twist.angle,
-    rate: twist.rate + KICK_AT_FULL_STRENGTH * strength * turn,
+    rate: twist.rate + feel.kickAtFullStrength * strength * turn,
   };
 }

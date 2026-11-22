@@ -50,7 +50,7 @@ describe("기우뚱", () => {
   it("옆구리를 맞으면 공의 아래쪽이 미는 쪽으로 먼저 나가며 기운다", () => {
     const leaned = settleLean(jabbedRight(0.4), 0.1, normal);
 
-    expect(bottomOf(leaned).x).toBeLessThan(-0.01);
+    expect(bottomOf(leaned).x).toBeLessThan(-0.002);
   });
 
   it("아래에서 곧게 올려 치면 기울지 않는다", () => {
@@ -69,7 +69,7 @@ describe("기우뚱", () => {
     const widest = Math.max(...strong);
 
     expect(Math.max(...weak)).toBeLessThan(widest);
-    expect(widest).toBeGreaterThan(0.1);
+    expect(widest).toBeGreaterThan(0.02);
     expect(strong.at(-1) ?? Infinity).toBeLessThan(widest * 0.1);
   });
 
@@ -108,6 +108,12 @@ describe("기우뚱", () => {
     }
 
     expect(Math.max(...widest)).toBeLessThan((15 * Math.PI) / 180);
+  });
+
+  it("무거워서 센 타격에도 5도 넘게 기울지 않는다", () => {
+    expect(Math.max(...tilts(jabbedRight(1), 2))).toBeLessThan(
+      (5 * Math.PI) / 180,
+    );
   });
 
   it("동작 줄이기에서는 기울지 않는다", () => {

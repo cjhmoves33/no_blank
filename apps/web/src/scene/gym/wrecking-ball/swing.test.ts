@@ -74,11 +74,20 @@ describe("swing", () => {
     expect(after.fromPivot.distanceTo(REST)).toBeLessThan(1e-9);
   });
 
+  it("멈춘 공을 잽으로 치면 10 cm 남짓만 밀린다", () => {
+    const offset = largestOffset(
+      track(hit(restingSwing(), RIGHT, normal), 2, normal),
+    );
+
+    expect(offset).toBeGreaterThan(0.08);
+    expect(offset).toBeLessThan(0.12);
+  });
+
   it("앞면 가운데를 잽으로 치면 뒤로 밀린다", () => {
     const struck = hit(restingSwing(), FRONT, normal);
     const after = advance(struck, 0.4, normal);
 
-    expect(after.fromPivot.z).toBeLessThan(-0.2);
+    expect(after.fromPivot.z).toBeLessThan(-0.05);
     expect(Math.abs(after.fromPivot.x)).toBeLessThan(1e-9);
   });
 
@@ -86,16 +95,26 @@ describe("swing", () => {
     const struck = hit(restingSwing(), RIGHT, normal);
     const after = advance(struck, 0.4, normal);
 
-    expect(after.fromPivot.x).toBeLessThan(-0.2);
+    expect(after.fromPivot.x).toBeLessThan(-0.05);
     expect(Math.abs(after.fromPivot.z)).toBeLessThan(1e-9);
   });
 
-  it("아래를 치면 공이 들려 사슬이 느슨해졌다가, 떨어져 다시 팽팽해진다", () => {
+  it("잽으로 올려 쳐서는 1 cm 도 들리지 않는다", () => {
     const struck = hit(restingSwing(), UNDER, normal);
-    const lifted = advance(struck, 0.1, normal);
+    const highest = Math.max(
+      ...track(struck, 1, normal).map((position) => position.y),
+    );
 
-    expect(lifted.fromPivot.y).toBeGreaterThan(REST.y + 0.03);
-    expect(lifted.fromPivot.length()).toBeLessThan(CHAIN_REACH - 0.03);
+    expect(highest).toBeGreaterThan(REST.y);
+    expect(highest).toBeLessThan(REST.y + 0.01);
+  });
+
+  it("세게 올려 치면 공이 들려 사슬이 느슨해졌다가, 떨어져 다시 팽팽해진다", () => {
+    const struck = strike(restingSwing(), swipe(UP, FASTEST_SWIPE), normal);
+    const lifted = advance(struck.swing, 0.08, normal);
+
+    expect(lifted.fromPivot.y).toBeGreaterThan(REST.y + 0.02);
+    expect(lifted.fromPivot.length()).toBeLessThan(CHAIN_REACH - 0.02);
 
     const fallen = advance(lifted, 1, normal);
 
@@ -115,11 +134,11 @@ describe("swing", () => {
       normal,
     );
 
-    expect(after.fromPivot.x).toBeGreaterThan(0.2);
+    expect(after.fromPivot.x).toBeGreaterThan(0.05);
     expect(Math.abs(after.fromPivot.z)).toBeLessThan(1e-9);
   });
 
-  it("빨리 휘두를수록 멀리 밀리지만, 아주 빠르게 휘둘러도 정해진 빠르기 이상으로 밀지 않는다", () => {
+  it("빨리 휘두를수록 멀리 밀리지만, 아무리 빨리 휘둘러도 한 번에 30 cm 남짓까지만 밀린다", () => {
     const reach = (speed: number) =>
       largestOffset(
         track(
@@ -130,6 +149,8 @@ describe("swing", () => {
       );
 
     expect(reach(1.5)).toBeLessThan(reach(2.5));
+    expect(reach(FASTEST_SWIPE)).toBeGreaterThan(0.25);
+    expect(reach(FASTEST_SWIPE)).toBeLessThan(0.35);
     expect(reach(FASTEST_SWIPE)).toBeCloseTo(reach(FASTEST_SWIPE / 10), 9);
   });
 
@@ -151,11 +172,12 @@ describe("swing", () => {
     }
   });
 
-  it("다가오던 공을 치면 방향이 뒤집혀 주먹 쪽에서 멀어진다", () => {
+  it("다가오던 공을 맞받아치면 한 번에 되밀지 못하고 늦추기만 한다", () => {
     const coming = moving(new Vector3(0.5, 0, 0));
-    const after = advance(hit(coming, RIGHT, normal), 0.3, normal);
+    const struck = hit(coming, RIGHT, normal);
 
-    expect(after.fromPivot.x).toBeLessThan(-0.2);
+    expect(struck.velocity.x).toBeGreaterThan(0);
+    expect(struck.velocity.x).toBeLessThan(0.5);
   });
 
   it("공이 주먹보다 빨리 멀어지고 있으면 쳐도 흔들림이 바뀌지 않는다", () => {
@@ -166,13 +188,30 @@ describe("swing", () => {
     expect(struck.fromPivot.distanceTo(untouched.fromPivot)).toBeLessThan(1e-9);
   });
 
-  it("같은 자리를 연달아 쳐도 한 번 친 것보다 크게 흔들리지 않는다", () => {
-    const once = hit(restingSwing(), RIGHT, normal);
-    const twice = hit(advance(once, 0.05, normal), RIGHT, normal);
+  it("같은 자리를 빠르게 연달아 치면 흔들림이 쌓여, 열 번쯤이면 45 cm 남짓 밀린다", () => {
+    const flurry = (jabs: number) => {
+      let swing = restingSwing();
 
-    expect(largestOffset(track(twice, 3, normal))).toBeLessThan(
-      largestOffset(track(once, 3, normal)) * 1.05,
-    );
+      for (let i = 0; i < jabs; i++) {
+        swing = advance(hit(swing, RIGHT, normal), 0.05, normal);
+      }
+
+      return largestOffset(track(swing, 3, normal));
+    };
+
+    expect(flurry(2)).toBeGreaterThan(flurry(1) * 1.5);
+    expect(flurry(10)).toBeGreaterThan(0.38);
+    expect(flurry(10)).toBeLessThan(0.52);
+  });
+
+  it("맞은 직후 공이 주먹 방향으로 가는 빠르기는 주먹보다 빠르지 않다", () => {
+    let swing = restingSwing();
+
+    for (let i = 0; i < 40; i++) {
+      swing = hit(swing, RIGHT, normal);
+      expect(-swing.velocity.x).toBeLessThanOrEqual(normal.fistSpeed + 1e-9);
+      swing = advance(swing, 0.05, normal);
+    }
   });
 
   it("어디로 몇 번 휘두르든 공은 정해진 범위 안에서 흔들린다", () => {
@@ -194,7 +233,7 @@ describe("swing", () => {
     }
 
     expect(farthest).toBeLessThanOrEqual(farthestReach() + 1e-3);
-    expect(farthest).toBeGreaterThan(farthestReach() * 0.5);
+    expect(farthest).toBeGreaterThan(0.25);
   });
 
   it("움직이는 방향과 직각으로 빠르게 이어 쳐서 흔들림을 키워도 정해진 범위를 넘지 않는다", () => {
@@ -206,7 +245,7 @@ describe("swing", () => {
       const push =
         sideways.lengthSq() > 0 ? sideways.normalize() : new Vector3(-1, 0, 0);
 
-      swing = hit(swing, push.multiplyScalar(-radius), normal);
+      swing = strike(swing, swipe(push, FASTEST_SWIPE), normal).swing;
 
       for (const position of track(swing, 0.1, normal)) {
         farthest = Math.max(farthest, Math.hypot(position.x, position.z));
@@ -217,6 +256,17 @@ describe("swing", () => {
 
     expect(farthest).toBeLessThanOrEqual(farthestReach() + 1e-3);
     expect(farthest).toBeGreaterThan(farthestReach() * 0.5);
+  });
+
+  it("무거워서 흔들림이 오래 가고, 5초쯤 지나야 절반으로 줄어든다", () => {
+    const struck = hit(restingSwing(), RIGHT, normal);
+    const first = largestOffset(track(struck, 2, normal));
+    const fiveSecondsLater = largestOffset(
+      track(advance(struck, 4.4, normal), 2.5, normal),
+    );
+
+    expect(fiveSecondsLater / first).toBeGreaterThan(0.4);
+    expect(fiveSecondsLater / first).toBeLessThan(0.6);
   });
 
   it("흔들림은 저절로 잦아든다", () => {
@@ -274,11 +324,8 @@ describe("덜컹", () => {
     return { jolts, heights, last: current };
   }
 
-  it("들린 공이 떨어져 사슬이 팽팽해지면 덜컹 되튀고, 점점 작게 몇 번 덜컹하다 멈춘다", () => {
-    const { jolts, heights, last } = watch(
-      hit(restingSwing(), UNDER, normal),
-      1.5,
-    );
+  it("높이 들린 공이 떨어져 사슬이 팽팽해지면 덜컹 되튀고, 점점 작게 몇 번 덜컹하다 멈춘다", () => {
+    const { jolts, heights, last } = watch(moving(new Vector3(0, 1.5, 0)), 2);
     const [first, second] = jolts;
 
     if (!first || !second) {
@@ -302,6 +349,12 @@ describe("덜컹", () => {
       firstJolt(jab(UNDER)),
     );
     expect(firstJolt(swipe(UP, FASTEST_SWIPE))).toBeGreaterThan(0.8);
+  });
+
+  it("잽으로 올려 쳐서는 덜컹하지 않는다", () => {
+    expect(
+      watch(strike(restingSwing(), jab(UNDER), normal).swing, 2).jolts,
+    ).toEqual([]);
   });
 
   it("가만히 매달려 있거나 팽팽한 사슬에 매달려 흔들리는 동안에는 덜컹하지 않는다", () => {
