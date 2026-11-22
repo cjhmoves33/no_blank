@@ -5,6 +5,9 @@ import { SpinningShape } from "./spinning-shape";
 
 type Renderer = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>;
 
+const PRIMARY_BUTTON = 0;
+const SECONDARY_BUTTON = 2;
+
 let mounted: Renderer | undefined;
 
 async function renderShape({ spinning }: { spinning: boolean }) {
@@ -57,19 +60,27 @@ describe("SpinningShape", () => {
     expect(shape.instance.rotation.equals(before)).toBe(true);
   });
 
-  it("클릭하면 한 번 알린다", async () => {
+  it("주 버튼을 누르는 순간 한 번 알리고, 그 누름은 카메라 궤도로 올라가지 않는다", async () => {
     const { renderer, shape, presses } = await renderShape({ spinning: true });
+    const press = pointerDown(PRIMARY_BUTTON);
 
-    await renderer.fireEvent(shape, "click");
+    await renderer.fireEvent(shape, "pointerDown", press);
 
     expect(presses).toEqual(["press"]);
+    expect(press.nativeEvent.cancelBubble).toBe(true);
   });
 
-  it("누르기만 하고 아직 떼지 않았으면 알리지 않는다", async () => {
+  it("다른 버튼으로 누르면 알리지 않고, 그 누름은 카메라 궤도로 올라간다", async () => {
     const { renderer, shape, presses } = await renderShape({ spinning: true });
+    const press = pointerDown(SECONDARY_BUTTON);
 
-    await renderer.fireEvent(shape, "pointerDown");
+    await renderer.fireEvent(shape, "pointerDown", press);
 
     expect(presses).toEqual([]);
+    expect(press.nativeEvent.cancelBubble).toBe(false);
   });
 });
+
+function pointerDown(button: number) {
+  return { button, nativeEvent: new Event("pointerdown", { bubbles: true }) };
+}
