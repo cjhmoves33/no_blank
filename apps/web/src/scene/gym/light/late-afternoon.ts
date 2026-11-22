@@ -2,6 +2,8 @@ import { Matrix4, Quaternion, Vector3 } from "three";
 
 import { GYM } from "../measurements";
 
+const { building, windows } = GYM;
+
 export const LATE_AFTERNOON = {
   // 화면 평균 밝기가 고른 프로토타입(ACES, 노출 1)과 같아지는 값입니다.
   exposure: 1.35,
@@ -32,9 +34,9 @@ export const LATE_AFTERNOON = {
   windowFill: {
     color: "#ffe0c0",
     intensity: 0.9,
-    width: 9,
-    height: 4.5,
-    at: [GYM.building.halfX - 0.05, 3.5, 0],
+    width: windowsWidth() + 0.2,
+    height: windows.headY - windows.sillY - 0.3,
+    at: [building.halfX - 0.05, (windows.sillY + windows.headY) / 2 - 0.3, 0],
     lookAt: [0, 2.5, 0],
   },
   sky: { color: "#f6e2cc", ground: "#8a5e3c", intensity: 0.5 },
@@ -51,10 +53,17 @@ export const LATE_AFTERNOON = {
     color: "#ffe2bd",
     opacity: 0.5,
     size: 0.0125,
-    min: [-6, GYM.mat.y - 0.5, -4],
-    max: [4, 5.8, 4],
+    min: [-building.halfX + 1.5, GYM.mat.y - 0.5, -building.halfZ + 2],
+    max: [building.halfX - 3.5, building.ceilingY - 0.95, building.halfZ - 2],
   },
 } as const;
+
+function windowsWidth(): number {
+  const starts = windows.spans.map(([start]) => start);
+  const ends = windows.spans.map(([, end]) => end);
+
+  return Math.max(...ends) - Math.min(...starts);
+}
 
 export function sunlightTravel(): Vector3 {
   return new Vector3(...LATE_AFTERNOON.sun.toward).normalize();

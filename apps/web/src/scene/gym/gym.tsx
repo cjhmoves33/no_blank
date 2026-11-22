@@ -9,8 +9,12 @@ import { DustMotes } from "./light/dust-motes";
 import { LATE_AFTERNOON } from "./light/late-afternoon";
 import { GYM, RING_VIEW } from "./measurements";
 import { HeavyBags } from "./props/heavy-bags";
+import { ceilingMount, PLAN, wallMount } from "./props/plan";
 import { WallClock } from "./props/wall-clock";
 import { Ring } from "./ring";
+
+const HEAVY_BAGS = ceilingMount(PLAN.heavyBags);
+const WALL_CLOCK = wallMount(PLAN.wallClock);
 
 export interface GymProps {
   readonly reducedMotion: boolean;
@@ -56,7 +60,8 @@ function facing(
  * - children 의 메시는 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다.
  * - 포인터 이벤트 핸들러를 달지 않습니다. 누를 수 있는 것은 children 이 정합니다. 누름으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
  * - 체육관은 RING_VIEW 가 허락하는 모든 카메라 위치에서 빈 곳 없이 보여야 합니다.
- * - 소품을 더하려면 props/heavy-bags.tsx(그림 텍스처가 있으면 props/wall-clock.tsx)를 본떠 props/ 에 파일을 만들고 아래에 한 줄 넣습니다.
+ * - 소품을 더하려면 props/heavy-bags.tsx(그림 텍스처가 있으면 props/wall-clock.tsx)를 본떠 props/ 에 파일을 만들고, props/plan.ts 에 자리를 적고, 아래에 그 자리로 감싼 한 줄을 넣습니다.
+ *   소품 파일은 기준점(건물에 닿는 점)을 원점에 두고 그리며 크기를 내보냅니다. props/plan.test.ts 가 그 크기로 소품끼리 겹치지 않는지 검사합니다.
  */
 export function Gym({ reducedMotion, children }: GymProps) {
   const [orbitSurface, setOrbitSurface] = useState<HTMLDivElement | null>(null);
@@ -73,8 +78,12 @@ export function Gym({ reducedMotion, children }: GymProps) {
         <Daylight />
         <Building />
         <Ring />
-        <HeavyBags />
-        <WallClock />
+        <group position={HEAVY_BAGS.position}>
+          <HeavyBags toCeiling={HEAVY_BAGS.toCeiling} />
+        </group>
+        <group position={WALL_CLOCK.position} rotation-y={WALL_CLOCK.turn}>
+          <WallClock />
+        </group>
         <DustMotes drifting={!reducedMotion} />
         {orbitSurface ? (
           <OrbitRig

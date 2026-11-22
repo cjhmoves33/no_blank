@@ -1,5 +1,5 @@
+import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
-import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 
 const RIM = { radius: 0.375, depth: 0.06 } as const;
@@ -53,20 +53,33 @@ function strokeFromCenter(
   context.stroke();
 }
 
+// 기준점은 벽에 닿는 뒷면의 가운데입니다.
+const FACE_Z = RIM.depth + 0.002;
+
+export const WALL_CLOCK_SIZE: Box = {
+  min: [-RIM.radius, -RIM.radius, 0],
+  max: [RIM.radius, RIM.radius, FACE_Z],
+};
+
 export function WallClock() {
   return (
-    <group position={[-2.25, 3.2, -GYM.building.halfZ + RIM.depth / 2]}>
-      <mesh castShadow receiveShadow rotation-x={Math.PI / 2}>
+    <>
+      <mesh
+        castShadow
+        receiveShadow
+        position-z={RIM.depth / 2}
+        rotation-x={Math.PI / 2}
+      >
         <cylinderGeometry args={[RIM.radius, RIM.radius, RIM.depth, 48]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
       {/* 원기둥 뚜껑의 uv 는 90도 돌아가 있어서, 판을 원으로 따로 붙여야 12시가 위로 옵니다. */}
-      <mesh receiveShadow position-z={RIM.depth / 2 + 0.002}>
+      <mesh receiveShadow position-z={FACE_Z}>
         <circleGeometry args={[FACE_RADIUS, 48]} />
         <meshStandardMaterial roughness={0.4}>
           <PaintedTexture attach="map" painting={FACE} />
         </meshStandardMaterial>
       </mesh>
-    </group>
+    </>
   );
 }
