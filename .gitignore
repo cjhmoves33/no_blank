@@ -15,4 +15,6 @@ out/
 .DS_Store
 coverage/
 
-.claude/
+# 프로젝트 스킬만 저장소에 둡니다. 개인 설정과 worktree 는 제외합니다.
+.claude/*
+!.claude/skills/
