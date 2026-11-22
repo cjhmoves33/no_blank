@@ -41,6 +41,8 @@ const CHANGED_DELTA = 8;
 
 const ON_BALL = [0.5, 0.5];
 const ON_CHAIN = [0.5, 0.15];
+const ON_BALL_SIDE = [0.565, 0.5];
+const ON_BALL_UNDER = [0.5, 0.63];
 const ON_BACKGROUND = [0.12, 0.85];
 
 const VIEWS = {
@@ -61,6 +63,10 @@ const VIEWS = {
     { drag: { from: ON_CHAIN, to: [0.6, 0.15] } },
     { move: [0.02, 0.02] },
   ],
+  "struck-side-0.2s": [{ press: ON_BALL_SIDE }, { wait: 200 }],
+  "struck-side-0.6s": [{ press: ON_BALL_SIDE }, { wait: 600 }],
+  "struck-side-1.5s": [{ press: ON_BALL_SIDE }, { wait: 1500 }],
+  "struck-under": [{ press: ON_BALL_UNDER }],
   "home-later": [{ wait: 2000 }],
 };
 const DEFAULT_VIEWS = [
