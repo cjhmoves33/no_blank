@@ -5,9 +5,6 @@ import { SpinningShape } from "./spinning-shape";
 
 type Renderer = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>;
 
-const PRIMARY_BUTTON = 0;
-const SECONDARY_BUTTON = 2;
-
 let mounted: Renderer | undefined;
 
 async function renderShape({ spinning }: { spinning: boolean }) {
@@ -60,20 +57,18 @@ describe("SpinningShape", () => {
     expect(shape.instance.rotation.equals(before)).toBe(true);
   });
 
-  it("주 버튼으로 누르면 한 번 알린다", async () => {
+  it("클릭하면 한 번 알린다", async () => {
     const { renderer, shape, presses } = await renderShape({ spinning: true });
 
-    await renderer.fireEvent(shape, "pointerDown", { button: PRIMARY_BUTTON });
+    await renderer.fireEvent(shape, "click");
 
     expect(presses).toEqual(["press"]);
   });
 
-  it("다른 버튼으로 누르면 알리지 않는다", async () => {
+  it("누르기만 하고 아직 떼지 않았으면 알리지 않는다", async () => {
     const { renderer, shape, presses } = await renderShape({ spinning: true });
 
-    await renderer.fireEvent(shape, "pointerDown", {
-      button: SECONDARY_BUTTON,
-    });
+    await renderer.fireEvent(shape, "pointerDown");
 
     expect(presses).toEqual([]);
   });

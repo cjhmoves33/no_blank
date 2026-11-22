@@ -1,5 +1,5 @@
 import { type ThreeEvent, useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { MathUtils, type Mesh, type MeshStandardMaterial } from "three";
 
 export interface SpinningShapeProps {
@@ -12,25 +12,12 @@ const REST_ROTATION: [x: number, y: number, z: number] = [0.4, 0.6, 0];
 const HOVER_GLOW = 0.15;
 const PRESS_GLOW = 1.2;
 const GLOW_DECAY = 6;
-const PRIMARY_BUTTON = 0;
 
 export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
   const mesh = useRef<Mesh>(null);
   const material = useRef<MeshStandardMaterial>(null);
   const pressGlow = useRef(0);
   const [hovered, setHovered] = useState(false);
-
-  useEffect(() => {
-    if (!hovered) {
-      return;
-    }
-
-    document.body.style.cursor = "pointer";
-
-    return () => {
-      document.body.style.cursor = "";
-    };
-  }, [hovered]);
 
   useFrame((_state, delta) => {
     if (!mesh.current || !material.current) {
@@ -47,11 +34,7 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
       (hovered ? HOVER_GLOW : 0) + pressGlow.current;
   });
 
-  function handlePointerDown(event: ThreeEvent<PointerEvent>) {
-    if (event.button !== PRIMARY_BUTTON) {
-      return;
-    }
-
+  function handleClick(event: ThreeEvent<MouseEvent>) {
     // R3F 는 광선이 지나는 모든 오브젝트에 이벤트를 보내므로, 가장 앞의 오브젝트만 눌리도록 여기서 멈춥니다.
     event.stopPropagation();
     pressGlow.current = PRESS_GLOW;
@@ -62,7 +45,7 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
     <mesh
       ref={mesh}
       rotation={REST_ROTATION}
-      onPointerDown={handlePointerDown}
+      onClick={handleClick}
       onPointerOver={() => {
         setHovered(true);
       }}
