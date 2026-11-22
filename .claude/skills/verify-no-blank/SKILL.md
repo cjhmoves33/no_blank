@@ -81,6 +81,8 @@ node $V run --before <ref> --after <ref> --views home --no-webgl  # WebGL 없이
 
 화면이 바뀐 시점이 하나라도 있으면 그 이미지를 PR 본문의 Evidence 에 붙입니다. 바뀐 시점이 없으면 `report.md` 의 비교표를 붙입니다.
 
+PR 에 붙일 비교는 커밋한 뒤 `run --before <PR 의 base 브랜치> --after HEAD` 로 찍습니다. `WORKTREE` 로 찍으면 비교표에 스냅샷 커밋의 해시가 남는데, 이 커밋은 원격에 없어 리뷰어가 찾을 수 없습니다.
+
 1. `node $V publish <before 폴더> <after 폴더> --pr <번호> --dry-run` 으로 올릴 이미지를 만듭니다. 바뀐 시점마다 before, after, 바뀐 픽셀을 반으로 줄여 한 장에 붙이고, `<after 폴더>/../publish-preview/` 에 둡니다. 이미지를 열어 확인합니다.
 2. `--dry-run` 을 빼고 다시 실행합니다. GitHub API 로 `pr-assets` 브랜치에 이미지를 커밋하고(로컬 push 와 git hook 을 거치지 않습니다), 커밋 해시로 고정한 주소가 든 마크다운을 출력합니다. `--views a,b` 를 주면 바뀌지 않은 시점도 올립니다.
 3. 출력된 마크다운을 PR 본문의 Evidence 에 넣고 `gh pr edit <번호> --body-file <파일>` 로 고칩니다.
