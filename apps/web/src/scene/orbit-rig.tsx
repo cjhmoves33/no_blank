@@ -2,8 +2,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-import { swallowClicksAfterDrag } from "./swallow-clicks-after-drag";
-
 interface Range {
   readonly min: number;
   readonly max: number;
@@ -16,21 +14,22 @@ export interface OrbitLimits {
 }
 
 export interface OrbitRigProps {
+  readonly surface: HTMLElement;
   readonly inertia: boolean;
   readonly limits: OrbitLimits;
 }
 
 /**
- * 드래그로 끝난 클릭은 장면에 보내지 않으므로, 장면의 오브젝트는 onClick 만 달면 됩니다.
- * 캔버스의 커서(grab, grabbing)도 여기서만 정합니다.
+ * surface 를 끌면 카메라가 돌고, 휠을 굴리면 다가가거나 물러납니다. surface 의 커서(grab, grabbing)도 여기서만 정합니다.
+ * surface 는 R3F 가 이벤트를 듣는 요소의 바깥에 있어야 합니다. pointerdown 은 안에서 밖으로 올라오므로 장면의 오브젝트가 먼저 받고,
+ * 그 오브젝트가 nativeEvent.stopPropagation() 을 부르면 그 누름으로는 카메라가 돌지 않습니다.
  */
-export function OrbitRig({ inertia, limits }: OrbitRigProps) {
+export function OrbitRig({ surface, inertia, limits }: OrbitRigProps) {
   const camera = useThree((state) => state.camera);
-  const canvas = useThree((state) => state.gl.domElement);
   const controls = useRef<OrbitControls>(null);
 
   useEffect(() => {
-    const orbit = new OrbitControls(camera, canvas);
+    const orbit = new OrbitControls(camera, surface);
 
     orbit.enablePan = false;
     orbit.minDistance = limits.distance.min;
@@ -41,14 +40,11 @@ export function OrbitRig({ inertia, limits }: OrbitRigProps) {
     orbit.cursorStyle = "grab";
     controls.current = orbit;
 
-    const stopSwallowing = swallowClicksAfterDrag(canvas);
-
     return () => {
-      stopSwallowing();
       orbit.dispose();
       controls.current = null;
     };
-  }, [camera, canvas, inertia, limits]);
+  }, [camera, surface, inertia, limits]);
 
   useFrame(() => {
     // 관성은 매 프레임 update 를 불러야 줄어들며 멈춥니다.

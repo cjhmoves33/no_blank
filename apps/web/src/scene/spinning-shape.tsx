@@ -12,6 +12,7 @@ const REST_ROTATION: [x: number, y: number, z: number] = [0.4, 0.6, 0];
 const HOVER_GLOW = 0.15;
 const PRESS_GLOW = 1.2;
 const GLOW_DECAY = 6;
+const PRIMARY_BUTTON = 0;
 
 export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
   const mesh = useRef<Mesh>(null);
@@ -34,9 +35,15 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
       (hovered ? HOVER_GLOW : 0) + pressGlow.current;
   });
 
-  function handleClick(event: ThreeEvent<MouseEvent>) {
+  function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+    if (event.button !== PRIMARY_BUTTON) {
+      return;
+    }
+
     // R3F 는 광선이 지나는 모든 오브젝트에 이벤트를 보내므로, 가장 앞의 오브젝트만 눌리도록 여기서 멈춥니다.
     event.stopPropagation();
+    // 카메라 궤도는 바깥 요소에서 들으므로, 여기서 멈추면 도형에서 시작한 드래그로는 카메라가 돌지 않습니다.
+    event.nativeEvent.stopPropagation();
     pressGlow.current = PRESS_GLOW;
     onPress();
   }
@@ -46,7 +53,7 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
       ref={mesh}
       receiveShadow
       rotation={REST_ROTATION}
-      onClick={handleClick}
+      onPointerDown={handlePointerDown}
       onPointerOver={() => {
         setHovered(true);
       }}
