@@ -30,7 +30,7 @@ Preconditions:
 
 - 증명할 빌드가 준비되어 있고 `doctor` 가 통과합니다.
 
-- **잽.** 레킹볼을 누릅니다. `node $V shoot <이름> --views home,struck --out <폴더>` 를 실행합니다. `struck.json` 의 `audioPeak` 가 0.2 이상이고(지금 효과음의 설계 진폭은 0.25, 측정값은 0.239), `home.json` 의 `audioPeak` 는 0 입니다.
+- **잽.** 레킹볼을 누릅니다. `node $V shoot <이름> --views home,struck --out <폴더>` 를 실행합니다. `struck.json` 의 `audioPeak` 가 0.2 이상이고, `home.json` 의 `audioPeak` 는 0 입니다. 효과음은 타격마다 음량이 ±1.5 dB 바뀌고 타격 세기를 따르므로 같은 시점도 찍을 때마다 진폭이 조금씩 다릅니다.
 - **옆을 친 흔들림.** 공의 오른쪽 가장자리를 칩니다. `node $V shoot <이름> --motion --views home,struck-side-0.2s,struck-side-0.6s,struck-side-1.5s --out <폴더>` 를 실행합니다. 세 장에서 공이 왼쪽 뒤로 밀렸다가 돌아오는 중이고, 마개가 사슬 쪽으로 기울어 있습니다. 실제로 찍히는 시각은 기다린 시간보다 10프레임쯤 늦습니다.
 - **휘두르기.** 레킹볼 왼쪽 배경에서 가운데까지 빠르게 끕니다. `node $V shoot <이름> --views home,swipe --out <폴더>` 에서 `swipe.json` 의 `audioPeak` 가 0.2 이상입니다. 시점마다 페이지를 새로 열므로, 이것은 페이지에서 처음 나는 소리가 휘두르기일 때도 소리가 난다는 증거입니다. `--motion --views swipe-0.3s` 에서는 공이 오른쪽으로 밀리고 솔기가 돌아가 있습니다(2026-11-22 확인).
 - **어퍼컷.** `node $V shoot <이름> --motion --views home,uppercut-0.15s --out <폴더>` 에서 공이 `home` 보다 위에 있습니다(2026-11-22 측정 약 28 px). 공은 0.5초쯤 뒤에 떨어지므로 더 늦게 찍으면 이미 내려와 있습니다.
