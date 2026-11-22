@@ -40,17 +40,24 @@ const SETTLE_FRAMES = 30;
 const CHANGED_DELTA = 8;
 
 const ON_BALL = [0.5, 0.5];
-const ON_CHAIN = [0.5, 0.15];
 const ON_BALL_SIDE = [0.565, 0.5];
 const ON_BALL_UNDER = [0.5, 0.63];
 const ON_BACKGROUND = [0.12, 0.85];
+const LEFT_OF_BALL = [0.35, 0.5];
+const BELOW_BALL = [0.5, 0.8];
+const SWIPE_SECONDS = 0.15;
+const BUTTONS = { left: 1, right: 2 };
 
 const VIEWS = {
   home: [],
-  "turned-left": [{ drag: { from: ON_BACKGROUND, to: [0.22, 0.85] } }],
-  "turned-right": [{ drag: { from: [0.22, 0.85], to: ON_BACKGROUND } }],
-  high: [{ drag: { from: [0.12, 0.3], to: [0.12, 0.8] } }],
-  low: [{ drag: { from: [0.12, 0.8], to: [0.12, 0.3] } }],
+  "turned-left": [
+    { drag: { from: ON_BACKGROUND, to: [0.22, 0.85], button: "right" } },
+  ],
+  "turned-right": [
+    { drag: { from: [0.22, 0.85], to: ON_BACKGROUND, button: "right" } },
+  ],
+  high: [{ drag: { from: [0.12, 0.3], to: [0.12, 0.8], button: "right" } }],
+  low: [{ drag: { from: [0.12, 0.8], to: [0.12, 0.3], button: "right" } }],
   near: [{ wheel: { at: ON_BACKGROUND, deltaY: -120, times: 40 } }],
   far: [{ wheel: { at: ON_BACKGROUND, deltaY: 120, times: 40 } }],
   struck: [{ press: ON_BALL }],
@@ -59,9 +66,38 @@ const VIEWS = {
     { move: [0.02, 0.02] },
     { wait: 2000 },
   ],
-  "chain-drag": [
-    { drag: { from: ON_CHAIN, to: [0.6, 0.15] } },
+  "left-background-drag": [
+    { drag: { from: ON_BACKGROUND, to: [0.22, 0.85] } },
     { move: [0.02, 0.02] },
+  ],
+  swipe: [
+    { drag: { from: LEFT_OF_BALL, to: ON_BALL, seconds: SWIPE_SECONDS } },
+    { move: [0.02, 0.02] },
+  ],
+  "swipe-slow": [
+    { drag: { from: LEFT_OF_BALL, to: ON_BALL, seconds: 3 } },
+    { move: [0.02, 0.02] },
+  ],
+  "swipe-0.3s": [
+    { drag: { from: LEFT_OF_BALL, to: ON_BALL, seconds: SWIPE_SECONDS } },
+    { move: [0.02, 0.02] },
+    { wait: 300 },
+  ],
+  "uppercut-0.15s": [
+    { drag: { from: BELOW_BALL, to: ON_BALL, seconds: SWIPE_SECONDS } },
+    { move: [0.02, 0.02] },
+    { wait: 150 },
+  ],
+  "hover-ball": [{ move: ON_BALL }],
+  orbiting: [
+    {
+      drag: {
+        from: ON_BACKGROUND,
+        to: [0.22, 0.85],
+        button: "right",
+        hold: true,
+      },
+    },
   ],
   "struck-side-0.2s": [{ press: ON_BALL_SIDE }, { wait: 200 }],
   "struck-side-0.6s": [{ press: ON_BALL_SIDE }, { wait: 600 }],
@@ -544,12 +580,16 @@ async function shootView(cdp, { url, view, motion, file }) {
   await sleep(400);
 
   const audioPeak = await evaluate(cdp, "window.__verifyAudioPeak ?? 0");
+  const cursor = await evaluate(
+    cdp,
+    "getComputedStyle(document.querySelector('canvas') ?? document.body).cursor",
+  );
 
   await cdp.send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
   offConsole();
   offException();
 
-  return { view, actions: VIEWS[view], canvas, audioPeak, errors };
+  return { view, actions: VIEWS[view], canvas, audioPeak, cursor, errors };
 }
 
 async function waitForCanvas(cdp) {
@@ -586,7 +626,7 @@ async function perform(cdp, action) {
   }
 
   if (action.move) {
-    await mouse(cdp, "mouseMoved", fractionToPixels(action.move), 0);
+    await mouse(cdp, "mouseMoved", fractionToPixels(action.move), "none");
 
     return;
   }
@@ -594,15 +634,21 @@ async function perform(cdp, action) {
   if (action.press) {
     const point = fractionToPixels(action.press);
 
-    await mouse(cdp, "mousePressed", point, 1);
+    await mouse(cdp, "mousePressed", point, "left");
     await frames(cdp, 2);
-    await mouse(cdp, "mouseReleased", point, 0);
+    await mouse(cdp, "mouseReleased", point, "left", 0);
 
     return;
   }
 
   if (action.drag) {
-    const { from, to } = action.drag;
+    const {
+      from,
+      to,
+      button = "left",
+      seconds = 0,
+      hold = false,
+    } = action.drag;
     const steps = 20;
     const between = (i) =>
       fractionToPixels([
@@ -610,13 +656,19 @@ async function perform(cdp, action) {
         from[1] + ((to[1] - from[1]) * i) / steps,
       ]);
 
-    await mouse(cdp, "mousePressed", between(0), 1);
+    await mouse(cdp, "mousePressed", between(0), button);
 
     for (let i = 1; i <= steps; i++) {
-      await mouse(cdp, "mouseMoved", between(i), 1);
+      if (seconds > 0) {
+        await sleep((seconds * 1000) / steps);
+      }
+
+      await mouse(cdp, "mouseMoved", between(i), button);
     }
 
-    await mouse(cdp, "mouseReleased", between(steps), 0);
+    if (!hold) {
+      await mouse(cdp, "mouseReleased", between(steps), button, 0);
+    }
 
     return;
   }
@@ -635,11 +687,11 @@ async function perform(cdp, action) {
   }
 }
 
-function mouse(cdp, type, point, buttons) {
+function mouse(cdp, type, point, button, buttons = BUTTONS[button] ?? 0) {
   return cdp.send("Input.dispatchMouseEvent", {
     type,
     ...point,
-    button: "left",
+    button,
     buttons,
     clickCount: type === "mouseMoved" ? 0 : 1,
     pointerType: "mouse",
