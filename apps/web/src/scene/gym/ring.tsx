@@ -11,7 +11,7 @@ const RoundedBox = extend(RoundedBoxGeometry);
 const { ropes, mat } = GYM;
 const LOWEST_ROPE = ropes.heights[0];
 const HIGHEST_ROPE = ropes.heights[3];
-const PLATFORM_HEIGHT = mat.y - GYM.floorY;
+const PLATFORM_HEIGHT = mat.y;
 
 const MAT: Painting = {
   width: 2048,
@@ -125,7 +125,7 @@ const ROPES = SIDES.flatMap((side, sideIndex) =>
   })),
 );
 
-const TIE_HEIGHT = HIGHEST_ROPE - LOWEST_ROPE + 0.12;
+const TIE_HEIGHT = HIGHEST_ROPE - LOWEST_ROPE + 0.06;
 
 const TIES = SIDES.flatMap((side, sideIndex) =>
   [1 / 3, 2 / 3].map((along) => {
@@ -142,13 +142,9 @@ const TIES = SIDES.flatMap((side, sideIndex) =>
 export function Ring() {
   return (
     <group>
-      <mesh
-        castShadow
-        receiveShadow
-        position-y={(mat.y + GYM.floorY) / 2 - 0.005}
-      >
+      <mesh castShadow receiveShadow position-y={mat.y / 2 - 0.0025}>
         <boxGeometry
-          args={[mat.half * 2, PLATFORM_HEIGHT - 0.01, mat.half * 2]}
+          args={[mat.half * 2, PLATFORM_HEIGHT - 0.005, mat.half * 2]}
         />
         <meshStandardMaterial color="#1c1a18" roughness={0.85} />
       </mesh>
@@ -179,7 +175,7 @@ export function Ring() {
           position={tie.position}
           rotation-y={tie.turn}
         >
-          <boxGeometry args={[0.12, TIE_HEIGHT, 0.05]} />
+          <boxGeometry args={[0.06, TIE_HEIGHT, 0.025]} />
           <meshStandardMaterial color="#d6cab2" roughness={0.8} />
         </mesh>
       ))}
@@ -195,9 +191,9 @@ interface CornerProps {
 }
 
 function Corner({ x, z, pad }: CornerProps) {
-  const postHeight = HIGHEST_ROPE + 0.35;
-  const padBottom = LOWEST_ROPE - 0.25;
-  const padTop = HIGHEST_ROPE + 0.25;
+  const postHeight = HIGHEST_ROPE + 0.175;
+  const padBottom = LOWEST_ROPE - 0.125;
+  const padTop = HIGHEST_ROPE + 0.125;
 
   return (
     <>
@@ -224,7 +220,7 @@ function Corner({ x, z, pad }: CornerProps) {
         ]}
         rotation-y={Math.atan2(x, z)}
       >
-        <RoundedBox args={[0.62, padTop - padBottom, 0.34, 4, 0.12]} />
+        <RoundedBox args={[0.31, padTop - padBottom, 0.17, 4, 0.06]} />
         <meshPhysicalMaterial
           color={pad}
           roughness={0.62}
@@ -242,19 +238,19 @@ function Steps() {
   const rise = PLATFORM_HEIGHT / STEP_COUNT;
 
   return (
-    <group position-x={-mat.half + 1.4}>
+    <group position-x={-mat.half + 0.7}>
       {Array.from({ length: STEP_COUNT }, (_, i) => {
         const height = rise * (i + 1);
-        const depth = 0.55 * (STEP_COUNT - i);
+        const depth = 0.275 * (STEP_COUNT - i);
 
         return (
           <mesh
             key={height}
             castShadow
             receiveShadow
-            position={[0, GYM.floorY + height / 2, mat.half + depth / 2]}
+            position={[0, height / 2, mat.half + depth / 2]}
           >
-            <boxGeometry args={[1.6, height, depth]} />
+            <boxGeometry args={[0.8, height, depth]} />
             <meshStandardMaterial color="#4a3324" roughness={0.7} />
           </mesh>
         );

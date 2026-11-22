@@ -1,17 +1,17 @@
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 
-const X = -GYM.building.halfX + 2.8;
-const BEAM = { y: GYM.floorY + 9.6, z: -2.5, length: 14, size: 0.3 } as const;
+const X = -GYM.building.halfX + 1.4;
+const BEAM = { y: 4.8, z: -1.25, length: 7, size: 0.15 } as const;
 const HANGER_LENGTH = GYM.building.ceilingY - BEAM.y;
-const BOTTOM_Y = GYM.floorY + 1.6;
+const BOTTOM_Y = 0.8;
 
-const BAG = { radius: 0.4, length: 2.8 } as const;
+const BAG = { radius: 0.2, length: 1.4 } as const;
 
 const BAGS = [
-  { z: -7, leather: "#5e2a22", lean: -0.015 },
-  { z: -2.5, leather: "#2b2421", lean: 0.015 },
-  { z: 2, leather: "#6a4127", lean: -0.015 },
+  { z: -3.5, leather: "#5e2a22", lean: -0.015 },
+  { z: -1.25, leather: "#2b2421", lean: 0.015 },
+  { z: 1, leather: "#6a4127", lean: -0.015 },
 ] as const;
 
 export function HeavyBags() {
@@ -28,10 +28,10 @@ export function HeavyBags() {
           position={[
             0,
             BEAM.y + HANGER_LENGTH / 2,
-            BEAM.z + end * (BEAM.length / 2 - 1),
+            BEAM.z + end * (BEAM.length / 2 - 0.5),
           ]}
         >
-          <cylinderGeometry args={[0.04, 0.04, HANGER_LENGTH, 8]} />
+          <cylinderGeometry args={[0.02, 0.02, HANGER_LENGTH, 8]} />
           <meshStandardMaterial {...STEEL} />
         </mesh>
       ))}
@@ -63,14 +63,14 @@ function HeavyBag({ z, leather, lean }: HeavyBagProps) {
         <capsuleGeometry args={[BAG.radius, BAG.length, 8, 24]} />
         <meshStandardMaterial color={leather} roughness={0.6} />
       </mesh>
-      <mesh position-y={BOTTOM_Y + 2.6}>
+      <mesh position-y={BOTTOM_Y + 1.3}>
         <cylinderGeometry
-          args={[BAG.radius + 0.005, BAG.radius + 0.005, 0.22, 24, 1, true]}
+          args={[BAG.radius + 0.0025, BAG.radius + 0.0025, 0.11, 24, 1, true]}
         />
         <meshStandardMaterial color="#cdc3ae" roughness={0.85} />
       </mesh>
       <mesh castShadow position-y={BEAM.y - chainLength / 2}>
-        <cylinderGeometry args={[0.025, 0.025, chainLength, 6]} />
+        <cylinderGeometry args={[0.0125, 0.0125, chainLength, 6]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
     </group>

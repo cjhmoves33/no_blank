@@ -61,7 +61,7 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
         setHovered(false);
       }}
     >
-      <icosahedronGeometry args={[1, 0]} />
+      <icosahedronGeometry args={[0.5, 0]} />
       <meshStandardMaterial
         ref={material}
         color="#6366f1"

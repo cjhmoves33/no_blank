@@ -2,8 +2,8 @@ import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 
-const RIM = { radius: 0.75, depth: 0.12 } as const;
-const FACE_RADIUS = 0.68;
+const RIM = { radius: 0.375, depth: 0.06 } as const;
+const FACE_RADIUS = 0.34;
 
 const HANDS = [
   { turn: (5 + 20 / 60) / 12, length: 0.22, width: 9 },
@@ -55,15 +55,13 @@ function strokeFromCenter(
 
 export function WallClock() {
   return (
-    <group
-      position={[-4.5, GYM.floorY + 6.4, -GYM.building.halfZ + RIM.depth / 2]}
-    >
+    <group position={[-2.25, 3.2, -GYM.building.halfZ + RIM.depth / 2]}>
       <mesh castShadow receiveShadow rotation-x={Math.PI / 2}>
         <cylinderGeometry args={[RIM.radius, RIM.radius, RIM.depth, 48]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
       {/* 원기둥 뚜껑의 uv 는 90도 돌아가 있어서, 판을 원으로 따로 붙여야 12시가 위로 옵니다. */}
-      <mesh receiveShadow position-z={RIM.depth / 2 + 0.004}>
+      <mesh receiveShadow position-z={RIM.depth / 2 + 0.002}>
         <circleGeometry args={[FACE_RADIUS, 48]} />
         <meshStandardMaterial roughness={0.4}>
           <PaintedTexture attach="map" painting={FACE} />

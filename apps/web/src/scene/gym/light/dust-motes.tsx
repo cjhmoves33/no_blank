@@ -61,7 +61,7 @@ export function DustMotes({ drifting }: DustMotesProps) {
     const seconds = clock.elapsedTime;
 
     points.current.rotation.y = seconds * 0.012;
-    points.current.position.y = Math.sin(seconds * 0.2) * 0.15;
+    points.current.position.y = Math.sin(seconds * 0.2) * 0.075;
   });
 
   return (

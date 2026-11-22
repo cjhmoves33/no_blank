@@ -34,25 +34,25 @@ const SELF_LIT_GLASS = new Color(LATE_AFTERNOON.glass.color).multiplyScalar(
 export function Building() {
   return (
     <>
-      <Slabs boxes={WALLS} tile={4} finish={{ roughness: 0.94, bumpScale: 2 }}>
+      <Slabs boxes={WALLS} tile={2} finish={{ roughness: 0.94, bumpScale: 2 }}>
         <PaintedTexture attach="map" painting={BRICK} />
         <PaintedTexture attach="bumpMap" painting={BRICK_RELIEF} />
         <PaintedTexture attach="aoMap" painting={WALL_OCCLUSION} channel={1} />
       </Slabs>
       <Slabs
         boxes={CEILING}
-        tile={4}
+        tile={2}
         finish={{ color: "#6e655a", roughness: 0.95 }}
       />
       <Slabs
         boxes={PAINTED_WALL_BAND}
-        tile={4}
+        tile={2}
         finish={{ color: "#56614f", roughness: 0.8 }}
       >
         <PaintedTexture attach="aoMap" painting={WALL_OCCLUSION} channel={1} />
       </Slabs>
-      <Slabs boxes={STEELWORK} tile={4} finish={STEEL} />
-      <Slabs boxes={FLOOR} tile={8} finish={{ roughness: 0.66 }}>
+      <Slabs boxes={STEELWORK} tile={2} finish={STEEL} />
+      <Slabs boxes={FLOOR} tile={4} finish={{ roughness: 0.66 }}>
         <PaintedTexture attach="map" painting={PLANKS} />
         <PaintedTexture attach="aoMap" painting={FLOOR_OCCLUSION} channel={1} />
       </Slabs>
