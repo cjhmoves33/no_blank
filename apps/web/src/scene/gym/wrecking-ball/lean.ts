@@ -24,7 +24,7 @@ export const LEAN_FEEL = {
   normal: {
     stiffness: 81,
     damping: 3.6,
-    kickAtFullStrength: 2 * SWING_FEEL.normal.fistShare,
+    kickAtFullStrength: 2 * SWING_FEEL.normal.closingSpeedShare,
     kickPerSidewaysSpeed: 1.5,
   },
   reduced: {

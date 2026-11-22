@@ -11,8 +11,7 @@ export interface Swing {
 
 export interface SwingFeel {
   readonly fistSpeed: number;
-  /** 주먹이 레킹볼에 다가가는 속도 가운데 레킹볼이 받아 가는 몫입니다. 무거울수록 작습니다. */
-  readonly fistShare: number;
+  readonly closingSpeedShare: number;
   readonly maxBottomSpeed: number;
   readonly gravity: number;
   readonly drag: number;
@@ -59,24 +58,20 @@ const HARDEST_SWIPE_IN_JABS = 3;
 
 const JOLT_MARGIN = 0.3;
 
-const SWING_HALVING_SECONDS = 5;
-
 export const SWING_FEEL = {
   normal: {
     fistSpeed: JAB_SPEED,
-    fistShare: 0.21,
+    closingSpeedShare: 0.21,
     maxBottomSpeed: 2.4,
     gravity: 9.81,
-    // 흔들림의 폭은 속도에 거는 drag 의 절반 빠르기로 줄어듭니다.
-    drag: (2 * Math.LN2) / SWING_HALVING_SECONDS,
+    drag: dragHalvingSwingIn(5),
     rebound: 0.35,
   },
   reduced: criticallyDamped({ fistSpeed: 0.4, gravity: 96 }),
 } as const satisfies Record<string, SwingFeel>;
 
-// 가장 센 어퍼컷으로 들린 공이 떨어지며 사슬을 당기는 빠르기입니다.
-const FULLEST_JOLT =
-  JAB_SPEED * HARDEST_SWIPE_IN_JABS * SWING_FEEL.normal.fistShare;
+const HARDEST_SWIPE_LAUNCH_SPEED =
+  JAB_SPEED * HARDEST_SWIPE_IN_JABS * SWING_FEEL.normal.closingSpeedShare;
 
 const STEP = 1 / 240;
 
@@ -100,7 +95,9 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   const closing = speed - along;
   const velocity = capSwingEnergy(
     swing.fromPivot,
-    swing.velocity.clone().addScaledVector(push, closing * feel.fistShare),
+    swing.velocity
+      .clone()
+      .addScaledVector(push, closing * feel.closingSpeedShare),
     feel,
   );
 
@@ -138,7 +135,7 @@ export function advance(swing: Swing, seconds: number, feel: SwingFeel): Swing {
 
 export function joltOf(swing: Swing): Jolt | null {
   return swing.joltSpeed > 0
-    ? { strength: Math.min(swing.joltSpeed / FULLEST_JOLT, 1) }
+    ? { strength: Math.min(swing.joltSpeed / HARDEST_SWIPE_LAUNCH_SPEED, 1) }
     : null;
 }
 
@@ -175,12 +172,16 @@ function criticallyDamped({
 }: Pick<SwingFeel, "fistSpeed" | "gravity">): SwingFeel {
   return {
     fistSpeed,
-    fistShare: 1,
+    closingSpeedShare: 1,
     maxBottomSpeed: fistSpeed,
     gravity,
     drag: 2 * Math.sqrt(gravity / CHAIN_REACH),
     rebound: 0,
   };
+}
+
+function dragHalvingSwingIn(seconds: number): number {
+  return (2 * Math.LN2) / seconds;
 }
 
 function highestRise({ maxBottomSpeed, gravity }: SwingFeel): number {

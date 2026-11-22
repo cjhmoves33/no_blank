@@ -7,17 +7,19 @@ export interface TwistFeel extends SpringFeel {
   readonly kickAtFullStrength: number;
 }
 
-const KICK_BEFORE_FIST_SHARE = 3;
+const KICK_ON_WEIGHTLESS_BALL = 3;
 
 export const TWIST_FEEL = {
   normal: {
     stiffness: 6,
     damping: 0.5,
-    kickAtFullStrength: KICK_BEFORE_FIST_SHARE * SWING_FEEL.normal.fistShare,
+    kickAtFullStrength:
+      KICK_ON_WEIGHTLESS_BALL * SWING_FEEL.normal.closingSpeedShare,
   },
   reduced: {
     ...criticallyDamped(96),
-    kickAtFullStrength: KICK_BEFORE_FIST_SHARE * SWING_FEEL.reduced.fistShare,
+    kickAtFullStrength:
+      KICK_ON_WEIGHTLESS_BALL * SWING_FEEL.reduced.closingSpeedShare,
   },
 } as const satisfies Record<keyof typeof SWING_FEEL, TwistFeel>;
 
