@@ -88,6 +88,10 @@ const VIEWS = {
     { move: [0.02, 0.02] },
     { wait: 150 },
   ],
+  "near-struck-side": [
+    { wheel: { at: ON_BACKGROUND, deltaY: -120, times: 40 } },
+    { press: ON_BALL_SIDE },
+  ],
   "hover-ball": [{ move: ON_BALL }],
   orbiting: [
     {
