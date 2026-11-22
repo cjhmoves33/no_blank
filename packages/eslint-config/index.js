@@ -24,7 +24,6 @@ export const base = defineConfig(
   {
     files: TS_FILES,
     rules: {
-      // `_` 로 시작하는 이름은 의도적으로 사용하지 않는 값으로 봅니다. (예: (_request, reply) => ...)
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -89,7 +88,6 @@ export const readability = defineConfig(
       "simple-import-sort": simpleImportSort,
     },
     rules: {
-      // 레이아웃: 블록 뒤, 선언 뒤, return 앞에 빈 줄
       "@stylistic/padding-line-between-statements": [
         "error",
         { blankLine: "always", prev: "*", next: "return" },
@@ -103,16 +101,13 @@ export const readability = defineConfig(
       ],
       curly: ["error", "all"],
 
-      // 흐름 단순화
       "no-else-return": "error",
       "no-lonely-if": "error",
       "no-nested-ternary": "error",
 
-      // 간결한 문법
       "object-shorthand": ["error", "always"],
       "prefer-template": "error",
 
-      // import 정리
       "simple-import-sort/imports": "error",
 
       "max-params": ["error", 3],

@@ -27,7 +27,6 @@ describe("API", () => {
     const res = await app.inject({ method: "GET", url: "/api/health" });
 
     expect(res.statusCode).toBe(200);
-    // 헬스 체크에 checks 필드가 추가되어도 깨지지 않도록 status 만 확인합니다.
     expect(res.json()).toMatchObject({
       status: "ok",
     } satisfies HealthResponse);
@@ -37,7 +36,6 @@ describe("API", () => {
     const res = await app.inject({ method: "GET", url: "/api/greeting" });
 
     expect(res.statusCode).toBe(200);
-    // web 이 사용하는 parser 로 검증해서, 서버 응답이 API 계약을 지키는지 함께 확인합니다.
     expect(parseGreetingResponse(res.json())).toEqual({
       message: "Hello World",
     });

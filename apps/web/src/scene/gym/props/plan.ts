@@ -19,7 +19,7 @@ export interface WallSpot {
 
 /** 천장에 다는 소품의 자리입니다. 천장이 높아져도 소품은 그대로이고 걸이만 길어집니다. */
 export interface CeilingSpot {
-  /** 매달린 지점입니다. */
+  /** 매달린 지점입니다. 소품은 이 지점을 원점에 두고 그립니다. */
   readonly at: Point;
 }
 

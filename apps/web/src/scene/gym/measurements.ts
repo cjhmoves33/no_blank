@@ -26,16 +26,17 @@ export const GYM = {
   },
 } as const;
 
-// 맨 위 로프가 도형 높이에 있어서, 로프 밖에서 보면 로프가 도형을 가로지릅니다.
 const ROPE_CLEARANCE = 0.15;
 
 export interface RingView extends OrbitLimits {
   readonly fov: number;
+  readonly near: number;
   readonly home: [x: number, y: number, z: number];
 }
 
 export const RING_VIEW: RingView = {
   fov: 40,
+  near: 0.05,
   target: GYM.shape.center,
   home: [1.575, GYM.shape.center[1] + 0.825, 2.4],
   distance: { min: 2.1, max: GYM.ropes.half - ROPE_CLEARANCE },

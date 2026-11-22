@@ -1,6 +1,6 @@
 # no_blank 작업 안내
 
-no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 프로젝트입니다. 지금은 기본 구조만 있습니다. 실행 방법과 폴더 구조는 [README](README.md)에 있습니다. 서식, lint, 타입, 사용하지 않는 코드, 테스트, 빌드는 도구가 검사하므로 여기에 다시 적지 않습니다.
+no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 프로젝트입니다. 실행 방법과 폴더 구조는 [README](README.md)에 있습니다. 서식, lint, 타입, 사용하지 않는 코드, 테스트, 빌드는 도구가 검사하므로 여기에 다시 적지 않습니다.
 
 ## 검사
 
@@ -65,4 +65,4 @@ await expect(getGreeting()).resolves.toEqual({ message: "Hello World" });
 - 코드 주석과 문서는 한국어로 씁니다. 주석은 코드만 봐서는 알 수 없는 이유가 있을 때만 씁니다.
 - 이름을 짓거나 주석과 문서를 쓰기 전에 [`docs/GLOSSARY.md`](docs/GLOSSARY.md)를 읽고, 거기 정의된 용어를 씁니다.
 - Next.js 코드를 쓰기 전에 `apps/web/AGENTS.md`를 읽습니다. 이 저장소의 Next.js는 학습 데이터와 다를 수 있습니다.
-- `apps/server/src/routes/health.ts`의 `TODO(you)`는 사용자가 직접 작성합니다. 요청받기 전에는 구현하지 않습니다.
+- `apps/server/src/routes/health.ts`와 `apps/web/src/audio/sounds.ts`의 `TODO(you)`는 사용자가 직접 작성합니다. 요청받기 전에는 구현하지 않습니다.

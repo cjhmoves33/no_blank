@@ -4,7 +4,6 @@ import { pino } from "pino";
 import { parseEnv } from "../env.js";
 import { createDb, migrationsFolder } from "./client.js";
 
-// Fastify 서버 로그와 같은 JSON 형식으로 남깁니다.
 const log = pino({ name: "migrate" });
 
 const env = parseEnv(process.env);

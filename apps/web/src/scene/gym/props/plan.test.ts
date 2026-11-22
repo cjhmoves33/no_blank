@@ -39,7 +39,6 @@ const SHAPE_SPACE: Box = {
   ],
 };
 
-// 배치도에 소품을 더하고 여기에 빠뜨리면 타입 검사가 실패합니다.
 function placedProps() {
   return {
     wallClock: placed(WALL_CLOCK_SIZE, wallMount(PLAN.wallClock)),

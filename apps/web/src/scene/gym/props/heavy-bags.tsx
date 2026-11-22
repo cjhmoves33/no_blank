@@ -1,18 +1,18 @@
 import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 
-// 기준점은 샌드백 세 개를 단 보의 가운데입니다.
 const BEAM = { length: 7, size: 0.15 } as const;
 const BAG = { radius: 0.2, length: 1.4 } as const;
 const BAG_BOTTOM = -4;
-// 기울어진 샌드백의 끝은 옆으로 1.5 cm 쯤 비켜납니다.
-const SWAY = 0.02;
 
 const BAGS = [
   { z: -2.25, leather: "#5e2a22", lean: -0.015 },
   { z: 0, leather: "#2b2421", lean: 0.015 },
   { z: 2.25, leather: "#6a4127", lean: -0.015 },
 ] as const;
+
+const MOST_LEAN = Math.max(...BAGS.map(({ lean }) => Math.abs(lean)));
+const SWAY = Math.sin(MOST_LEAN) * (BAG.length / 2);
 
 /** 천장까지 늘어나는 걸이는 뺀 크기입니다. */
 export const HEAVY_BAGS_SIZE: Box = {

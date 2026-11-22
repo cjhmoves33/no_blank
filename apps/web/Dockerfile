@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1
-# 빌드 컨텍스트는 모노레포 루트입니다: docker build -f apps/web/Dockerfile .
 
 FROM node:24-alpine AS base
 RUN npm install -g pnpm@11.28.12

@@ -53,7 +53,6 @@ function strokeFromCenter(
   context.stroke();
 }
 
-// 기준점은 벽에 닿는 뒷면의 가운데입니다.
 const FACE_Z = RIM.depth + 0.002;
 
 export const WALL_CLOCK_SIZE: Box = {

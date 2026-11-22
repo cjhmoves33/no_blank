@@ -5,7 +5,6 @@ import pg from "pg";
 
 import * as schema from "./schema.js";
 
-/** src/db 와 dist/db 모두에서 apps/server/drizzle 을 가리킵니다. */
 export const migrationsFolder = fileURLToPath(
   new URL("../../drizzle", import.meta.url),
 );

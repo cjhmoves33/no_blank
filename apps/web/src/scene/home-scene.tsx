@@ -7,17 +7,20 @@ import { playSound } from "@/audio/play-sound";
 import { clickSound } from "@/audio/sounds";
 
 import { Gym } from "./gym/gym";
+import { LATE_AFTERNOON } from "./gym/light/late-afternoon";
 import { SpinningShape } from "./spinning-shape";
 
 const HideOnError = catchError(() => null);
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
+const PAGE = { background: LATE_AFTERNOON.background };
+
 export function HomeScene() {
   const reducedMotion = usePrefersReducedMotion();
 
   return (
-    <div className="h-dvh w-full">
+    <div className="h-dvh w-full" style={PAGE}>
       <HideOnError>
         <Gym reducedMotion={reducedMotion}>
           <SpinningShape

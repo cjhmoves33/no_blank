@@ -5,7 +5,6 @@ import { GYM } from "../measurements";
 const { building, windows } = GYM;
 
 export const LATE_AFTERNOON = {
-  // 화면 평균 밝기가 고른 프로토타입(ACES, 노출 1)과 같아지는 값입니다.
   exposure: 1.35,
   environmentIntensity: 0.3,
   background: "#141210",
