@@ -12,9 +12,9 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 
 import { HazeShaftMaterial } from "./haze-shaft";
 import {
+  ballLightPosition,
   hazeShaftFrames,
   LATE_AFTERNOON,
-  shapeLightPosition,
   sunPosition,
   sunTarget,
   windowFillRotation,
@@ -74,7 +74,7 @@ export function Daylight() {
         quaternion={WINDOW_FILL_ROTATION}
       />
       <hemisphereLight args={[sky.color, sky.ground, sky.intensity]} />
-      <ShapeLight />
+      <BallLight />
       {SHAFTS.map((frame, index) => (
         <mesh
           key={index}
@@ -90,12 +90,12 @@ export function Daylight() {
   );
 }
 
-function ShapeLight() {
+function BallLight() {
   const light = useRef<PointLight>(null);
-  const { color, intensity, reach } = LATE_AFTERNOON.shapeLight;
+  const { color, intensity, reach } = LATE_AFTERNOON.ballLight;
 
   useFrame(({ camera }) => {
-    light.current?.position.set(...shapeLightPosition(camera.position));
+    light.current?.position.set(...ballLightPosition(camera.position));
   });
 
   return (

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Box } from "../building/slabs";
 import { GYM } from "../measurements";
 import { RING_SIZE } from "../ring";
+import { WRECKING_BALL_SIZE } from "../wrecking-ball/wrecking-ball";
 import { HEAVY_BAGS_SIZE } from "./heavy-bags";
 import {
   ceilingMount,
@@ -25,19 +26,12 @@ const INSIDE_BUILDING: Box = {
   max: [halfX, ceilingY, halfZ],
 };
 
-const [shapeX, shapeY, shapeZ] = GYM.shape.center;
-const SHAPE_SPACE: Box = {
-  min: [
-    shapeX - GYM.shape.radius,
-    shapeY - GYM.shape.radius,
-    shapeZ - GYM.shape.radius,
-  ],
-  max: [
-    shapeX + GYM.shape.radius,
-    shapeY + GYM.shape.radius,
-    shapeZ + GYM.shape.radius,
-  ],
-};
+function wreckingBallSpace(): Box {
+  return placed(WRECKING_BALL_SIZE, {
+    position: GYM.wreckingBall.center,
+    turn: 0,
+  });
+}
 
 function placedProps() {
   return {
@@ -116,10 +110,13 @@ describe("PLAN", () => {
     }
   });
 
-  it("소품은 링과 도형의 자리를 비워 둔다", () => {
+  it("소품은 링과 레킹볼의 자리를 비워 둔다", () => {
     for (const [name, box] of Object.entries(placedProps())) {
       expect(overlaps(box, RING_SIZE), `${name} / ring`).toBe(false);
-      expect(overlaps(box, SHAPE_SPACE), `${name} / shape`).toBe(false);
+      expect(
+        overlaps(box, wreckingBallSpace()),
+        `${name} / wrecking ball`,
+      ).toBe(false);
     }
   });
 });

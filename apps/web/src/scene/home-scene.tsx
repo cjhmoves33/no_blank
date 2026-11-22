@@ -4,11 +4,11 @@ import { catchError } from "next/error";
 import { useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
-import { clickSound } from "@/audio/sounds";
+import { strikeSound } from "@/audio/sounds";
 
 import { Gym } from "./gym/gym";
 import { LATE_AFTERNOON } from "./gym/light/late-afternoon";
-import { SpinningShape } from "./spinning-shape";
+import { WreckingBall } from "./gym/wrecking-ball/wrecking-ball";
 
 const HideOnError = catchError(() => null);
 
@@ -23,10 +23,9 @@ export function HomeScene() {
     <div className="h-dvh w-full" style={PAGE}>
       <HideOnError>
         <Gym reducedMotion={reducedMotion}>
-          <SpinningShape
-            spinning={!reducedMotion}
-            onPress={() => {
-              playSound(clickSound);
+          <WreckingBall
+            onStrike={() => {
+              playSound(strikeSound);
             }}
           />
         </Gym>

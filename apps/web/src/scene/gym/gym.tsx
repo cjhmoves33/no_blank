@@ -21,7 +21,7 @@ export interface GymProps {
   readonly children: ReactNode;
 }
 
-// R3F 기본값 ACES 는 노출에 1/0.6 을 곱하고 밝은 색의 채도를 뺍니다. Neutral 은 밝지 않은 색을 그대로 내서 도형이 제 색으로 보입니다.
+// R3F 기본값 ACES 는 노출에 1/0.6 을 곱하고 밝은 색의 채도를 뺍니다. Neutral 은 밝지 않은 색을 그대로 내서 레킹볼의 가죽이 제 색으로 보입니다.
 const RENDERER = {
   toneMapping: NeutralToneMapping,
   toneMappingExposure: LATE_AFTERNOON.exposure,
@@ -55,9 +55,9 @@ function facing(
 }
 
 /**
- * - children 은 GYM.shape.center 를 원점으로 두고 그립니다. 반지름 GYM.shape.radius 구 안에 놓이며, 건물과 소품은 그 자리를 비워 두고, 그 안은 도형을 비추는 빛이 밝힙니다.
+ * - children 은 레킹볼입니다. 레킹볼이 멈춰 있을 때의 중심(GYM.wreckingBall.center)을 원점으로 두고 그리며, 그 공은 레킹볼을 비추는 빛이 밝힙니다.
  * - children 의 메시는 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다.
- * - 포인터 이벤트 핸들러를 달지 않습니다. 누를 수 있는 것은 children 이 정합니다. 누름으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
+ * - 포인터 이벤트 핸들러를 달지 않습니다. 칠 수 있는 것은 children 이 정합니다. 타격으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
  */
 export function Gym({ reducedMotion, children }: GymProps) {
   const [orbitSurface, setOrbitSurface] = useState<HTMLDivElement | null>(null);
@@ -88,7 +88,7 @@ export function Gym({ reducedMotion, children }: GymProps) {
             limits={RING_VIEW}
           />
         ) : null}
-        <group position={GYM.shape.center}>{children}</group>
+        <group position={GYM.wreckingBall.center}>{children}</group>
       </Canvas>
     </div>
   );

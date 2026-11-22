@@ -40,7 +40,7 @@ export const LATE_AFTERNOON = {
   },
   sky: { color: "#f6e2cc", ground: "#8a5e3c", intensity: 0.5 },
   haze: { color: "#ffd2a0", density: 0.04 },
-  shapeLight: {
+  ballLight: {
     color: "#ffffff",
     intensity: 3.4,
     height: 0.9,
@@ -68,9 +68,9 @@ export function sunlightTravel(): Vector3 {
   return new Vector3(...LATE_AFTERNOON.sun.toward).normalize();
 }
 
-/** 햇빛은 도형을 겨눕니다. 그림자를 계산하는 범위(sun.shadow.camera)는 이 점을 가운데로 잡힙니다. */
+/** 햇빛은 레킹볼을 겨눕니다. 그림자를 계산하는 범위(sun.shadow.camera)는 이 점을 가운데로 잡힙니다. */
 export function sunTarget(): Vector3 {
-  return new Vector3(...GYM.shape.center);
+  return new Vector3(...GYM.wreckingBall.center);
 }
 
 export function sunPosition(): [x: number, y: number, z: number] {
@@ -102,12 +102,12 @@ export function hazeShaftFrames(): Matrix4[] {
   });
 }
 
-export function shapeLightPosition(camera: {
+export function ballLightPosition(camera: {
   readonly x: number;
   readonly z: number;
 }): [x: number, y: number, z: number] {
-  const { height, radius } = LATE_AFTERNOON.shapeLight;
-  const [x, y, z] = GYM.shape.center;
+  const { height, radius } = LATE_AFTERNOON.ballLight;
+  const [x, y, z] = GYM.wreckingBall.center;
   const azimuth = Math.atan2(camera.x - x, camera.z - z);
 
   return [
