@@ -4,7 +4,7 @@ const FLOOR_Y = -4.6;
 
 /** 1 = 0.5 m 이고, 원점은 링 가운데에 떠 있는 도형의 중심입니다. */
 export const GYM = {
-  subject: { radius: 1 },
+  shape: { radius: 1 },
   floorY: FLOOR_Y,
   mat: { y: -2.6, half: 7.3 },
   ropes: {
@@ -14,7 +14,7 @@ export const GYM = {
     sag: 0.07,
   },
   posts: { at: 6.5, radius: 0.11 },
-  room: { halfX: 15, halfZ: 12, ceilingY: FLOOR_Y + 13.5, wall: 0.6 },
+  building: { halfX: 15, halfZ: 12, ceilingY: FLOOR_Y + 13.5, wall: 0.6 },
   windows: {
     spans: [
       [-8.8, -6.2],
@@ -32,12 +32,12 @@ export const GYM = {
 // 맨 위 로프가 도형 높이에 있어서, 로프 밖에서 보면 로프가 도형을 가로지릅니다.
 const ROPE_CLEARANCE = 0.3;
 
-export interface GymView extends OrbitLimits {
+export interface RingView extends OrbitLimits {
   readonly fov: number;
   readonly home: [x: number, y: number, z: number];
 }
 
-export const VIEW: GymView = {
+export const RING_VIEW: RingView = {
   fov: 40,
   home: [3.15, 1.65, 4.8],
   distance: { min: 4.2, max: GYM.ropes.half - ROPE_CLEARANCE },

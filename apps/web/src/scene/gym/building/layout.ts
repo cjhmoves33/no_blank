@@ -1,7 +1,7 @@
-import { GYM } from "./measurements";
+import { GYM } from "../measurements";
 import type { Box, Point } from "./slabs";
 
-const { halfX, halfZ, ceilingY, wall } = GYM.room;
+const { halfX, halfZ, ceilingY, wall } = GYM.building;
 const { spans, sillY, headY, mullions, transoms } = GYM.windows;
 const FLOOR_Y = GYM.floorY;
 const RIGHT_OUTER_X = halfX + wall;

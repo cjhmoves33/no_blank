@@ -1,7 +1,7 @@
 import { Spherical, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GYM, VIEW } from "./measurements";
+import { GYM, RING_VIEW } from "./measurements";
 
 // 로프 반지름 바깥으로 카메라 near 면(0.1)이 로프에 닿지 않을 여유입니다.
 const ROPE_MARGIN = 0.2;
@@ -13,10 +13,11 @@ function allowedCameraPositions(): Vector3[] {
   const polarSteps = 12;
   const azimuthSteps = 36;
 
-  for (const radius of [VIEW.distance.min, VIEW.distance.max]) {
+  for (const radius of [RING_VIEW.distance.min, RING_VIEW.distance.max]) {
     for (let i = 0; i <= polarSteps; i++) {
       const polar =
-        VIEW.polar.min + ((VIEW.polar.max - VIEW.polar.min) * i) / polarSteps;
+        RING_VIEW.polar.min +
+        ((RING_VIEW.polar.max - RING_VIEW.polar.min) * i) / polarSteps;
 
       for (let j = 0; j < azimuthSteps; j++) {
         const azimuth = (Math.PI * 2 * j) / azimuthSteps;
@@ -31,7 +32,7 @@ function allowedCameraPositions(): Vector3[] {
   return positions;
 }
 
-describe("VIEW", () => {
+describe("RING_VIEW", () => {
   it("카메라는 어디로 돌려도 로프 안쪽에 있다", () => {
     const limit = GYM.ropes.half - GYM.ropes.radius - ROPE_MARGIN;
 
@@ -49,11 +50,11 @@ describe("VIEW", () => {
   });
 
   it("처음 카메라 위치는 허용 범위 안이라 첫 프레임에 튀지 않는다", () => {
-    const home = new Spherical().setFromVector3(new Vector3(...VIEW.home));
+    const home = new Spherical().setFromVector3(new Vector3(...RING_VIEW.home));
 
-    expect(home.radius).toBeGreaterThanOrEqual(VIEW.distance.min);
-    expect(home.radius).toBeLessThanOrEqual(VIEW.distance.max);
-    expect(home.phi).toBeGreaterThanOrEqual(VIEW.polar.min);
-    expect(home.phi).toBeLessThanOrEqual(VIEW.polar.max);
+    expect(home.radius).toBeGreaterThanOrEqual(RING_VIEW.distance.min);
+    expect(home.radius).toBeLessThanOrEqual(RING_VIEW.distance.max);
+    expect(home.phi).toBeGreaterThanOrEqual(RING_VIEW.polar.min);
+    expect(home.phi).toBeLessThanOrEqual(RING_VIEW.polar.max);
   });
 });

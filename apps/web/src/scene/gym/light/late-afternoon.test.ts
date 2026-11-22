@@ -1,13 +1,13 @@
 import { Spherical, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
+import { GYM, RING_VIEW } from "../measurements";
 import {
   hazeShaftFrames,
   LATE_AFTERNOON,
   shapeLightPosition,
   sunlightTravel,
 } from "./late-afternoon";
-import { GYM, VIEW } from "./measurements";
 
 function isInWindow(y: number, z: number): boolean {
   const { spans, sillY, headY } = GYM.windows;
@@ -19,7 +19,10 @@ function isInWindow(y: number, z: number): boolean {
 
 function passesWindowOpenings(point: Vector3): boolean {
   const towardSun = sunlightTravel().negate();
-  const wallFaces = [GYM.room.halfX, GYM.room.halfX + GYM.room.wall];
+  const wallFaces = [
+    GYM.building.halfX,
+    GYM.building.halfX + GYM.building.wall,
+  ];
 
   return wallFaces.every((faceX) => {
     const hit = point
@@ -103,10 +106,10 @@ function isFacing(point: Vector3, light: Vector3): boolean {
 function cameraPositions(): Vector3[] {
   const steps = 24;
 
-  return [VIEW.polar.min, VIEW.polar.max].flatMap((polar) =>
+  return [RING_VIEW.polar.min, RING_VIEW.polar.max].flatMap((polar) =>
     Array.from({ length: steps }, (_, i) =>
       new Vector3().setFromSpherical(
-        new Spherical(VIEW.distance.max, polar, (Math.PI * 2 * i) / steps),
+        new Spherical(RING_VIEW.distance.max, polar, (Math.PI * 2 * i) / steps),
       ),
     ),
   );
@@ -114,7 +117,7 @@ function cameraPositions(): Vector3[] {
 
 describe("LATE_AFTERNOON", () => {
   it("링 가운데의 도형에는 햇빛이 곧바로 닿지 않는다", () => {
-    const lit = fibonacciSphere(GYM.subject.radius, 400).filter(
+    const lit = fibonacciSphere(GYM.shape.radius, 400).filter(
       passesWindowOpenings,
     );
 
@@ -128,13 +131,13 @@ describe("LATE_AFTERNOON", () => {
     expect(litShare).toBeGreaterThan(0.2);
   });
 
-  it("도형 조명은 카메라가 어디로 돌아도 도형의 보이는 쪽을 고르게 밝힌다", () => {
+  it("도형을 비추는 빛은 카메라가 어디로 돌아도 도형의 보이는 쪽을 고르게 밝힌다", () => {
     const { reach } = LATE_AFTERNOON.shapeLight;
 
     for (const camera of cameraPositions()) {
       const light = new Vector3(...shapeLightPosition(camera));
-      const nearestToCamera = camera.clone().setLength(GYM.subject.radius);
-      const facing = fibonacciSphere(GYM.subject.radius, 400).filter((point) =>
+      const nearestToCamera = camera.clone().setLength(GYM.shape.radius);
+      const facing = fibonacciSphere(GYM.shape.radius, 400).filter((point) =>
         isFacing(point, light),
       );
       const farthestFacing = Math.max(
@@ -147,7 +150,7 @@ describe("LATE_AFTERNOON", () => {
     }
   });
 
-  it("도형 조명은 카메라가 어디로 돌아도 매트와 로프에 닿지 않는다", () => {
+  it("도형을 비추는 빛은 카메라가 어디로 돌아도 매트와 로프에 닿지 않는다", () => {
     const { reach } = LATE_AFTERNOON.shapeLight;
 
     for (const camera of cameraPositions()) {
@@ -170,7 +173,7 @@ describe("LATE_AFTERNOON", () => {
       const start = new Vector3(0, 0, -0.5).applyMatrix4(frame);
       const end = new Vector3(0, 0, 0.5).applyMatrix4(frame);
 
-      expect(start.x).toBeCloseTo(GYM.room.halfX + GYM.room.wall);
+      expect(start.x).toBeCloseTo(GYM.building.halfX + GYM.building.wall);
       expect(isInWindow(start.y, start.z)).toBe(true);
       expect(end.y).toBeCloseTo(GYM.floorY);
     }

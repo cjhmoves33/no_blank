@@ -2,8 +2,9 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { AdditiveBlending, type Points } from "three";
 
+import { seededRandom } from "../brushes";
+import { PaintedTexture, type Painting } from "../painted-texture";
 import { LATE_AFTERNOON } from "./late-afternoon";
-import { PaintedTexture, type Painting, seededRandom } from "./painted-texture";
 
 export interface DustMotesProps {
   readonly drifting: boolean;

@@ -2,13 +2,9 @@ import { extend } from "@react-three/fiber";
 import { CatmullRomCurve3, Vector3 } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
+import { addBlotches, addGrain } from "./brushes";
 import { GYM } from "./measurements";
-import {
-  addBlotches,
-  addGrain,
-  PaintedTexture,
-  type Painting,
-} from "./painted-texture";
+import { PaintedTexture, type Painting } from "./painted-texture";
 
 const RoundedBox = extend(RoundedBoxGeometry);
 

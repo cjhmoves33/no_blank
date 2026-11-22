@@ -1,8 +1,8 @@
 import { Color } from "three";
 
-import { STEEL } from "./finishes";
-import { LATE_AFTERNOON } from "./late-afternoon";
-import { PaintedTexture } from "./painted-texture";
+import { STEEL } from "../finishes";
+import { LATE_AFTERNOON } from "../light/late-afternoon";
+import { PaintedTexture } from "../painted-texture";
 import {
   brickWalls,
   ceiling,
@@ -10,14 +10,14 @@ import {
   glassPanes,
   paintedWallBand,
   steelwork,
-} from "./room-layout";
+} from "./layout";
 import {
   BRICK,
   BRICK_RELIEF,
   FLOOR_OCCLUSION,
   PLANKS,
   WALL_OCCLUSION,
-} from "./room-paintings";
+} from "./paintings";
 import { Slabs } from "./slabs";
 
 const WALLS = brickWalls();
@@ -31,7 +31,7 @@ const SELF_LIT_GLASS = new Color(LATE_AFTERNOON.glass.color).multiplyScalar(
   LATE_AFTERNOON.glass.gain,
 );
 
-export function Room() {
+export function Building() {
   return (
     <>
       <Slabs boxes={WALLS} tile={4} finish={{ roughness: 0.94, bumpScale: 2 }}>

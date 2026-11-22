@@ -1,7 +1,7 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GYM } from "./measurements";
+import { GYM } from "../measurements";
 import { type Box, type Point, slabArrays } from "./slabs";
 
 const TILE = 4;
@@ -46,8 +46,8 @@ describe("slabArrays", () => {
     expect(fromRight?.uv).toEqual([0, 2 / TILE]);
   });
 
-  it("uv1 은 조각의 크기와 상관없이 방 안의 자리를 0~1 로 준다", () => {
-    const { halfX, ceilingY } = GYM.room;
+  it("uv1 은 조각의 크기와 상관없이 건물 안의 자리를 0~1 로 준다", () => {
+    const { halfX, ceilingY } = GYM.building;
     const middleY = (GYM.floorY + ceilingY) / 2;
     const pieces: Box[] = [
       { min: [-halfX, GYM.floorY, 0], max: [-halfX + 1, GYM.floorY + 1, 1] },

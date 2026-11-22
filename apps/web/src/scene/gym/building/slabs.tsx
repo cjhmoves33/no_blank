@@ -1,7 +1,7 @@
 import { type ReactNode, useMemo } from "react";
 import { FrontSide } from "three";
 
-import { GYM } from "./measurements";
+import { GYM } from "../measurements";
 
 export type Point = readonly [x: number, y: number, z: number];
 
@@ -33,16 +33,26 @@ const FACES: readonly Face[] = [
   { axis: 2, u: 0, v: 1, turn: 1 },
 ];
 
-const ROOM_MIN: Point = [-GYM.room.halfX, GYM.floorY, -GYM.room.halfZ];
-const ROOM_MAX: Point = [GYM.room.halfX, GYM.room.ceilingY, GYM.room.halfZ];
+const BUILDING_MIN: Point = [
+  -GYM.building.halfX,
+  GYM.floorY,
+  -GYM.building.halfZ,
+];
+const BUILDING_MAX: Point = [
+  GYM.building.halfX,
+  GYM.building.ceilingY,
+  GYM.building.halfZ,
+];
 
-function roomFraction(axis: Axis, value: number): number {
-  return (value - ROOM_MIN[axis]) / (ROOM_MAX[axis] - ROOM_MIN[axis]);
+function buildingFraction(axis: Axis, value: number): number {
+  return (
+    (value - BUILDING_MIN[axis]) / (BUILDING_MAX[axis] - BUILDING_MIN[axis])
+  );
 }
 
 /**
  * - uv 는 월드 좌표를 tile 로 나눈 값이라, 텍스처가 모든 상자에서 같은 크기로 이어집니다.
- * - uv1 은 방 전체를 0~1 로 덮어서, 그림 하나(channel 1)로 모든 상자의 구석을 어둡게 합니다.
+ * - uv1 은 건물 전체를 0~1 로 덮어서, 그림 하나(channel 1)로 모든 상자의 구석을 어둡게 합니다.
  */
 export function slabArrays(boxes: readonly Box[], tile: number): SlabArrays {
   const faceCount = boxes.length * 6;
@@ -104,7 +114,7 @@ function writeFace(
     arrays.normal.set(normal, vertex * 3);
     arrays.uv.set([alongU / tile, alongV / tile], vertex * 2);
     arrays.uv1.set(
-      [roomFraction(u, alongU), roomFraction(v, alongV)],
+      [buildingFraction(u, alongU), buildingFraction(v, alongV)],
       vertex * 2,
     );
   });
