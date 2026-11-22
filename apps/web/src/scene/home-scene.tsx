@@ -24,6 +24,7 @@ export function HomeScene() {
       <HideOnError>
         <Gym reducedMotion={reducedMotion}>
           <WreckingBall
+            reducedMotion={reducedMotion}
             onStrike={() => {
               playSound(strikeSound);
             }}

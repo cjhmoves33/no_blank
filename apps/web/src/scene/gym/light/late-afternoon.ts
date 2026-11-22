@@ -68,9 +68,9 @@ export function sunlightTravel(): Vector3 {
   return new Vector3(...LATE_AFTERNOON.sun.toward).normalize();
 }
 
-/** 햇빛은 레킹볼을 겨눕니다. 그림자를 계산하는 범위(sun.shadow.camera)는 이 점을 가운데로 잡힙니다. */
+/** 그림자를 계산하는 범위(sun.shadow.camera)는 이 점을 가운데로 잡힙니다. */
 export function sunTarget(): Vector3 {
-  return new Vector3(...GYM.wreckingBall.center);
+  return new Vector3(...GYM.wreckingBall.restCenter);
 }
 
 export function sunPosition(): [x: number, y: number, z: number] {
@@ -107,7 +107,7 @@ export function ballLightPosition(camera: {
   readonly z: number;
 }): [x: number, y: number, z: number] {
   const { height, radius } = LATE_AFTERNOON.ballLight;
-  const [x, y, z] = GYM.wreckingBall.center;
+  const [x, y, z] = GYM.wreckingBall.restCenter;
   const azimuth = Math.atan2(camera.x - x, camera.z - z);
 
   return [

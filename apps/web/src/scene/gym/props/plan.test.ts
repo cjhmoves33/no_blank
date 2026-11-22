@@ -28,7 +28,7 @@ const INSIDE_BUILDING: Box = {
 
 function wreckingBallSpace(): Box {
   return placed(WRECKING_BALL_SIZE, {
-    position: GYM.wreckingBall.center,
+    position: GYM.wreckingBall.restCenter,
     turn: 0,
   });
 }
