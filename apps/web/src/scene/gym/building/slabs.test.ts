@@ -48,9 +48,9 @@ describe("slabArrays", () => {
 
   it("uv1 은 조각의 크기와 상관없이 건물 안의 자리를 0~1 로 준다", () => {
     const { halfX, ceilingY } = GYM.building;
-    const middleY = (GYM.floorY + ceilingY) / 2;
+    const middleY = ceilingY / 2;
     const pieces: Box[] = [
-      { min: [-halfX, GYM.floorY, 0], max: [-halfX + 1, GYM.floorY + 1, 1] },
+      { min: [-halfX, 0, 0], max: [-halfX + 1, 1, 1] },
       { min: [0, middleY, 0], max: [1, middleY + 1, 1] },
       { min: [halfX - 1, ceilingY - 1, 0], max: [halfX, ceilingY, 1] },
     ];
@@ -61,7 +61,7 @@ describe("slabArrays", () => {
         vertex.uv1.map((value) => Math.round(value * 1e6) / 1e6 + 0),
       );
 
-    expect(uv1At([-halfX, GYM.floorY, 1])).toEqual([[0, 0]]);
+    expect(uv1At([-halfX, 0, 1])).toEqual([[0, 0]]);
     expect(uv1At([0, middleY, 1])).toEqual([[0.5, 0.5]]);
     expect(uv1At([halfX, ceilingY, 1])).toEqual([[1, 1]]);
   });

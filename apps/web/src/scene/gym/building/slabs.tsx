@@ -33,11 +33,7 @@ const FACES: readonly Face[] = [
   { axis: 2, u: 0, v: 1, turn: 1 },
 ];
 
-const BUILDING_MIN: Point = [
-  -GYM.building.halfX,
-  GYM.floorY,
-  -GYM.building.halfZ,
-];
+const BUILDING_MIN: Point = [-GYM.building.halfX, 0, -GYM.building.halfZ];
 const BUILDING_MAX: Point = [
   GYM.building.halfX,
   GYM.building.ceilingY,

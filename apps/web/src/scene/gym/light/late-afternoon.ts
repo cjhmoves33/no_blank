@@ -34,8 +34,8 @@ export const LATE_AFTERNOON = {
     intensity: 0.9,
     width: 9,
     height: 4.5,
-    at: [GYM.building.halfX - 0.05, GYM.floorY + 3.5, 0],
-    lookAt: [0, GYM.floorY + 2.5, 0],
+    at: [GYM.building.halfX - 0.05, 3.5, 0],
+    lookAt: [0, 2.5, 0],
   },
   sky: { color: "#f6e2cc", ground: "#8a5e3c", intensity: 0.5 },
   haze: { color: "#ffd2a0", density: 0.04 },
@@ -52,7 +52,7 @@ export const LATE_AFTERNOON = {
     opacity: 0.5,
     size: 0.0125,
     min: [-6, GYM.mat.y - 0.5, -4],
-    max: [4, 3.5, 4],
+    max: [4, 5.8, 4],
   },
 } as const;
 
@@ -60,8 +60,14 @@ export function sunlightTravel(): Vector3 {
   return new Vector3(...LATE_AFTERNOON.sun.toward).normalize();
 }
 
+/** 햇빛은 도형을 겨눕니다. 그림자를 계산하는 범위(sun.shadow.camera)는 이 점을 가운데로 잡힙니다. */
+export function sunTarget(): Vector3 {
+  return new Vector3(...GYM.shape.center);
+}
+
 export function sunPosition(): [x: number, y: number, z: number] {
-  const position = sunlightTravel().multiplyScalar(
+  const position = sunTarget().addScaledVector(
+    sunlightTravel(),
     -LATE_AFTERNOON.sun.distance,
   );
 
@@ -73,7 +79,7 @@ export function hazeShaftFrames(): Matrix4[] {
   const { spans, sillY, headY } = GYM.windows;
   const outerX = GYM.building.halfX + GYM.building.wall;
   const centerY = (sillY + headY) / 2;
-  const along = sun.clone().multiplyScalar((centerY - GYM.floorY) / -sun.y);
+  const along = sun.clone().multiplyScalar(centerY / -sun.y);
 
   return spans.map(([start, end]) => {
     const origin = new Vector3(outerX, centerY, (start + end) / 2);
@@ -93,9 +99,14 @@ export function shapeLightPosition(camera: {
   readonly z: number;
 }): [x: number, y: number, z: number] {
   const { height, radius } = LATE_AFTERNOON.shapeLight;
-  const azimuth = Math.atan2(camera.x, camera.z);
+  const [x, y, z] = GYM.shape.center;
+  const azimuth = Math.atan2(camera.x - x, camera.z - z);
 
-  return [radius * Math.sin(azimuth), height, radius * Math.cos(azimuth)];
+  return [
+    x + radius * Math.sin(azimuth),
+    y + height,
+    z + radius * Math.cos(azimuth),
+  ];
 }
 
 /** 빛은 -z 로 비추므로 -z 가 lookAt 을 향하게 돌립니다. */

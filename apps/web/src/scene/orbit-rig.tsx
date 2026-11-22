@@ -7,8 +7,9 @@ interface Range {
   readonly max: number;
 }
 
-/** 원점을 바라보는 카메라가 머무를 수 있는 곳입니다. polar 는 바로 위(0)에서 잰 각도(라디안)입니다. */
+/** target 을 바라보는 카메라가 머무를 수 있는 곳입니다. distance 는 target 에서 잰 거리, polar 는 바로 위(0)에서 잰 각도(라디안)입니다. */
 export interface OrbitLimits {
+  readonly target: readonly [x: number, y: number, z: number];
   readonly distance: Range;
   readonly polar: Range;
 }
@@ -31,6 +32,7 @@ export function OrbitRig({ surface, inertia, limits }: OrbitRigProps) {
   useEffect(() => {
     const orbit = new OrbitControls(camera, surface);
 
+    orbit.target.set(...limits.target);
     orbit.enablePan = false;
     orbit.minDistance = limits.distance.min;
     orbit.maxDistance = limits.distance.max;
@@ -38,6 +40,7 @@ export function OrbitRig({ surface, inertia, limits }: OrbitRigProps) {
     orbit.maxPolarAngle = limits.polar.max;
     orbit.enableDamping = inertia;
     orbit.cursorStyle = "grab";
+    orbit.update();
     controls.current = orbit;
 
     return () => {

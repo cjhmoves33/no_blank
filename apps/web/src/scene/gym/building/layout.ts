@@ -3,20 +3,19 @@ import type { Box, Point } from "./slabs";
 
 const { halfX, halfZ, ceilingY, wall } = GYM.building;
 const { spans, sillY, headY, mullions, transoms } = GYM.windows;
-const FLOOR_Y = GYM.floorY;
 const RIGHT_OUTER_X = halfX + wall;
 
 export function brickWalls(): Box[] {
   return [
     {
-      min: [-halfX - wall, FLOOR_Y, -halfZ - wall],
+      min: [-halfX - wall, 0, -halfZ - wall],
       max: [halfX + wall, ceilingY, -halfZ],
     },
     {
-      min: [-halfX - wall, FLOOR_Y, halfZ],
+      min: [-halfX - wall, 0, halfZ],
       max: [halfX + wall, ceilingY, halfZ + wall],
     },
-    { min: [-halfX - wall, FLOOR_Y, -halfZ], max: [-halfX, ceilingY, halfZ] },
+    { min: [-halfX - wall, 0, -halfZ], max: [-halfX, ceilingY, halfZ] },
     ...rightWall(),
   ];
 }
@@ -37,7 +36,7 @@ function rightWall(): Box[] {
   piers.push(pier(pierStart, halfZ));
 
   return [
-    { min: [halfX, FLOOR_Y, -halfZ], max: [RIGHT_OUTER_X, sillY, halfZ] },
+    { min: [halfX, 0, -halfZ], max: [RIGHT_OUTER_X, sillY, halfZ] },
     { min: [halfX, headY, -halfZ], max: [RIGHT_OUTER_X, ceilingY, halfZ] },
     ...piers,
   ];
@@ -52,22 +51,22 @@ export function ceiling(): Box[] {
   ];
 }
 
-const PAINTED_WALL_BAND = { top: FLOOR_Y + 1.2, thickness: 0.02 } as const;
+const PAINTED_WALL_BAND = { top: 1.2, thickness: 0.02 } as const;
 
 export function paintedWallBand(): Box[] {
   const { top, thickness } = PAINTED_WALL_BAND;
 
   return [
     {
-      min: [-halfX, FLOOR_Y, -halfZ],
+      min: [-halfX, 0, -halfZ],
       max: [halfX, top, -halfZ + thickness],
     },
-    { min: [-halfX, FLOOR_Y, halfZ - thickness], max: [halfX, top, halfZ] },
+    { min: [-halfX, 0, halfZ - thickness], max: [halfX, top, halfZ] },
     {
-      min: [-halfX, FLOOR_Y, -halfZ],
+      min: [-halfX, 0, -halfZ],
       max: [-halfX + thickness, top, halfZ],
     },
-    { min: [halfX - thickness, FLOOR_Y, -halfZ], max: [halfX, top, halfZ] },
+    { min: [halfX - thickness, 0, -halfZ], max: [halfX, top, halfZ] },
   ];
 }
 
@@ -109,9 +108,7 @@ function evenlySpacedInside(
 }
 
 export function floor(): Box[] {
-  return [
-    { min: [-halfX, FLOOR_Y - 0.1, -halfZ], max: [halfX, FLOOR_Y, halfZ] },
-  ];
+  return [{ min: [-halfX, -0.1, -halfZ], max: [halfX, 0, halfZ] }];
 }
 
 export interface Pane {

@@ -1,6 +1,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import {
+  Object3D,
   PMREMGenerator,
   type PointLight,
   type Texture,
@@ -15,6 +16,7 @@ import {
   LATE_AFTERNOON,
   shapeLightPosition,
   sunPosition,
+  sunTarget,
   windowFillRotation,
 } from "./late-afternoon";
 
@@ -23,6 +25,11 @@ RectAreaLightUniformsLib.init();
 
 const SHAFTS = hazeShaftFrames();
 const SUN_POSITION = sunPosition();
+// 햇빛의 target 은 장면 밖에 있어 three 가 위치를 갱신하지 않으므로, 한 번 정해 두고 직접 갱신합니다.
+const SUN_TARGET = new Object3D();
+
+SUN_TARGET.position.copy(sunTarget());
+SUN_TARGET.updateMatrixWorld();
 const WINDOW_FILL_ROTATION = windowFillRotation();
 
 // R3F 는 primitive 를 치우지 않습니다. 환경 맵은 렌더러마다 한 번 굽고, 캔버스가 사라질 때 렌더러의 컨텍스트와 함께 사라집니다.
@@ -111,6 +118,7 @@ function Sun() {
       color={color}
       intensity={intensity}
       position={SUN_POSITION}
+      target={SUN_TARGET}
       shadow-mapSize={[shadow.mapSize, shadow.mapSize]}
       shadow-radius={shadow.radius}
       shadow-bias={shadow.bias}

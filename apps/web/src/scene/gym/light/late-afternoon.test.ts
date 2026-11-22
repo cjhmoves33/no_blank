@@ -9,6 +9,8 @@ import {
   sunlightTravel,
 } from "./late-afternoon";
 
+const SHAPE = new Vector3(...GYM.shape.center);
+
 function isInWindow(y: number, z: number): boolean {
   const { spans, sillY, headY } = GYM.windows;
 
@@ -33,17 +35,15 @@ function passesWindowOpenings(point: Vector3): boolean {
   });
 }
 
-function fibonacciSphere(radius: number, count: number): Vector3[] {
+function pointsOnShape(count: number): Vector3[] {
   return Array.from({ length: count }, (_, i) => {
     const y = 1 - (2 * (i + 0.5)) / count;
     const ring = Math.sqrt(1 - y * y);
     const turn = i * Math.PI * (3 - Math.sqrt(5));
 
-    return new Vector3(
-      Math.cos(turn) * ring,
-      y,
-      Math.sin(turn) * ring,
-    ).multiplyScalar(radius);
+    return new Vector3(Math.cos(turn) * ring, y, Math.sin(turn) * ring)
+      .multiplyScalar(GYM.shape.radius)
+      .add(SHAPE);
   });
 }
 
@@ -100,7 +100,9 @@ function ropeSegments(): Segment[] {
 }
 
 function isFacing(point: Vector3, light: Vector3): boolean {
-  return light.clone().sub(point).dot(point) > 0;
+  const outward = point.clone().sub(SHAPE);
+
+  return light.clone().sub(point).dot(outward) > 0;
 }
 
 function cameraPositions(): Vector3[] {
@@ -108,18 +110,22 @@ function cameraPositions(): Vector3[] {
 
   return [RING_VIEW.polar.min, RING_VIEW.polar.max].flatMap((polar) =>
     Array.from({ length: steps }, (_, i) =>
-      new Vector3().setFromSpherical(
-        new Spherical(RING_VIEW.distance.max, polar, (Math.PI * 2 * i) / steps),
-      ),
+      new Vector3()
+        .setFromSpherical(
+          new Spherical(
+            RING_VIEW.distance.max,
+            polar,
+            (Math.PI * 2 * i) / steps,
+          ),
+        )
+        .add(SHAPE),
     ),
   );
 }
 
 describe("LATE_AFTERNOON", () => {
   it("링 가운데의 도형에는 햇빛이 곧바로 닿지 않는다", () => {
-    const lit = fibonacciSphere(GYM.shape.radius, 400).filter(
-      passesWindowOpenings,
-    );
+    const lit = pointsOnShape(400).filter(passesWindowOpenings);
 
     expect(lit).toEqual([]);
   });
@@ -136,8 +142,12 @@ describe("LATE_AFTERNOON", () => {
 
     for (const camera of cameraPositions()) {
       const light = new Vector3(...shapeLightPosition(camera));
-      const nearestToCamera = camera.clone().setLength(GYM.shape.radius);
-      const facing = fibonacciSphere(GYM.shape.radius, 400).filter((point) =>
+      const nearestToCamera = camera
+        .clone()
+        .sub(SHAPE)
+        .setLength(GYM.shape.radius)
+        .add(SHAPE);
+      const facing = pointsOnShape(400).filter((point) =>
         isFacing(point, light),
       );
       const farthestFacing = Math.max(
@@ -175,7 +185,7 @@ describe("LATE_AFTERNOON", () => {
 
       expect(start.x).toBeCloseTo(GYM.building.halfX + GYM.building.wall);
       expect(isInWindow(start.y, start.z)).toBe(true);
-      expect(end.y).toBeCloseTo(GYM.floorY);
+      expect(end.y).toBeCloseTo(0);
     }
   });
 });

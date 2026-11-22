@@ -1,12 +1,9 @@
 import type { OrbitLimits } from "../orbit-rig";
 
-const FLOOR_Y = -2.3;
-
-/** 길이는 미터이고, 원점은 링 가운데에 떠 있는 도형의 중심입니다. */
+/** 길이는 미터입니다. 원점은 링 가운데 아래의 건물 바닥이고, y 가 위쪽입니다. */
 export const GYM = {
-  shape: { radius: 0.5 },
-  floorY: FLOOR_Y,
-  mat: { y: -1.3, half: 3.65 },
+  shape: { center: [0, 2.3, 0], radius: 0.5 },
+  mat: { y: 1, half: 3.65 },
   ropes: {
     half: 3.15,
     heights: [0.46, 0.76, 1.07, 1.37],
@@ -14,7 +11,7 @@ export const GYM = {
     sag: 0.035,
   },
   posts: { at: 3.25, radius: 0.055 },
-  building: { halfX: 7.5, halfZ: 6, ceilingY: FLOOR_Y + 6.75, wall: 0.3 },
+  building: { halfX: 7.5, halfZ: 6, ceilingY: 6.75, wall: 0.3 },
   windows: {
     spans: [
       [-4.4, -3.1],
@@ -22,8 +19,8 @@ export const GYM = {
       [0.6, 1.9],
       [3.1, 4.4],
     ],
-    sillY: FLOOR_Y + 1.4,
-    headY: FLOOR_Y + 6.2,
+    sillY: 1.4,
+    headY: 6.2,
     mullions: 1,
     transoms: 4,
   },
@@ -39,7 +36,8 @@ export interface RingView extends OrbitLimits {
 
 export const RING_VIEW: RingView = {
   fov: 40,
-  home: [1.575, 0.825, 2.4],
+  target: GYM.shape.center,
+  home: [1.575, GYM.shape.center[1] + 0.825, 2.4],
   distance: { min: 2.1, max: GYM.ropes.half - ROPE_CLEARANCE },
   polar: { min: Math.PI * 0.28, max: Math.PI * 0.55 },
 };

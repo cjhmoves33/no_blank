@@ -7,6 +7,7 @@ import { GYM, RING_VIEW } from "./measurements";
 const ROPE_MARGIN = 0.1;
 // 0.75 m 보다 낮으면 매트 무늬만 보입니다.
 const EYE_ABOVE_MAT = 0.75;
+const TARGET = new Vector3(...RING_VIEW.target);
 
 function allowedCameraPositions(): Vector3[] {
   const positions: Vector3[] = [];
@@ -23,7 +24,9 @@ function allowedCameraPositions(): Vector3[] {
         const azimuth = (Math.PI * 2 * j) / azimuthSteps;
 
         positions.push(
-          new Vector3().setFromSpherical(new Spherical(radius, polar, azimuth)),
+          new Vector3()
+            .setFromSpherical(new Spherical(radius, polar, azimuth))
+            .add(TARGET),
         );
       }
     }
@@ -50,7 +53,9 @@ describe("RING_VIEW", () => {
   });
 
   it("처음 카메라 위치는 허용 범위 안이라 첫 프레임에 튀지 않는다", () => {
-    const home = new Spherical().setFromVector3(new Vector3(...RING_VIEW.home));
+    const home = new Spherical().setFromVector3(
+      new Vector3(...RING_VIEW.home).sub(TARGET),
+    );
 
     expect(home.radius).toBeGreaterThanOrEqual(RING_VIEW.distance.min);
     expect(home.radius).toBeLessThanOrEqual(RING_VIEW.distance.max);

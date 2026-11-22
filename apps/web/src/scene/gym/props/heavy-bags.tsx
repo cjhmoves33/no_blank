@@ -2,9 +2,9 @@ import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 
 const X = -GYM.building.halfX + 1.4;
-const BEAM = { y: GYM.floorY + 4.8, z: -1.25, length: 7, size: 0.15 } as const;
+const BEAM = { y: 4.8, z: -1.25, length: 7, size: 0.15 } as const;
 const HANGER_LENGTH = GYM.building.ceilingY - BEAM.y;
-const BOTTOM_Y = GYM.floorY + 0.8;
+const BOTTOM_Y = 0.8;
 
 const BAG = { radius: 0.2, length: 1.4 } as const;
 

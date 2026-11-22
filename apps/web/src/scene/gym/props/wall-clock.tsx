@@ -55,9 +55,7 @@ function strokeFromCenter(
 
 export function WallClock() {
   return (
-    <group
-      position={[-2.25, GYM.floorY + 3.2, -GYM.building.halfZ + RIM.depth / 2]}
-    >
+    <group position={[-2.25, 3.2, -GYM.building.halfZ + RIM.depth / 2]}>
       <mesh castShadow receiveShadow rotation-x={Math.PI / 2}>
         <cylinderGeometry args={[RIM.radius, RIM.radius, RIM.depth, 48]} />
         <meshStandardMaterial {...STEEL} />

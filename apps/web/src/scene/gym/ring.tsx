@@ -11,7 +11,7 @@ const RoundedBox = extend(RoundedBoxGeometry);
 const { ropes, mat } = GYM;
 const LOWEST_ROPE = ropes.heights[0];
 const HIGHEST_ROPE = ropes.heights[3];
-const PLATFORM_HEIGHT = mat.y - GYM.floorY;
+const PLATFORM_HEIGHT = mat.y;
 
 const MAT: Painting = {
   width: 2048,
@@ -142,11 +142,7 @@ const TIES = SIDES.flatMap((side, sideIndex) =>
 export function Ring() {
   return (
     <group>
-      <mesh
-        castShadow
-        receiveShadow
-        position-y={(mat.y + GYM.floorY) / 2 - 0.0025}
-      >
+      <mesh castShadow receiveShadow position-y={mat.y / 2 - 0.0025}>
         <boxGeometry
           args={[mat.half * 2, PLATFORM_HEIGHT - 0.005, mat.half * 2]}
         />
@@ -252,7 +248,7 @@ function Steps() {
             key={height}
             castShadow
             receiveShadow
-            position={[0, GYM.floorY + height / 2, mat.half + depth / 2]}
+            position={[0, height / 2, mat.half + depth / 2]}
           >
             <boxGeometry args={[0.8, height, depth]} />
             <meshStandardMaterial color="#4a3324" roughness={0.7} />
