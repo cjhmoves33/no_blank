@@ -39,7 +39,6 @@ describe("parseEnv", () => {
   });
 
   it("잘못된 DATABASE_URL 은 거부하고, 오류 메시지에 값을 노출하지 않는다", () => {
-    // 메시지 전체를 고정된 문자열로 비교해서, 값(비밀번호 등)이 섞여 들어가지 않았음을 보장합니다.
     expect(() => parseEnv({ DATABASE_URL: "secret123 is not a url" })).toThrow(
       /^DATABASE_URL must be a valid URL$/,
     );

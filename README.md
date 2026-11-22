@@ -15,8 +15,7 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 
 ## 요구 사항
 
-- [Node.js](https://nodejs.org/) 24 이상 (24.x 최신 버전 권장)
-  - Windows에서 프로젝트 경로에 한글이 있으면, 구버전 Node 24(예: 24.12.0)는 `fs.rmSync` 버그([nodejs/node#61067](https://github.com/nodejs/node/issues/61067))로 git hook 설치(`pnpm install`의 `prepare`)가 실패합니다.
+- [Node.js](https://nodejs.org/) 24.13.1 이상
 - [pnpm](https://pnpm.io/) 11.28 (`npm install -g pnpm@11.28.12`)
   - 다른 버전의 pnpm이 설치되어 있어도, 이 저장소에서는 `package.json`의 `packageManager` 필드에 따라 11.28.12로 실행됩니다.
   - pnpm 11은 배포된 지 하루가 지나지 않은 패키지 버전을 설치하지 않습니다(`minimumReleaseAge`). 막 배포된 버전이 필요하면 하루 뒤에 추가합니다.
@@ -31,13 +30,6 @@ docker compose up --build
 ```
 
 http://localhost:3000 에 접속하면 3D 장면이 표시되고, http://localhost:4000/api/greeting 은 DB에서 읽어 온 "Hello World"를 응답합니다.
-
-컨테이너는 아래 순서로 기동합니다. 앞 단계가 준비되어야 다음 단계가 시작됩니다.
-
-1. `db`: PostgreSQL이 접속 가능한 상태(healthy)가 될 때까지 기다립니다.
-2. `migrate`: 마이그레이션을 한 번 적용하고 종료합니다.
-3. `server`: `/api/health`가 200을 응답할 때까지 기다립니다.
-4. `web`: Next.js 서버가 기동합니다.
 
 종료와 초기화는 다음 명령으로 합니다.
 
@@ -75,50 +67,14 @@ pnpm dev
 | server | http://localhost:4000/api/greeting                     |
 | db     | `postgres://no_blank:no_blank@localhost:5432/no_blank` |
 
-## 주요 스크립트
-
-루트에서 실행합니다.
-
-| 명령                | 설명                                                                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm check`        | CI `Code checks` 작업과 같은 검사를 실행합니다. (`format:check` → `lint` → `knip` → `typecheck` → `test` → `build`) Docker smoke test는 포함하지 않습니다. |
-| `pnpm dev`          | shared를 빌드한 뒤 shared, server, web을 watch 모드로 동시에 실행합니다.                                                                                   |
-| `pnpm build`        | 모든 패키지를 의존성 순서(shared → server, web)대로 빌드합니다.                                                                                            |
-| `pnpm typecheck`    | 모든 패키지의 타입을 검사합니다. shared의 타입은 빌드 결과가 아니라 소스에서 읽으므로 빌드가 필요 없습니다.                                                |
-| `pnpm lint`         | 모든 패키지에 ESLint를 실행하고, 경고도 실패로 처리합니다. 규칙은 `packages/eslint-config`에서 공통으로 관리합니다.                                        |
-| `pnpm lint:fix`     | 자동 수정이 가능한 ESLint 규칙(빈 줄, import 정렬 등)을 적용합니다.                                                                                        |
-| `pnpm test`         | shared를 빌드한 뒤 모든 패키지의 테스트(Vitest)를 실행합니다.                                                                                              |
-| `pnpm format`       | 저장소 전체에 Prettier 포맷을 적용합니다.                                                                                                                  |
-| `pnpm format:check` | 포맷이 맞지 않는 파일이 있으면 실패합니다.                                                                                                                 |
-| `pnpm knip`         | 사용하지 않는 파일, export, 의존성이 있으면 실패합니다.                                                                                                    |
-| `pnpm db:up`        | DB 컨테이너만 실행합니다.                                                                                                                                  |
-| `pnpm db:generate`  | `apps/server/src/db/schema.ts` 변경 사항으로 마이그레이션 SQL을 생성합니다.                                                                                |
-| `pnpm db:migrate`   | 아직 적용하지 않은 마이그레이션을 DB에 적용합니다.                                                                                                         |
-
 ## 커밋 검사와 CI
 
-코드 규칙과 커밋 메시지는 아래 단계에서 검사합니다. `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다.
-
-| 단계                             | 대상           | 검사 내용                                                                                                           | 실패하면                |
-| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                                                                    | 커밋이 중단됩니다.      |
-| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                                                                              | 커밋이 중단됩니다.      |
-| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                                                                        | push가 중단됩니다.      |
-| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                                                                        | PR에 실패가 표시됩니다. |
-| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`의 3D 장면(`<canvas`)과 `localhost:4000/api/greeting`의 Hello World 확인 | PR에 실패가 표시됩니다. |
-
-- **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류나 경고가 있으면 커밋이 중단됩니다.
 - **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
-- **pre-push:** 커밋되지 않은 변경도 포함한 현재 작업 트리를 검사합니다.
-- **설정 파일:** `.husky/`의 각 훅 파일, `lint-staged.config.mjs`, `commitlint.config.mjs`, `.github/workflows/ci.yml`에서 관리합니다.
 - **CI:** 로컬 훅은 `--no-verify` 옵션으로 건너뛸 수 있으므로, 최종 검증은 CI가 담당합니다.
 
 ## 테스트
 
-- **도구:** Vitest를 사용합니다. 테스트 파일은 대상 코드 옆에 `*.test.ts`로 둡니다. (예: `apps/server/src/env.test.ts`)
-- **web 테스트:** `apps/web/src/lib/api.test.ts`처럼 브라우저나 서버를 띄우지 않고 함수 단위로 검증합니다. 서버 호출은 `vi.stubGlobal("fetch", ...)`로 대신합니다.
 - **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
-- **빌드 제외:** 테스트 파일은 `tsconfig.build.json`에서 제외되어 `dist`와 Docker 이미지에 포함되지 않습니다. 타입 검사와 lint에는 포함됩니다.
 - **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
 
 ## DB 스키마 변경 방법

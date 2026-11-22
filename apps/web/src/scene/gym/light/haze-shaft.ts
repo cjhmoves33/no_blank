@@ -20,7 +20,7 @@ type ShaftUniforms = {
   readonly inside: IUniform<number>;
 };
 
-const VERTEX = /* glsl */ `
+const VERTEX = `
   varying vec3 vLocal;
 
   void main() {
@@ -29,7 +29,7 @@ const VERTEX = /* glsl */ `
   }
 `;
 
-const FRAGMENT = /* glsl */ `
+const FRAGMENT = `
   uniform vec3 color;
   uniform float density;
   uniform vec3 localCamera;

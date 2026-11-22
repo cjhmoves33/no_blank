@@ -42,7 +42,6 @@ export function SpinningShape({ spinning, onPress }: SpinningShapeProps) {
 
     // R3F 는 광선이 지나는 모든 오브젝트에 이벤트를 보내므로, 가장 앞의 오브젝트만 눌리도록 여기서 멈춥니다.
     event.stopPropagation();
-    // 카메라 궤도는 바깥 요소에서 들으므로, 여기서 멈추면 도형에서 시작한 드래그로는 카메라가 돌지 않습니다.
     event.nativeEvent.stopPropagation();
     pressGlow.current = PRESS_GLOW;
     onPress();

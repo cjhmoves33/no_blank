@@ -1,4 +1,3 @@
-/** mulberry32 입니다. */
 export function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
 
