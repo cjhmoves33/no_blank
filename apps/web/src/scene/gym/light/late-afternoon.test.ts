@@ -11,7 +11,7 @@ import {
   sunTarget,
 } from "./late-afternoon";
 
-const BALL = new Vector3(...GYM.wreckingBall.center);
+const BALL = new Vector3(...GYM.wreckingBall.restCenter);
 
 function isInWindow(y: number, z: number): boolean {
   const { spans, sillY, headY } = GYM.windows;

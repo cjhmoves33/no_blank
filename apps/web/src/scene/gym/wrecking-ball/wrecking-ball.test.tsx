@@ -51,7 +51,6 @@ function theBall(renderer: Renderer) {
   return ball;
 }
 
-/** 테스트 장면에서는 멈춰 있을 때의 공 중심이 원점입니다. */
 function ballOffset(renderer: Renderer): Vector3 {
   return theBall(renderer).instance.getWorldPosition(new Vector3());
 }

@@ -9,9 +9,9 @@ import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 import {
   advance,
+  CHAIN_REACH,
   farthestReach,
   restingSwing,
-  ROPE,
   strike,
   SWING_FEEL,
 } from "./swing";
@@ -32,7 +32,7 @@ const SHACKLE = { radius: 0.03, tube: 0.008 } as const;
 const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
 const CHAIN_BOTTOM = radius + CAP.height + SHACKLE.radius * 2;
-const CHAIN_LENGTH = ROPE - CHAIN_BOTTOM;
+const CHAIN_LENGTH = CHAIN_REACH - CHAIN_BOTTOM;
 const LINKS = 12;
 const PRIMARY_BUTTON = 0;
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
@@ -63,13 +63,12 @@ const LEATHER: Painting = {
   },
 };
 
-/** 원점은 멈춰 있을 때의 공 중심이고, 공이 흔들리며 지나는 자리까지 담습니다. 매단 지점에서 천장까지 늘어나는 걸이는 뺀 크기입니다. */
 export const WRECKING_BALL_SIZE: Box = {
   min: [-SWEEP, -radius, -SWEEP],
-  max: [SWEEP, ROPE, SWEEP],
+  max: [SWEEP, CHAIN_REACH, SWEEP],
 };
 
-const REST_LINKS = chainLinks(restingSwing().position);
+const REST_LINKS = chainLinks(restingSwing().fromPivot);
 
 export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
   const pivot = useRef<Group>(null);
@@ -85,11 +84,11 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
       feel,
     );
 
-    const { position } = swing.current;
+    const { fromPivot } = swing.current;
 
-    ball.current?.position.copy(position);
-    ball.current?.quaternion.copy(facingPivot(position));
-    chainLinks(position).forEach((link, i) => {
+    ball.current?.position.copy(fromPivot);
+    ball.current?.quaternion.copy(facingPivot(fromPivot));
+    chainLinks(fromPivot).forEach((link, i) => {
       const mesh = links.current[i];
 
       mesh?.position.copy(link.position);
@@ -107,21 +106,21 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
     event.stopPropagation();
     event.nativeEvent.stopPropagation();
 
-    const hit = event.point
+    const hitFromPivot = event.point
       .clone()
       .sub(pivot.current.getWorldPosition(new Vector3()));
 
-    swing.current = strike(swing.current, hit, feel);
+    swing.current = strike(swing.current, hitFromPivot, feel);
     onStrike();
   }
 
   return (
     <>
-      <mesh castShadow receiveShadow position-y={ROPE + TO_CEILING / 2}>
+      <mesh castShadow receiveShadow position-y={CHAIN_REACH + TO_CEILING / 2}>
         <cylinderGeometry args={[ROD_RADIUS, ROD_RADIUS, TO_CEILING, 8]} />
         <meshStandardMaterial {...STEEL} />
       </mesh>
-      <group ref={pivot} position-y={ROPE}>
+      <group ref={pivot} position-y={CHAIN_REACH}>
         {REST_LINKS.map((link, i) => (
           <mesh
             key={i}
@@ -138,7 +137,7 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
             <meshStandardMaterial {...STEEL} />
           </mesh>
         ))}
-        <group ref={ball} position-y={-ROPE}>
+        <group ref={ball} position-y={-CHAIN_REACH}>
           <mesh castShadow receiveShadow onPointerDown={handlePointerDown}>
             <sphereGeometry args={[radius, 48, 32]} />
             <meshStandardMaterial roughness={LEATHER_ROUGHNESS}>
@@ -186,11 +185,10 @@ export function WreckingBall({ reducedMotion, onStrike }: WreckingBallProps) {
   );
 }
 
-/** 공은 마개가 매단 지점을 보도록 기웁니다. */
-function facingPivot(position: Vector3): Quaternion {
+function facingPivot(fromPivot: Vector3): Quaternion {
   return new Quaternion().setFromUnitVectors(
     UP,
-    position.clone().negate().normalize(),
+    fromPivot.clone().negate().normalize(),
   );
 }
 
@@ -200,33 +198,18 @@ interface ChainLink {
   readonly length: number;
 }
 
-/**
- * 매단 지점(원점)에서 공의 고리까지 사슬을 마디로 나눠 놓습니다.
- * 공이 들려 사슬이 느슨해지면, 같은 길이의 사슬이 옆으로 휜 포물선이 되게 그립니다.
- */
-function chainLinks(position: Vector3): ChainLink[] {
-  const end = position
+function chainLinks(fromPivot: Vector3): ChainLink[] {
+  const end = fromPivot
     .clone()
-    .addScaledVector(position.clone().negate().normalize(), CHAIN_BOTTOM);
-  const span = end.length();
-  const sag = Math.sqrt((3 * span * Math.max(CHAIN_LENGTH - span, 0)) / 8);
-  // 공은 대개 카메라 반대쪽으로 밀리므로, 밀린 방향의 옆으로 휘어야 화면에서 보입니다.
-  const side = new Vector3(position.x, 0, position.z).cross(UP);
-
-  if (side.lengthSq() === 0) {
-    side.set(1, 0, 0);
-  }
-
-  // 2차 베지어 곡선은 가운데에서 조절점까지 거리의 절반만큼 휩니다.
-  const bend = end
-    .clone()
-    .multiplyScalar(0.5)
-    .addScaledVector(side.normalize(), 2 * sag);
+    .addScaledVector(fromPivot.clone().negate().normalize(), CHAIN_BOTTOM);
+  const bow = visibleBendSide(fromPivot).multiplyScalar(
+    sagOfSlackChain(end.length()),
+  );
   const along = (t: number) =>
-    bend
+    end
       .clone()
-      .multiplyScalar(2 * t * (1 - t))
-      .addScaledVector(end, t * t);
+      .multiplyScalar(t)
+      .addScaledVector(bow, 4 * t * (1 - t));
 
   return Array.from({ length: LINKS }, (_, i) => {
     const from = along(i / LINKS);
@@ -242,4 +225,16 @@ function chainLinks(position: Vector3): ChainLink[] {
       length,
     };
   });
+}
+
+function sagOfSlackChain(span: number): number {
+  const slack = Math.max(CHAIN_LENGTH - span, 0);
+
+  return Math.sqrt((3 * span * slack) / 8);
+}
+
+function visibleBendSide(fromPivot: Vector3): Vector3 {
+  const side = new Vector3(fromPivot.x, 0, fromPivot.z).cross(UP);
+
+  return side.lengthSq() > 0 ? side.normalize() : new Vector3(1, 0, 0);
 }

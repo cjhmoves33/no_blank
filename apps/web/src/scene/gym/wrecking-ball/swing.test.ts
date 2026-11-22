@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { GYM } from "../measurements";
 import {
   advance,
+  CHAIN_REACH,
   farthestReach,
   restingSwing,
-  ROPE,
   strike,
   type Swing,
   SWING_FEEL,
@@ -14,7 +14,7 @@ import {
 } from "./swing";
 
 const { radius } = GYM.wreckingBall;
-const REST = new Vector3(0, -ROPE, 0);
+const REST = new Vector3(0, -CHAIN_REACH, 0);
 const FRONT = new Vector3(0, 0, radius);
 const RIGHT = new Vector3(radius, 0, 0);
 const UNDER = new Vector3(0, -radius, 0);
@@ -22,19 +22,17 @@ const FRAME = 1 / 60;
 const UP = new Vector3(0, 1, 0);
 const { normal, reduced } = SWING_FEEL;
 
-/** 공 중심에서 offset 만큼 떨어진 표면을 칩니다. */
 function hit(swing: Swing, offset: Vector3, feel: SwingFeel): Swing {
-  return strike(swing, swing.position.clone().add(offset), feel);
+  return strike(swing, swing.fromPivot.clone().add(offset), feel);
 }
 
-/** 프레임마다 공의 위치를 모읍니다. */
 function track(swing: Swing, seconds: number, feel: SwingFeel): Vector3[] {
   const positions: Vector3[] = [];
   let current = swing;
 
   for (let t = 0; t < seconds; t += FRAME) {
     current = advance(current, FRAME, feel);
-    positions.push(current.position);
+    positions.push(current.fromPivot);
   }
 
   return positions;
@@ -52,35 +50,35 @@ describe("swing", () => {
   it("치지 않으면 제자리에 멈춰 있다", () => {
     const after = advance(restingSwing(), 5, normal);
 
-    expect(after.position.distanceTo(REST)).toBeLessThan(1e-9);
+    expect(after.fromPivot.distanceTo(REST)).toBeLessThan(1e-9);
   });
 
   it("앞면 가운데를 치면 뒤로 밀린다", () => {
     const struck = hit(restingSwing(), FRONT, normal);
     const after = advance(struck, 0.4, normal);
 
-    expect(after.position.z).toBeLessThan(-0.2);
-    expect(Math.abs(after.position.x)).toBeLessThan(1e-9);
+    expect(after.fromPivot.z).toBeLessThan(-0.2);
+    expect(Math.abs(after.fromPivot.x)).toBeLessThan(1e-9);
   });
 
   it("오른쪽 가장자리를 치면 왼쪽으로 밀린다", () => {
     const struck = hit(restingSwing(), RIGHT, normal);
     const after = advance(struck, 0.4, normal);
 
-    expect(after.position.x).toBeLessThan(-0.2);
-    expect(Math.abs(after.position.z)).toBeLessThan(1e-9);
+    expect(after.fromPivot.x).toBeLessThan(-0.2);
+    expect(Math.abs(after.fromPivot.z)).toBeLessThan(1e-9);
   });
 
   it("아래를 치면 공이 들려 사슬이 느슨해졌다가, 떨어져 다시 팽팽해진다", () => {
     const struck = hit(restingSwing(), UNDER, normal);
     const lifted = advance(struck, 0.1, normal);
 
-    expect(lifted.position.y).toBeGreaterThan(REST.y + 0.03);
-    expect(lifted.position.length()).toBeLessThan(ROPE - 0.03);
+    expect(lifted.fromPivot.y).toBeGreaterThan(REST.y + 0.03);
+    expect(lifted.fromPivot.length()).toBeLessThan(CHAIN_REACH - 0.03);
 
     const fallen = advance(lifted, 1, normal);
 
-    expect(fallen.position.length()).toBeCloseTo(ROPE, 9);
+    expect(fallen.fromPivot.length()).toBeCloseTo(CHAIN_REACH, 9);
   });
 
   it("사슬은 늘어나지 않는다", () => {
@@ -90,7 +88,7 @@ describe("swing", () => {
       swing = hit(swing, offset, normal);
 
       for (const position of track(swing, 0.3, normal)) {
-        expect(position.length()).toBeLessThanOrEqual(ROPE + 1e-9);
+        expect(position.length()).toBeLessThanOrEqual(CHAIN_REACH + 1e-9);
       }
 
       swing = advance(swing, 0.3, normal);
@@ -101,7 +99,7 @@ describe("swing", () => {
     const coming = moving(new Vector3(0.5, 0, 0));
     const after = advance(hit(coming, RIGHT, normal), 0.3, normal);
 
-    expect(after.position.x).toBeLessThan(-0.2);
+    expect(after.fromPivot.x).toBeLessThan(-0.2);
   });
 
   it("공이 주먹보다 빨리 멀어지고 있으면 쳐도 흔들림이 바뀌지 않는다", () => {
@@ -109,7 +107,7 @@ describe("swing", () => {
     const untouched = advance(leaving, 1, normal);
     const struck = advance(hit(leaving, RIGHT, normal), 1, normal);
 
-    expect(struck.position.distanceTo(untouched.position)).toBeLessThan(1e-9);
+    expect(struck.fromPivot.distanceTo(untouched.fromPivot)).toBeLessThan(1e-9);
   });
 
   it("같은 자리를 연달아 쳐도 한 번 친 것보다 크게 흔들리지 않는다", () => {
@@ -164,7 +162,7 @@ describe("swing", () => {
   it("흔들림은 저절로 잦아든다", () => {
     const struck = hit(restingSwing(), RIGHT, normal);
 
-    expect(advance(struck, 30, normal).position.distanceTo(REST)).toBeLessThan(
+    expect(advance(struck, 30, normal).fromPivot.distanceTo(REST)).toBeLessThan(
       0.01,
     );
   });
@@ -173,14 +171,14 @@ describe("swing", () => {
     const struck = hit(restingSwing(), RIGHT, reduced);
 
     expect(largestOffset(track(struck, 1, reduced))).toBeLessThan(0.03);
-    expect(advance(struck, 1, reduced).position.distanceTo(REST)).toBeLessThan(
+    expect(advance(struck, 1, reduced).fromPivot.distanceTo(REST)).toBeLessThan(
       0.001,
     );
   });
 
   it("프레임 속도와 관계없이 같은 흔들림이 된다", () => {
     const struck = hit(restingSwing(), RIGHT, normal);
-    const atOnce = advance(struck, 1.5, normal).position;
+    const atOnce = advance(struck, 1.5, normal).fromPivot;
 
     for (const fps of [60, 144]) {
       let byFrames = struck;
@@ -189,12 +187,11 @@ describe("swing", () => {
         byFrames = advance(byFrames, 1 / fps, normal);
       }
 
-      expect(byFrames.position.distanceTo(atOnce)).toBeLessThan(0.01);
+      expect(byFrames.fromPivot.distanceTo(atOnce)).toBeLessThan(0.01);
     }
   });
 });
 
-/** 공 표면 위에 고르게 흩어진 맞은 자리를, 공 중심에서 잰 값으로 돌려줍니다. */
 function hitOffsets(count: number): Vector3[] {
   return Array.from({ length: count }, (_, i) => {
     const y = 1 - (2 * (i + 0.5)) / count;

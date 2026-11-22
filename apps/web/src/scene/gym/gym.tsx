@@ -55,7 +55,7 @@ function facing(
 }
 
 /**
- * - children 은 레킹볼입니다. 레킹볼이 멈춰 있을 때의 중심(GYM.wreckingBall.center)을 원점으로 두고 그리며, 그 공은 레킹볼을 비추는 빛이 밝힙니다.
+ * - children 은 레킹볼입니다. 레킹볼이 멈춰 있을 때의 중심(GYM.wreckingBall.restCenter)을 원점으로 두고 그리며, 그 공은 레킹볼을 비추는 빛이 밝힙니다.
  * - children 의 메시는 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다.
  * - 포인터 이벤트 핸들러를 달지 않습니다. 칠 수 있는 것은 children 이 정합니다. 타격으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
  */
@@ -88,7 +88,7 @@ export function Gym({ reducedMotion, children }: GymProps) {
             limits={RING_VIEW}
           />
         ) : null}
-        <group position={GYM.wreckingBall.center}>{children}</group>
+        <group position={GYM.wreckingBall.restCenter}>{children}</group>
       </Canvas>
     </div>
   );
