@@ -130,6 +130,33 @@ describe("press", () => {
     expect(step.blow?.at.x).toBeCloseTo(-radius, 2);
   });
 
+  it("누른 채 가만히 있다가 한 번에 빠르게 끌어 들어가도 친다", () => {
+    const { press } = pressDown(cursorAt(-0.4, 0, 0), BALL);
+    const step = dragTo(press, cursorAt(0, 0, 1), BALL);
+
+    expect(step.blow?.kind).toBe("swipe");
+  });
+
+  it("같은 시각에 이벤트가 두 번 와도 휘두르기 빠르기를 잰다", () => {
+    const outside = drag(pressedAt(-1, 0), {
+      from: [-1, 0],
+      to: [-0.32, 0],
+      seconds: 0.136,
+    });
+    const latest =
+      outside.press.kind === "swiping" ? outside.press.latest : null;
+    const step = dragTo(
+      outside.press,
+      cursorAt(-0.28, 0, latest?.seconds ?? 0),
+      BALL,
+    );
+    const speed = step.blow?.kind === "swipe" ? step.blow.speed : 0;
+
+    expect(outside.blow).toBeNull();
+    expect(speed).toBeGreaterThan(4);
+    expect(speed).toBeLessThan(7);
+  });
+
   it("레킹볼을 비껴 지나가면 치지 않는다", () => {
     const { blow } = drag(pressedAt(-1, 1), {
       from: [-1, 1],

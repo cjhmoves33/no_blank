@@ -70,6 +70,39 @@ describe("기우뚱", () => {
     expect(strong.at(-1) ?? Infinity).toBeLessThan(widest * 0.1);
   });
 
+  it("두 축을 따로 되돌려도 될 만큼, 어디를 어느 쪽으로 쳐도 한 번에 15도 넘게 기울지 않는다", () => {
+    const steps = 8;
+    const widest: number[] = [];
+
+    for (let i = 0; i <= steps; i++) {
+      for (let j = 0; j < 2 * steps; j++) {
+        const direction = new Vector3().setFromSphericalCoords(
+          1,
+          (Math.PI * i) / steps,
+          (Math.PI * j) / steps,
+        );
+        const pushes = [
+          direction.clone().negate(),
+          new Vector3(1, 0, 0),
+          new Vector3(0, 0, 1),
+          new Vector3(0, 1, 0),
+        ];
+
+        for (const push of pushes) {
+          const lean = leanBy(
+            UPRIGHT,
+            { at: direction.clone().multiplyScalar(radius), push, strength: 1 },
+            normal,
+          );
+
+          widest.push(Math.max(...tilts(lean, 2)));
+        }
+      }
+    }
+
+    expect(Math.max(...widest)).toBeLessThan((15 * Math.PI) / 180);
+  });
+
   it("동작 줄이기에서는 기울지 않는다", () => {
     expect(Math.max(...tilts(jabbedRight(1, reduced), 1, reduced))).toBe(0);
   });

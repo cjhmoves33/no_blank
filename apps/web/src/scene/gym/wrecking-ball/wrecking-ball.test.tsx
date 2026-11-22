@@ -134,6 +134,24 @@ function seamsShallowest(renderer: Renderer): number {
   return Math.min(...distances);
 }
 
+function deepestDentDirection(renderer: Renderer): Vector3 {
+  const { geometry, turn } = leatherOf(renderer);
+  const positions = geometry.getAttribute("position");
+  const deepest = new Vector3();
+  let nearest = Infinity;
+
+  for (let i = 0; i < positions.count; i++) {
+    const vertex = new Vector3().fromBufferAttribute(positions, i);
+
+    if (vertex.length() < nearest) {
+      nearest = vertex.length();
+      deepest.copy(vertex);
+    }
+  }
+
+  return deepest.normalize().applyQuaternion(turn);
+}
+
 /** 지금 그려지는 타격 먼지 알 수입니다. */
 function dustGrains(renderer: Renderer): number {
   return renderer.scene
@@ -199,6 +217,18 @@ describe("WreckingBall", () => {
     expect(sphere?.center.length()).toBeLessThan(1e-9);
   });
 
+  it("창 사이 벽 그림자에 들면 햇빛에 바래지 않도록, 메시는 모두 그림자를 받는다", async () => {
+    const { renderer } = await renderBall();
+    const meshes = renderer.scene
+      .findAll(() => true)
+      .flatMap((node) =>
+        node.instance instanceof Mesh ? [node.instance] : [],
+      );
+
+    expect(meshes.length).toBeGreaterThan(0);
+    expect(meshes.map((mesh) => mesh.receiveShadow)).not.toContain(false);
+  });
+
   it("오른쪽 가장자리를 잽으로 치면 왼쪽으로 밀려 흔들린다", async () => {
     const { renderer, ball } = await renderBall();
 
@@ -232,6 +262,20 @@ describe("WreckingBall", () => {
     await renderer.advanceFrames(30, FRAME);
 
     expect(shallowest(renderer)).toBeCloseTo(radius, 6);
+  });
+
+  it("이미 비틀리거나 기운 공을 쳐도 패임은 맞은 자리에 생긴다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(18, FRAME);
+
+    expect(Math.abs(heading(renderer))).toBeGreaterThan(0.1);
+
+    ball.take(jab(FRONT));
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(deepestDentDirection(renderer).angleTo(FRONT)).toBeLessThan(0.05);
   });
 
   it("솔기도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
