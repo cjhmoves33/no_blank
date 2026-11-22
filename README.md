@@ -6,12 +6,12 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 브라우저 → web (Next.js, :3000) → server (Fastify, :4000) → db (PostgreSQL, :5432)
 ```
 
-| 경로                 | 설명                                                              |
-| -------------------- | ----------------------------------------------------------------- |
-| `apps/web`           | Next.js 16 (App Router, SSR). 서버 컴포넌트에서 API를 호출합니다. |
-| `apps/server`        | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.              |
-| `packages/shared`    | web과 server가 함께 사용하는 API 응답 타입입니다.                 |
-| `docker-compose.yml` | db, migrate, server, web 컨테이너 구성입니다.                     |
+| 경로                 | 설명                                                                                                                  |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`           | Next.js 16 (App Router, SSR). 지금은 실행 중에 API를 호출하지 않습니다. API를 호출하는 예시는 `src/lib/api.ts`입니다. |
+| `apps/server`        | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.                                                                  |
+| `packages/shared`    | web과 server가 함께 사용하는 API 응답 타입입니다.                                                                     |
+| `docker-compose.yml` | db, migrate, server, web 컨테이너 구성입니다.                                                                         |
 
 ## 요구 사항
 
@@ -30,7 +30,7 @@ DB, 마이그레이션, API 서버, 웹 서버를 모두 컨테이너로 실행�
 docker compose up --build
 ```
 
-http://localhost:3000 에 접속하면 DB에서 읽어 온 "Hello World"가 표시됩니다.
+http://localhost:3000 에 접속하면 3D 장면이 표시되고, http://localhost:4000/api/greeting 은 DB에서 읽어 온 "Hello World"를 응답합니다.
 
 컨테이너는 아래 순서로 기동합니다. 앞 단계가 준비되어야 다음 단계가 시작됩니다.
 
@@ -99,13 +99,13 @@ pnpm dev
 
 코드 규칙과 커밋 메시지는 아래 단계에서 검사합니다. `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다.
 
-| 단계                             | 대상           | 검사 내용                                                        | 실패하면                |
-| -------------------------------- | -------------- | ---------------------------------------------------------------- | ----------------------- |
-| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                 | 커밋이 중단됩니다.      |
-| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                           | 커밋이 중단됩니다.      |
-| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                     | push가 중단됩니다.      |
-| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                     | PR에 실패가 표시됩니다. |
-| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`에서 Hello World 확인 | PR에 실패가 표시됩니다. |
+| 단계                             | 대상           | 검사 내용                                                                                                           | 실패하면                |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                                                                    | 커밋이 중단됩니다.      |
+| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                                                                              | 커밋이 중단됩니다.      |
+| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                                                                        | push가 중단됩니다.      |
+| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                                                                        | PR에 실패가 표시됩니다. |
+| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`의 3D 장면(`<canvas`)과 `localhost:4000/api/greeting`의 Hello World 확인 | PR에 실패가 표시됩니다. |
 
 - **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류나 경고가 있으면 커밋이 중단됩니다.
 - **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
