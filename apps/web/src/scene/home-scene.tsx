@@ -1,13 +1,11 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
 import { catchError } from "next/error";
 import { useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
 import { clickSound } from "@/audio/sounds";
 
-import { OrbitRig } from "./orbit-rig";
 import { Space } from "./space";
 import { SpinningShape } from "./spinning-shape";
 
@@ -21,16 +19,14 @@ export function HomeScene() {
   return (
     <div className="h-dvh w-full">
       <HideOnError>
-        <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 6], fov: 40 }}>
-          <Space />
-          <OrbitRig inertia={!reducedMotion} />
+        <Space reducedMotion={reducedMotion}>
           <SpinningShape
             spinning={!reducedMotion}
             onPress={() => {
               playSound(clickSound);
             }}
           />
-        </Canvas>
+        </Space>
       </HideOnError>
     </div>
   );
