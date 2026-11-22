@@ -23,8 +23,8 @@ export function HomeScene() {
       <HideOnError>
         <Gym
           reducedMotion={reducedMotion}
-          onStrike={() => {
-            playSound(strikeSound);
+          onStrike={(strike) => {
+            playSound(strikeSound(strike.strength));
           }}
         />
       </HideOnError>
