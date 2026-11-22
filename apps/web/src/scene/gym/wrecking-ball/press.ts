@@ -12,7 +12,7 @@ export type Press =
   | {
       readonly kind: "swiping";
       readonly latest: PointerSample;
-      readonly earlier: readonly PointerSample[];
+      readonly withinSpeedWindow: readonly PointerSample[];
     };
 
 export interface PressStep {
@@ -24,7 +24,7 @@ type Swiping = Extract<Press, { kind: "swiping" }>;
 
 const MIN_SWIPE_SPEED = 0.5;
 
-const HAND_WINDOW = 0.05;
+const SPEED_WINDOW_SECONDS = 0.05;
 
 const SPENT: Press = { kind: "spent" };
 
@@ -37,7 +37,7 @@ export function pressDown(sample: PointerSample, ball: Sphere): PressStep {
 
   if (!hit) {
     return {
-      press: { kind: "swiping", latest: sample, earlier: [] },
+      press: { kind: "swiping", latest: sample, withinSpeedWindow: [] },
       blow: null,
     };
   }
@@ -46,7 +46,7 @@ export function pressDown(sample: PointerSample, ball: Sphere): PressStep {
     press: SPENT,
     blow: {
       kind: "jab",
-      at: hit.sub(ball.center),
+      hitFromCenter: hit.sub(ball.center),
       fist: sample.ray.direction.clone().normalize(),
     },
   };
@@ -61,7 +61,14 @@ export function dragTo(
     return { press, blow: null };
   }
 
-  const entry = firstEntry(press.latest.ray, sample.ray, ball);
+  const entry = firstEntry(
+    {
+      eye: press.latest.ray.origin,
+      from: press.latest.ray.direction,
+      to: sample.ray.direction,
+    },
+    ball,
+  );
   const hand = entry ? handVelocity(press, sample, ball) : null;
 
   if (!entry || !hand || hand.length() < MIN_SWIPE_SPEED) {
@@ -72,9 +79,9 @@ export function dragTo(
     press: SPENT,
     blow: {
       kind: "swipe",
-      at: (sample.ray.intersectSphere(ball, new Vector3()) ?? entry).sub(
-        ball.center,
-      ),
+      hitFromCenter: (
+        sample.ray.intersectSphere(ball, new Vector3()) ?? entry
+      ).sub(ball.center),
       fist: hand.clone().normalize(),
       speed: hand.length(),
     },
@@ -85,7 +92,10 @@ function movedOn(press: Swiping, sample: PointerSample): Press {
   return {
     kind: "swiping",
     latest: sample,
-    earlier: recent([...press.earlier, press.latest], sample),
+    withinSpeedWindow: recent(
+      [...press.withinSpeedWindow, press.latest],
+      sample,
+    ),
   };
 }
 
@@ -94,35 +104,38 @@ function recent(
   now: PointerSample,
 ): PointerSample[] {
   return samples.filter(
-    (sample) => sample.seconds >= now.seconds - HAND_WINDOW,
+    (sample) => sample.seconds >= now.seconds - SPEED_WINDOW_SECONDS,
   );
 }
 
-function firstEntry(from: Ray, to: Ray, ball: Sphere): Vector3 | null {
-  const toCenter = ball.center.clone().sub(from.origin);
-  const outside = toCenter.lengthSq() - ball.radius ** 2;
-  const start = from.direction;
-  const turn = to.direction.clone().sub(start);
-  const startAlong = toCenter.dot(start);
-  const turnAlong = toCenter.dot(turn);
-  const t = firstRootUpToOne({
-    square: outside * turn.lengthSq() - turnAlong ** 2,
-    linear: 2 * (outside * start.dot(turn) - startAlong * turnAlong),
-    constant: outside * start.lengthSq() - startAlong ** 2,
-  });
+interface CursorPath {
+  readonly eye: Vector3;
+  readonly from: Vector3;
+  readonly to: Vector3;
+}
+
+function firstEntry(
+  { eye, from, to }: CursorPath,
+  ball: Sphere,
+): Vector3 | null {
+  const toCenter = ball.center.clone().sub(eye);
+  const turn = to.clone().sub(from);
+  const t = firstRootUpToOne(
+    entryQuadratic({ toCenter, radius: ball.radius, from, turn }),
+  );
 
   if (t === null) {
     return null;
   }
 
-  const direction = start.clone().addScaledVector(turn, t).normalize();
+  const direction = from.clone().addScaledVector(turn, t).normalize();
   const ahead = toCenter.dot(direction);
 
   if (ahead <= 0) {
     return null;
   }
 
-  const closest = from.origin.clone().addScaledVector(direction, ahead);
+  const closest = eye.clone().addScaledVector(direction, ahead);
 
   return closest.sub(ball.center).setLength(ball.radius).add(ball.center);
 }
@@ -131,6 +144,28 @@ interface Quadratic {
   readonly square: number;
   readonly linear: number;
   readonly constant: number;
+}
+
+function entryQuadratic({
+  toCenter,
+  radius,
+  from,
+  turn,
+}: {
+  readonly toCenter: Vector3;
+  readonly radius: number;
+  readonly from: Vector3;
+  readonly turn: Vector3;
+}): Quadratic {
+  const outside = toCenter.lengthSq() - radius ** 2;
+  const fromAlong = toCenter.dot(from);
+  const turnAlong = toCenter.dot(turn);
+
+  return {
+    square: outside * turn.lengthSq() - turnAlong ** 2,
+    linear: 2 * (outside * from.dot(turn) - fromAlong * turnAlong),
+    constant: outside * from.lengthSq() - fromAlong ** 2,
+  };
 }
 
 function firstRootUpToOne({
@@ -172,16 +207,19 @@ function handVelocity(
   ball: Sphere,
 ): Vector3 | null {
   const [oldest = press.latest] = recent(
-    [...press.earlier, press.latest],
+    [...press.withinSpeedWindow, press.latest],
     sample,
   );
-  const seconds = Math.min(sample.seconds - oldest.seconds, HAND_WINDOW);
-  const facing = new Plane().setFromNormalAndCoplanarPoint(
+  const seconds = Math.min(
+    sample.seconds - oldest.seconds,
+    SPEED_WINDOW_SECONDS,
+  );
+  const ballFacingPlane = new Plane().setFromNormalAndCoplanarPoint(
     sample.ray.origin.clone().sub(ball.center).normalize(),
     ball.center,
   );
-  const from = oldest.ray.intersectPlane(facing, new Vector3());
-  const to = sample.ray.intersectPlane(facing, new Vector3());
+  const from = oldest.ray.intersectPlane(ballFacingPlane, new Vector3());
+  const to = sample.ray.intersectPlane(ballFacingPlane, new Vector3());
 
   if (!from || !to || seconds <= 0) {
     return null;

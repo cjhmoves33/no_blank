@@ -39,7 +39,11 @@ function tilts(lean: Lean, seconds: number, feel: LeanFeel = normal): number[] {
 }
 
 function jabbedRight(strength: number, feel: LeanFeel = normal): Lean {
-  return leanBy(UPRIGHT, { at: RIGHT, push: TO_THE_LEFT, strength }, feel);
+  return leanBy(
+    UPRIGHT,
+    { hitFromCenter: RIGHT, push: TO_THE_LEFT, strength },
+    feel,
+  );
 }
 
 describe("기우뚱", () => {
@@ -52,7 +56,7 @@ describe("기우뚱", () => {
   it("아래에서 곧게 올려 치면 기울지 않는다", () => {
     const lifted = leanBy(
       UPRIGHT,
-      { at: UNDER, push: UPWARD, strength: 1 },
+      { hitFromCenter: UNDER, push: UPWARD, strength: 1 },
       normal,
     );
 
@@ -90,7 +94,11 @@ describe("기우뚱", () => {
         for (const push of pushes) {
           const lean = leanBy(
             UPRIGHT,
-            { at: direction.clone().multiplyScalar(radius), push, strength: 1 },
+            {
+              hitFromCenter: direction.clone().multiplyScalar(radius),
+              push,
+              strength: 1,
+            },
             normal,
           );
 

@@ -6,7 +6,7 @@ export interface Swing {
   readonly fromPivot: Vector3;
   readonly velocity: Vector3;
   readonly unsimulatedSeconds: number;
-  readonly jolt: number;
+  readonly joltSpeed: number;
 }
 
 export interface SwingFeel {
@@ -18,10 +18,14 @@ export interface SwingFeel {
 }
 
 export type Blow =
-  | { readonly kind: "jab"; readonly at: Vector3; readonly fist: Vector3 }
+  | {
+      readonly kind: "jab";
+      readonly hitFromCenter: Vector3;
+      readonly fist: Vector3;
+    }
   | {
       readonly kind: "swipe";
-      readonly at: Vector3;
+      readonly hitFromCenter: Vector3;
       readonly fist: Vector3;
       readonly speed: number;
     };
@@ -43,13 +47,13 @@ export interface Struck {
 export const CHAIN_REACH =
   GYM.wreckingBall.pivotY - GYM.wreckingBall.restCenter[1];
 
+export const STRAIGHT_CHAIN_AXIS = new Vector3(0, 1, 0);
+
 const JAB_SPEED = 1.3;
 
 const FULL_STRENGTH_IN_JABS = 2.5;
 
-const JOLT_THRESHOLD = 0.3;
-
-const FULLEST_JOLT = 2.4;
+const JOLT_MARGIN = 0.3;
 
 export const SWING_FEEL = {
   normal: {
@@ -62,6 +66,8 @@ export const SWING_FEEL = {
   reduced: criticallyDamped({ fistSpeed: 0.4, gravity: 96 }),
 } as const satisfies Record<string, SwingFeel>;
 
+const FULLEST_JOLT = SWING_FEEL.normal.maxBottomSpeed;
+
 const STEP = 1 / 240;
 
 export function restingSwing(): Swing {
@@ -69,7 +75,7 @@ export function restingSwing(): Swing {
     fromPivot: new Vector3(0, -CHAIN_REACH, 0),
     velocity: new Vector3(),
     unsimulatedSeconds: 0,
-    jolt: 0,
+    joltSpeed: 0,
   };
 }
 
@@ -105,26 +111,27 @@ export function advance(swing: Swing, seconds: number, feel: SwingFeel): Swing {
   const velocity = swing.velocity.clone();
   const slowdown = Math.exp(-feel.drag * STEP);
   let unsimulatedSeconds = swing.unsimulatedSeconds + seconds;
+  const caughtEveryStep = feel.gravity * STEP;
   const chain = {
     rebound: feel.rebound,
-    joltAbove: JOLT_THRESHOLD + feel.gravity * STEP,
+    joltAbove: JOLT_MARGIN + caughtEveryStep,
   };
-  let jolt = 0;
+  let joltSpeed = 0;
 
   while (unsimulatedSeconds >= STEP) {
     velocity.y -= feel.gravity * STEP;
     velocity.multiplyScalar(slowdown);
     fromPivot.addScaledVector(velocity, STEP);
-    jolt = Math.max(jolt, keepOnChain(fromPivot, velocity, chain));
+    joltSpeed = Math.max(joltSpeed, catchOnChain(fromPivot, velocity, chain));
     unsimulatedSeconds -= STEP;
   }
 
-  return { fromPivot, velocity, unsimulatedSeconds, jolt };
+  return { fromPivot, velocity, unsimulatedSeconds, joltSpeed };
 }
 
 export function joltOf(swing: Swing): Jolt | null {
-  return swing.jolt > 0
-    ? { strength: Math.min(swing.jolt / FULLEST_JOLT, 1) }
+  return swing.joltSpeed > 0
+    ? { strength: Math.min(swing.joltSpeed / FULLEST_JOLT, 1) }
     : null;
 }
 
@@ -141,14 +148,17 @@ function fistOf(
   switch (blow.kind) {
     case "jab":
       return {
-        push: blow.at.clone().negate().normalize(),
+        push: blow.hitFromCenter.clone().negate().normalize(),
         speed: feel.fistSpeed,
       };
-    case "swipe":
+    case "swipe": {
+      const inJabs = blow.speed / JAB_SPEED;
+
       return {
         push: blow.fist.clone().normalize(),
-        speed: (feel.fistSpeed * blow.speed) / JAB_SPEED,
+        speed: feel.fistSpeed * inJabs,
       };
+    }
   }
 }
 
@@ -169,7 +179,7 @@ function highestRise({ maxBottomSpeed, gravity }: SwingFeel): number {
   return maxBottomSpeed ** 2 / (2 * gravity);
 }
 
-function keepOnChain(
+function catchOnChain(
   fromPivot: Vector3,
   velocity: Vector3,
   {

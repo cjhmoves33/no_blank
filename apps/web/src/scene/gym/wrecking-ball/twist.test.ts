@@ -16,12 +16,12 @@ const UPWARD = new Vector3(0, 1, 0);
 const FRAME = 1 / 60;
 const { normal, reduced } = TWIST_FEEL;
 
-function jab(at: Vector3): Blow {
-  return { kind: "jab", at, fist: INTO_SCREEN };
+function jab(hitFromCenter: Vector3): Blow {
+  return { kind: "jab", hitFromCenter, fist: INTO_SCREEN };
 }
 
 function swipe(fist: Vector3): Blow {
-  return { kind: "swipe", at: FRONT, fist, speed: 3 };
+  return { kind: "swipe", hitFromCenter: FRONT, fist, speed: 3 };
 }
 
 function angles(

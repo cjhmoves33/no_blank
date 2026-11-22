@@ -15,7 +15,7 @@ import {
   settleLean,
   UPRIGHT,
 } from "./lean";
-import { HANGING_POINT, Leather, type LeatherHandle } from "./leather";
+import { HANGING_HEIGHT, Leather, type LeatherHandle } from "./leather";
 import { RESTING_SPRING, settle } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
@@ -33,7 +33,7 @@ import {
 import { TWIST_FEEL, twistBy } from "./twist";
 
 export interface WreckingBallHandle {
-  readonly sphere: () => Sphere | null;
+  readonly worldSphere: () => Sphere | null;
   readonly take: (blow: Blow) => Strike;
 }
 
@@ -48,8 +48,7 @@ const TO_CEILING = GYM.building.ceilingY - pivotY;
 
 const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
-const CHAIN_LENGTH = CHAIN_REACH - HANGING_POINT;
-const PIVOT = new Vector3(0, CHAIN_REACH, 0);
+const CHAIN_LENGTH = CHAIN_REACH - HANGING_HEIGHT;
 const LINKS = 12;
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
@@ -81,7 +80,7 @@ export function WreckingBall({
   useImperativeHandle(
     ref,
     () => ({
-      sphere: () =>
+      worldSphere: () =>
         ball.current
           ? new Sphere(ball.current.getWorldPosition(new Vector3()), radius)
           : null,
@@ -90,24 +89,29 @@ export function WreckingBall({
         const { strength } = struck.strike;
         const toLeather = ball.current?.quaternion.clone().invert();
         const dent = toLeather
-          ? impactOf(blow.at.clone().applyQuaternion(toLeather), strength)
+          ? impactOf(
+              blow.hitFromCenter.clone().applyQuaternion(toLeather),
+              strength,
+            )
           : null;
+        const center = ball.current?.getWorldPosition(new Vector3());
 
         swing.current = struck.swing;
         twist.current = twistBy(twist.current, blow, strength);
         lean.current = leanBy(
           lean.current,
-          { at: blow.at, push: struck.push, strength },
+          { hitFromCenter: blow.hitFromCenter, push: struck.push, strength },
           LEAN_FEEL[feel],
         );
         impact.current = dent ?? impact.current;
-        dust.current?.burst(
-          PIVOT.clone()
-            .add(ball.current?.position ?? struck.swing.fromPivot)
-            .add(blow.at),
-          blow.at.clone().normalize(),
-          strength,
-        );
+
+        if (center) {
+          dust.current?.burst(
+            center.add(blow.hitFromCenter),
+            blow.hitFromCenter,
+            strength,
+          );
+        }
 
         return struck.strike;
       },
@@ -119,12 +123,20 @@ export function WreckingBall({
     const seconds = Math.min(delta, LONGEST_FRAME);
     const aged = impact.current
       ? age(impact.current, seconds)
-      : { impact: null, moving: seconds };
+      : { impact: null, movingSeconds: seconds };
 
     impact.current = aged.impact;
-    swing.current = advance(swing.current, aged.moving, SWING_FEEL[feel]);
-    twist.current = settle(twist.current, aged.moving, TWIST_FEEL[feel]);
-    lean.current = settleLean(lean.current, aged.moving, LEAN_FEEL[feel]);
+    swing.current = advance(
+      swing.current,
+      aged.movingSeconds,
+      SWING_FEEL[feel],
+    );
+    twist.current = settle(twist.current, aged.movingSeconds, TWIST_FEEL[feel]);
+    lean.current = settleLean(
+      lean.current,
+      aged.movingSeconds,
+      LEAN_FEEL[feel],
+    );
 
     const jolt = joltOf(swing.current);
 
@@ -140,7 +152,7 @@ export function WreckingBall({
     leather.current?.dent(
       impact.current
         ? {
-            at: impact.current.at,
+            onLeather: impact.current.onLeather,
             depth: dentDepth(impact.current, DENT_FEEL[feel]),
           }
         : null,
@@ -199,12 +211,12 @@ function hangingPose(
 ): { readonly position: Vector3; readonly quaternion: Quaternion } {
   const tilt = leanTurn(lean);
   const toPivot = fromPivot.clone().negate().normalize();
-  const hinge = fromPivot.clone().addScaledVector(toPivot, HANGING_POINT);
+  const hinge = fromPivot.clone().addScaledVector(toPivot, HANGING_HEIGHT);
 
   return {
     position: toPivot
       .clone()
-      .multiplyScalar(-HANGING_POINT)
+      .multiplyScalar(-HANGING_HEIGHT)
       .applyQuaternion(tilt)
       .add(hinge),
     quaternion: tilt
@@ -233,7 +245,7 @@ interface ChainLink {
 function chainLinks(fromPivot: Vector3): ChainLink[] {
   const end = fromPivot
     .clone()
-    .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_POINT);
+    .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_HEIGHT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );

@@ -18,12 +18,13 @@ const UP = new Vector3(0, 1, 0);
 
 export function burst(
   at: Vector3,
-  outward: Vector3,
+  fromCenter: Vector3,
   {
     strength,
     random,
   }: { readonly strength: number; readonly random: () => number },
 ): Grain[] {
+  const outward = fromCenter.clone().normalize();
   const count = Math.round(GRAINS_AT_FULL_STRENGTH * strength);
   const side = alongSurface(outward);
   const across = outward.clone().cross(side);

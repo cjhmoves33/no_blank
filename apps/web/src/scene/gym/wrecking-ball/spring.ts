@@ -24,7 +24,7 @@ export function settle(
 
   return ratio < 1
     ? oscillating(spring, seconds, { natural, ratio })
-    : stopping(spring, seconds, natural);
+    : settleCriticallyDamped(spring, seconds, natural);
 }
 
 function oscillating(
@@ -48,7 +48,7 @@ function oscillating(
   };
 }
 
-function stopping(
+function settleCriticallyDamped(
   { angle, rate }: Spring,
   seconds: number,
   natural: number,

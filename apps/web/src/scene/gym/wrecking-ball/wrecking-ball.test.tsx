@@ -55,12 +55,12 @@ async function renderBall({ reducedMotion = false } = {}) {
   return { renderer, ball, jolts };
 }
 
-function jab(at: Vector3): Blow {
-  return { kind: "jab", at, fist: INTO_SCREEN };
+function jab(hitFromCenter: Vector3): Blow {
+  return { kind: "jab", hitFromCenter, fist: INTO_SCREEN };
 }
 
 function centerOf(ball: WreckingBallHandle): Vector3 {
-  const sphere = ball.sphere();
+  const sphere = ball.worldSphere();
 
   if (!sphere) {
     throw new Error("레킹볼이 장면에 없습니다.");
@@ -96,8 +96,7 @@ function leatherOf(renderer: Renderer): LeatherView {
   return leather;
 }
 
-/** 가죽 표면에서 중심에 가장 가까운 점까지의 거리입니다. 패이면 반지름보다 짧아집니다. */
-function shallowest(renderer: Renderer): number {
+function nearestLeatherToCenter(renderer: Renderer): number {
   const positions = leatherOf(renderer).geometry.getAttribute("position");
   let nearest = Infinity;
 
@@ -111,8 +110,7 @@ function shallowest(renderer: Renderer): number {
   return nearest;
 }
 
-/** 솔기 정점 가운데 공의 중심에 가장 가까운 것까지의 거리입니다. */
-function seamsShallowest(renderer: Renderer): number {
+function nearestSeamToCenter(renderer: Renderer): number {
   const distances = renderer.scene
     .findAll(() => true)
     .flatMap((node) => {
@@ -207,7 +205,7 @@ describe("WreckingBall", () => {
 
   it("손잡이는 가죽 공이 지금 차지한 구를 알려 준다", async () => {
     const { ball } = await renderBall();
-    const sphere = ball.sphere();
+    const sphere = ball.worldSphere();
 
     expect(sphere?.radius).toBe(radius);
     expect(sphere?.center.length()).toBeLessThan(1e-9);
@@ -253,11 +251,11 @@ describe("WreckingBall", () => {
     ball.take(jab(RIGHT));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(shallowest(renderer)).toBeLessThan(radius - 0.008);
+    expect(nearestLeatherToCenter(renderer)).toBeLessThan(radius - 0.008);
 
     await renderer.advanceFrames(30, FRAME);
 
-    expect(shallowest(renderer)).toBeCloseTo(radius, 6);
+    expect(nearestLeatherToCenter(renderer)).toBeCloseTo(radius, 6);
   });
 
   it("이미 비틀리거나 기운 공을 쳐도 패임은 맞은 자리에 생긴다", async () => {
@@ -276,12 +274,12 @@ describe("WreckingBall", () => {
 
   it("솔기도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
     const { renderer, ball } = await renderBall();
-    const before = seamsShallowest(renderer);
+    const before = nearestSeamToCenter(renderer);
 
     ball.take(jab(RIGHT));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(seamsShallowest(renderer)).toBeLessThan(before - 0.008);
+    expect(nearestSeamToCenter(renderer)).toBeLessThan(before - 0.008);
   });
 
   it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {

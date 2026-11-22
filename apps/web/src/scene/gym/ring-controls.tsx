@@ -72,7 +72,7 @@ export function RingControls({
     let press: Press | null = null;
 
     const sampleOf = (event: PointerEvent): PointerSample => ({
-      ray: rayThrough(camera, pointerOn(surface, event)),
+      ray: rayThrough(camera, ndcOf(surface, event)),
       seconds: event.timeStamp / 1000,
     });
 
@@ -95,7 +95,7 @@ export function RingControls({
     const handleDown = (event: PointerEvent): void => {
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
 
-      const sphere = ball.sphere();
+      const sphere = ball.worldSphere();
 
       if (event.button !== PRIMARY_BUTTON || !sphere) {
         return;
@@ -106,10 +106,10 @@ export function RingControls({
     };
 
     const handleMove = (event: PointerEvent): void => {
-      const sphere = ball.sphere();
+      const sphere = ball.worldSphere();
 
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
-      pointer.current = pointerOn(surface, event);
+      pointer.current = ndcOf(surface, event);
 
       if (press && sphere) {
         land(dragTo(press, sampleOf(event), sphere));
@@ -160,13 +160,13 @@ export function RingControls({
       camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
     }
 
-    const sphere = ball.sphere();
-    const over =
+    const sphere = ball.worldSphere();
+    const overBall =
       pointer.current !== null &&
       sphere !== null &&
       touches(rayThrough(camera, pointer.current), sphere);
 
-    showCursor(surface, cursorFor(orbiting.current, over));
+    showCursor(surface, cursorFor(orbiting.current, overBall));
   });
 
   return null;
@@ -187,8 +187,7 @@ function showCursor(surface: HTMLElement, cursor: Cursor): void {
   }
 }
 
-/** 커서 자리를 정규화 장치 좌표(-1~1, y 는 위쪽)로 바꿉니다. */
-function pointerOn(surface: HTMLElement, event: PointerEvent): Vector2 {
+function ndcOf(surface: HTMLElement, event: PointerEvent): Vector2 {
   const box = surface.getBoundingClientRect();
 
   return new Vector2(

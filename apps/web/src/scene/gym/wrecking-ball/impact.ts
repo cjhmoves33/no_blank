@@ -4,20 +4,20 @@ import { GYM } from "../measurements";
 import type { SWING_FEEL } from "./swing";
 
 export interface Impact {
-  readonly at: Vector3;
+  readonly onLeather: Vector3;
   readonly strength: number;
-  readonly hold: number;
-  readonly since: number;
+  readonly hitStopLeft: number;
+  readonly sinceHitStop: number;
 }
 
 export interface DentFeel {
-  readonly fade: number;
-  readonly ring: number;
+  readonly fadeSeconds: number;
+  readonly overshootRate: number;
 }
 
 export const DENT_FEEL = {
-  normal: { fade: 0.035, ring: (2 * Math.PI) / 0.14 },
-  reduced: { fade: 0.035, ring: 0 },
+  normal: { fadeSeconds: 0.035, overshootRate: (2 * Math.PI) / 0.14 },
+  reduced: { fadeSeconds: 0.035, overshootRate: 0 },
 } as const satisfies Record<keyof typeof SWING_FEEL, DentFeel>;
 
 const HIT_STOP = { shortest: 0.03, longest: 0.1 } as const;
@@ -27,67 +27,71 @@ const DENT_LIFE = 0.3;
 
 const { radius } = GYM.wreckingBall;
 
-export function impactOf(at: Vector3, strength: number): Impact | null {
+export function impactOf(onLeather: Vector3, strength: number): Impact | null {
   if (strength <= 0) {
     return null;
   }
 
   return {
-    at: at.clone().normalize(),
+    onLeather: onLeather.clone().normalize(),
     strength,
-    hold: HIT_STOP.shortest + (HIT_STOP.longest - HIT_STOP.shortest) * strength,
-    since: 0,
+    hitStopLeft:
+      HIT_STOP.shortest + (HIT_STOP.longest - HIT_STOP.shortest) * strength,
+    sinceHitStop: 0,
   };
 }
 
 export function age(
   impact: Impact,
   seconds: number,
-): { readonly impact: Impact | null; readonly moving: number } {
-  const held = Math.min(impact.hold, seconds);
-  const moving = seconds - held;
-  const since = impact.since + moving;
+): { readonly impact: Impact | null; readonly movingSeconds: number } {
+  const held = Math.min(impact.hitStopLeft, seconds);
+  const movingSeconds = seconds - held;
+  const sinceHitStop = impact.sinceHitStop + movingSeconds;
 
   return {
     impact:
-      since > DENT_LIFE ? null : { ...impact, hold: impact.hold - held, since },
-    moving,
+      sinceHitStop > DENT_LIFE
+        ? null
+        : { ...impact, hitStopLeft: impact.hitStopLeft - held, sinceHitStop },
+    movingSeconds,
   };
 }
 
 export function dentDepth(impact: Impact, feel: DentFeel): number {
   const deepest = DEEPEST * impact.strength;
 
-  if (impact.hold > 0) {
+  if (impact.hitStopLeft > 0) {
     return deepest;
   }
 
   return (
     deepest *
-    Math.exp(-impact.since / feel.fade) *
-    Math.cos(feel.ring * impact.since)
+    Math.exp(-impact.sinceHitStop / feel.fadeSeconds) *
+    Math.cos(feel.overshootRate * impact.sinceHitStop)
   );
 }
 
 export function sinking(
   direction: Vector3,
-  at: Vector3,
+  onLeather: Vector3,
   depth: number,
 ): number {
-  const apart = direction.distanceTo(at) * radius;
+  const apart = direction.distanceTo(onLeather) * radius;
 
   return depth * Math.exp(-((apart / DENT_WIDTH) ** 2));
 }
 
 export function dentedNormal(
   direction: Vector3,
-  at: Vector3,
+  onLeather: Vector3,
   depth: number,
 ): Vector3 {
-  const slope = (2 * sinking(direction, at, depth) * radius) / DENT_WIDTH ** 2;
-  const towardHit = at
+  const slope =
+    (2 * sinking(direction, onLeather, depth) * radius) / DENT_WIDTH ** 2;
+  const towardHit = onLeather
     .clone()
-    .sub(direction.clone().multiplyScalar(direction.dot(at)));
+    .sub(direction.clone().multiplyScalar(direction.dot(onLeather)));
 
   return direction.clone().addScaledVector(towardHit, slope).normalize();
 }

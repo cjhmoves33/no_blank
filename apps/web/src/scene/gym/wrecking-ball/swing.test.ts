@@ -26,14 +26,18 @@ const TO_THE_RIGHT = new Vector3(1, 0, 0);
 const FASTEST_SWIPE = 100;
 const { normal, reduced } = SWING_FEEL;
 
-function jab(at: Vector3): Blow {
-  return { kind: "jab", at, fist: at.clone().negate().normalize() };
+function jab(hitFromCenter: Vector3): Blow {
+  return {
+    kind: "jab",
+    hitFromCenter,
+    fist: hitFromCenter.clone().negate().normalize(),
+  };
 }
 
 function swipe(fist: Vector3, speed: number): Blow {
   return {
     kind: "swipe",
-    at: fist.clone().negate().setLength(radius),
+    hitFromCenter: fist.clone().negate().setLength(radius),
     fist,
     speed,
   };
@@ -101,7 +105,7 @@ describe("swing", () => {
   it("휘두르면 맞은 자리와 관계없이 끈 방향으로 밀린다", () => {
     const blow: Blow = {
       kind: "swipe",
-      at: FRONT,
+      hitFromCenter: FRONT,
       fist: TO_THE_RIGHT,
       speed: 2,
     };
@@ -252,7 +256,7 @@ describe("swing", () => {
 
 describe("덜컹", () => {
   function watch(swing: Swing, seconds: number, feel: SwingFeel = normal) {
-    const jolts: { at: number; strength: number }[] = [];
+    const jolts: { frame: number; strength: number }[] = [];
     const heights: number[] = [];
     let current = swing;
 
@@ -263,7 +267,7 @@ describe("덜컹", () => {
       const jolt = joltOf(current);
 
       if (jolt) {
-        jolts.push({ at: i, strength: jolt.strength });
+        jolts.push({ frame: i, strength: jolt.strength });
       }
     }
 
@@ -282,9 +286,9 @@ describe("덜컹", () => {
     }
 
     expect(second.strength).toBeLessThan(first.strength);
-    expect(Math.max(...heights.slice(first.at + 1, second.at))).toBeGreaterThan(
-      (heights[first.at] ?? 0) + 0.005,
-    );
+    expect(
+      Math.max(...heights.slice(first.frame + 1, second.frame)),
+    ).toBeGreaterThan((heights[first.frame] ?? 0) + 0.005);
     expect(last.fromPivot.length()).toBeCloseTo(CHAIN_REACH, 9);
     expect(joltOf(advance(last, 1, normal))).toBeNull();
   });
@@ -327,7 +331,9 @@ describe("덜컹", () => {
       throw new Error("덜컹이 있어야 합니다.");
     }
 
-    expect(Math.max(...heights.slice(first.at))).toBeLessThan(REST.y + 0.001);
+    expect(Math.max(...heights.slice(first.frame))).toBeLessThan(
+      REST.y + 0.001,
+    );
   });
 });
 

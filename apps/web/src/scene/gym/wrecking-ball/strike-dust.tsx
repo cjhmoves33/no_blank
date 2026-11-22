@@ -15,7 +15,11 @@ import {
 } from "./dust";
 
 export interface StrikeDustHandle {
-  readonly burst: (at: Vector3, outward: Vector3, strength: number) => void;
+  readonly burst: (
+    worldHit: Vector3,
+    fromCenter: Vector3,
+    strength: number,
+  ) => void;
 }
 
 export interface StrikeDustProps {
@@ -38,10 +42,16 @@ export function StrikeDust({ ref }: StrikeDustProps) {
   useImperativeHandle(
     ref,
     () => ({
-      burst: (at, outward, strength) => {
+      burst: (worldHit, fromCenter, strength) => {
+        if (!points.current) {
+          return;
+        }
+
+        const at = points.current.worldToLocal(worldHit.clone());
+
         grains.current = [
           ...grains.current,
-          ...burst(at, outward, { strength, random }),
+          ...burst(at, fromCenter, { strength, random }),
         ].slice(-CAPACITY);
       },
     }),

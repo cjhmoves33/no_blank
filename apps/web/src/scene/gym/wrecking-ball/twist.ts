@@ -1,7 +1,5 @@
-import { Vector3 } from "three";
-
 import { criticallyDamped, type Spring, type SpringFeel } from "./spring";
-import type { Blow, SWING_FEEL } from "./swing";
+import { type Blow, STRAIGHT_CHAIN_AXIS, type SWING_FEEL } from "./swing";
 
 export type Twist = Spring;
 
@@ -10,12 +8,17 @@ export const TWIST_FEEL = {
   reduced: criticallyDamped(96),
 } as const satisfies Record<keyof typeof SWING_FEEL, SpringFeel>;
 
-const KICK = 3;
-
-const UP = new Vector3(0, 1, 0);
+const KICK_AT_FULL_STRENGTH = 3;
 
 export function twistBy(twist: Twist, blow: Blow, strength: number): Twist {
-  const turn = blow.at.clone().normalize().cross(blow.fist).dot(UP);
+  const turn = blow.hitFromCenter
+    .clone()
+    .normalize()
+    .cross(blow.fist.clone().normalize())
+    .dot(STRAIGHT_CHAIN_AXIS);
 
-  return { angle: twist.angle, rate: twist.rate + KICK * strength * turn };
+  return {
+    angle: twist.angle,
+    rate: twist.rate + KICK_AT_FULL_STRENGTH * strength * turn,
+  };
 }

@@ -15,7 +15,7 @@ import { PaintedTexture, type Painting } from "../painted-texture";
 import { dentedNormal, sinking } from "./impact";
 
 interface Dent {
-  readonly at: Vector3;
+  readonly onLeather: Vector3;
   readonly depth: number;
 }
 
@@ -40,7 +40,7 @@ const CAP_LEATHER = "#5a3420";
 const CAP = { radius: 0.07, height: 0.04 } as const;
 const SHACKLE = { radius: 0.03, tube: 0.008 } as const;
 
-export const HANGING_POINT = radius + CAP.height + SHACKLE.radius * 2;
+export const HANGING_HEIGHT = radius + CAP.height + SHACKLE.radius * 2;
 
 const LEATHER: Painting = {
   width: 1024,
@@ -67,7 +67,7 @@ const LEATHER: Painting = {
 
 type Attribute = BufferAttribute | InterleavedBufferAttribute;
 
-interface Rest {
+interface UndentedMesh {
   readonly geometry: BufferGeometry;
   readonly positions: Float32Array;
   readonly toBall: Quaternion;
@@ -76,7 +76,10 @@ interface Rest {
 export function Leather({ ref }: LeatherProps) {
   const sphere = useRef<Mesh>(null);
   const seams = useRef<(Mesh | null)[]>([]);
-  const rest = useRef<{ readonly leather: Rest; readonly seams: Rest[] }>(null);
+  const rest = useRef<{
+    readonly leather: UndentedMesh;
+    readonly seams: UndentedMesh[];
+  }>(null);
   const dented = useRef(false);
 
   useImperativeHandle(
@@ -145,7 +148,10 @@ export function Leather({ ref }: LeatherProps) {
 function restOf(
   leather: Mesh | null,
   seams: readonly (Mesh | null)[],
-): { readonly leather: Rest; readonly seams: Rest[] } | null {
+): {
+  readonly leather: UndentedMesh;
+  readonly seams: UndentedMesh[];
+} | null {
   const seamMeshes = seams.filter((seam) => seam !== null);
 
   if (!leather || seamMeshes.length !== SEAM_TURNS.length) {
@@ -158,7 +164,7 @@ function restOf(
   };
 }
 
-function restOfMesh(mesh: Mesh): Rest {
+function restOfMesh(mesh: Mesh): UndentedMesh {
   const { geometry } = mesh;
 
   return {
@@ -171,7 +177,7 @@ function restOfMesh(mesh: Mesh): Rest {
 const point = new Vector3();
 const direction = new Vector3();
 
-function dentLeather(rest: Rest, dent: Dent | null): void {
+function dentLeather(rest: UndentedMesh, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const normals = rest.geometry.getAttribute("normal");
 
@@ -180,12 +186,12 @@ function dentLeather(rest: Rest, dent: Dent | null): void {
     direction.copy(point).normalize();
 
     const normal = dent
-      ? dentedNormal(direction, dent.at, dent.depth)
+      ? dentedNormal(direction, dent.onLeather, dent.depth)
       : direction;
 
     point.addScaledVector(
       direction,
-      dent ? -sinking(direction, dent.at, dent.depth) : 0,
+      dent ? -sinking(direction, dent.onLeather, dent.depth) : 0,
     );
     positions.setXYZ(i, point.x, point.y, point.z);
     normals.setXYZ(i, normal.x, normal.y, normal.z);
@@ -194,7 +200,7 @@ function dentLeather(rest: Rest, dent: Dent | null): void {
   changed(positions, normals);
 }
 
-function dentSeam(rest: Rest, dent: Dent | null): void {
+function dentSeam(rest: UndentedMesh, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const toSeam = rest.toBall.clone().invert();
 
@@ -205,7 +211,10 @@ function dentSeam(rest: Rest, dent: Dent | null): void {
       point.applyQuaternion(rest.toBall);
       direction.copy(point).normalize();
       point
-        .addScaledVector(direction, -sinking(direction, dent.at, dent.depth))
+        .addScaledVector(
+          direction,
+          -sinking(direction, dent.onLeather, dent.depth),
+        )
         .applyQuaternion(toSeam);
     }
 
