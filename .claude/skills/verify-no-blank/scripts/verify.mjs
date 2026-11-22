@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// no_blank 체육관 장면을 저장소 밖의 격리된 빌드로 띄워 정해진 시점에서 찍고, 두 빌드의 화면을 비교합니다.
-// 의존성 없이 Node 24 내장 기능(WebSocket, zlib)과 설치된 Chrome 만 씁니다.
 import { spawn, spawnSync } from "node:child_process";
 import {
   closeSync,
@@ -31,7 +29,6 @@ const CHROME =
   process.env.CHROME_PATH ??
   "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const USER_DEV_PORT = 3000;
-// PR 본문에 붙일 이미지는 코드와 섞이지 않게 이 브랜치에만 쌓습니다. main 으로 합치지 않습니다.
 const ASSET_BRANCH = "pr-assets";
 const GH =
   process.env.GH_PATH ??
@@ -40,22 +37,22 @@ const GH =
     : "gh");
 const VIEWPORT = { width: 1280, height: 800 };
 const SETTLE_FRAMES = 30;
-// 한 채널이라도 이만큼 넘게 달라야 바뀐 픽셀로 셉니다. 같은 빌드를 두 번 찍었을 때의 차이는 0 입니다.
 const CHANGED_DELTA = 8;
 
-// 시점은 화면 비율 좌표로 적은 사용자 입력입니다. 가운데는 도형이라, 배경 드래그는 왼쪽 가장자리에서 시작합니다.
+const ON_SHAPE = [0.5, 0.5];
+const ON_BACKGROUND = [0.12, 0.85];
+
 const VIEWS = {
   home: [],
-  "turned-left": [{ drag: [0.12, 0.85, 0.22, 0.85] }],
-  "turned-right": [{ drag: [0.22, 0.85, 0.12, 0.85] }],
-  high: [{ drag: [0.12, 0.3, 0.12, 0.8] }],
-  low: [{ drag: [0.12, 0.8, 0.12, 0.3] }],
-  near: [{ wheel: { deltaY: -120, times: 40 } }],
-  far: [{ wheel: { deltaY: 120, times: 40 } }],
-  pressed: [{ press: [0.5, 0.5] }],
-  // 포인터가 도형 위에 남으면 hover 빛이 켜지므로, 놓은 뒤 배경으로 옮기고 누름 빛이 사라질 때까지 기다립니다.
+  "turned-left": [{ drag: { from: ON_BACKGROUND, to: [0.22, 0.85] } }],
+  "turned-right": [{ drag: { from: [0.22, 0.85], to: ON_BACKGROUND } }],
+  high: [{ drag: { from: [0.12, 0.3], to: [0.12, 0.8] } }],
+  low: [{ drag: { from: [0.12, 0.8], to: [0.12, 0.3] } }],
+  near: [{ wheel: { at: ON_BACKGROUND, deltaY: -120, times: 40 } }],
+  far: [{ wheel: { at: ON_BACKGROUND, deltaY: 120, times: 40 } }],
+  pressed: [{ press: ON_SHAPE }],
   "shape-drag": [
-    { drag: [0.5, 0.5, 0.6, 0.5] },
+    { drag: { from: ON_SHAPE, to: [0.6, 0.5] } },
     { move: [0.02, 0.02] },
     { wait: 2000 },
   ],
@@ -71,7 +68,6 @@ const DEFAULT_VIEWS = [
   "far",
 ];
 
-// AudioContext 의 출력에 분석기를 하나 더 이어, 실제로 소리가 나갔는지 최대 진폭으로 남깁니다.
 const AUDIO_TAP = `(() => {
   const connect = AudioNode.prototype.connect;
   const taps = new WeakMap();
@@ -155,8 +151,6 @@ function parseArgs(args) {
   return { positional, flags };
 }
 
-// ---------------------------------------------------------------- doctor
-
 async function doctor() {
   const major = Number(process.versions.node.split(".")[0]);
   const checks = [
@@ -201,8 +195,6 @@ async function doctor() {
   }
 }
 
-// ---------------------------------------------------------------- prepare
-
 async function prepare({ positional }) {
   const [name, ref] = positional;
 
@@ -224,7 +216,6 @@ function prepareBuild(name, ref) {
   mkdirSync(BUILDS, { recursive: true });
   git(["worktree", "add", "--detach", dir, commit]);
   console.log(`prepare ${name}: ${ref} @ ${commit.slice(0, 7)} -> ${dir}`);
-  // 저장소 밖에서 빌드하므로, 사용자의 dev 서버가 감시하는 파일은 건드리지 않습니다.
   exec("pnpm", ["install", "--frozen-lockfile", "--prefer-offline"], dir, {
     HUSKY: "0",
   });
@@ -237,7 +228,6 @@ function prepareBuild(name, ref) {
   return dir;
 }
 
-// 실제 index 를 건드리지 않고, 추적하지 않는 파일까지 포함한 작업 트리를 커밋 하나로 찍습니다.
 function snapshotWorkingTree() {
   const index = path.join(HOME, "snapshot.index");
   const env = { GIT_INDEX_FILE: index };
@@ -298,8 +288,6 @@ function removeBuild(name) {
 
   git(["worktree", "prune"]);
 }
-
-// ---------------------------------------------------------------- shoot
 
 async function shoot({ positional, flags }) {
   const [name] = positional;
@@ -410,7 +398,6 @@ async function startServer(buildDir, port) {
 
   const deadline = Date.now() + 60_000;
 
-  // 서버가 응답하는 것만으로는 부족하고, 체육관 캔버스가 든 HTML 이 와야 준비된 것입니다.
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://localhost:${port}/`);
@@ -418,9 +405,7 @@ async function startServer(buildDir, port) {
       if (response.ok && (await response.text()).includes("<canvas")) {
         return { pid: child.pid, port };
       }
-    } catch {
-      // 아직 포트를 열지 않았습니다.
-    }
+    } catch {}
 
     await sleep(300);
   }
@@ -475,9 +460,7 @@ async function startChrome(port, { webgl }) {
 async function stopChrome(chrome) {
   try {
     await Promise.race([chrome.cdp.send("Browser.close"), sleep(3000)]);
-  } catch {
-    // 이미 닫혔습니다.
-  }
+  } catch {}
 
   chrome.cdp.close();
   await sleep(500);
@@ -511,7 +494,6 @@ async function shootView(cdp, { url, view, motion, file }) {
     deviceScaleFactor: 1,
     mobile: false,
   });
-  // 동작 줄이기를 켜면 도형 회전, 먼지, 카메라 관성이 멈춰서 같은 입력이 늘 같은 프레임을 만듭니다.
   await cdp.send("Emulation.setEmulatedMedia", {
     features: [
       {
@@ -541,7 +523,6 @@ async function shootView(cdp, { url, view, motion, file }) {
 
   await frames(cdp, 10);
 
-  // WebGL 을 만들지 못하면 캔버스가 잠깐 생겼다가 사라지므로, 찍는 순간에 다시 확인합니다.
   const canvas = await evaluate(
     cdp,
     "document.querySelector('canvas') !== null",
@@ -579,12 +560,14 @@ function frames(cdp, count) {
   );
 }
 
-async function perform(cdp, action) {
-  const at = (x, y) => ({
+function fractionToPixels([x, y]) {
+  return {
     x: Math.round(x * VIEWPORT.width),
     y: Math.round(y * VIEWPORT.height),
-  });
+  };
+}
 
+async function perform(cdp, action) {
   if (action.wait) {
     await sleep(action.wait);
 
@@ -592,13 +575,13 @@ async function perform(cdp, action) {
   }
 
   if (action.move) {
-    await mouse(cdp, "mouseMoved", at(...action.move), 0);
+    await mouse(cdp, "mouseMoved", fractionToPixels(action.move), 0);
 
     return;
   }
 
   if (action.press) {
-    const point = at(...action.press);
+    const point = fractionToPixels(action.press);
 
     await mouse(cdp, "mousePressed", point, 1);
     await frames(cdp, 2);
@@ -608,27 +591,27 @@ async function perform(cdp, action) {
   }
 
   if (action.drag) {
-    const [x0, y0, x1, y1] = action.drag;
+    const { from, to } = action.drag;
     const steps = 20;
+    const between = (i) =>
+      fractionToPixels([
+        from[0] + ((to[0] - from[0]) * i) / steps,
+        from[1] + ((to[1] - from[1]) * i) / steps,
+      ]);
 
-    await mouse(cdp, "mousePressed", at(x0, y0), 1);
+    await mouse(cdp, "mousePressed", between(0), 1);
 
     for (let i = 1; i <= steps; i++) {
-      await mouse(
-        cdp,
-        "mouseMoved",
-        at(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps),
-        1,
-      );
+      await mouse(cdp, "mouseMoved", between(i), 1);
     }
 
-    await mouse(cdp, "mouseReleased", at(x1, y1), 0);
+    await mouse(cdp, "mouseReleased", between(steps), 0);
 
     return;
   }
 
   if (action.wheel) {
-    const center = at(0.12, 0.85);
+    const center = fractionToPixels(action.wheel.at);
 
     for (let i = 0; i < action.wheel.times; i++) {
       await cdp.send("Input.dispatchMouseEvent", {
@@ -665,8 +648,6 @@ async function evaluate(cdp, expression) {
 
   return result.value;
 }
-
-// ---------------------------------------------------------------- compare
 
 async function compare({ positional, flags }) {
   const [before, after] = positional;
@@ -801,8 +782,6 @@ function formatStats(stats) {
   return `changed ${stats.changed} px (${stats.percent.toFixed(3)}%), max delta ${stats.maxDelta}, mean delta ${stats.meanDelta.toFixed(3)}`;
 }
 
-// ---------------------------------------------------------------- publish
-
 async function publish({ positional, flags }) {
   const [beforeDir, afterDir] = positional;
 
@@ -825,7 +804,6 @@ async function publish({ positional, flags }) {
     const after = decodePng(readFileSync(path.join(afterDir, `${view}.png`)));
     const { stats, image } = diffDecoded(before, after);
 
-    // 고르지 않았으면 바뀐 시점만 올립니다.
     if (picked || stats.changed > 0) {
       panels.push({
         view,
@@ -903,7 +881,6 @@ async function publish({ positional, flags }) {
   console.log(lines.join("\n"));
 }
 
-// 세 장을 반으로 줄여 가로로 붙입니다. PR 본문에서 한눈에 견주기 좋은 크기입니다.
 function sideBySide(images) {
   const halves = images.map(halve);
   const gap = 8;
@@ -952,7 +929,6 @@ function halve({ width, height, pixels }) {
   return { width: halfWidth, height: halfHeight, pixels: out };
 }
 
-// 로컬에서 push 하지 않고 GitHub API 로 커밋합니다. 사용자의 작업 트리와 git hook 은 건드리지 않습니다.
 function uploadAssets(files, message) {
   const ref = ghApi(
     "GET",
@@ -1047,7 +1023,6 @@ function gh(args) {
   return result.stdout.trim();
 }
 
-// Chrome 이 저장하는 8비트 RGB/RGBA, 비인터레이스 PNG 만 읽습니다.
 function decodePng(buffer) {
   let offset = 8;
   let header;
@@ -1184,8 +1159,6 @@ function chunk(type, body) {
   return Buffer.concat([length, typed, crc]);
 }
 
-// ---------------------------------------------------------------- run
-
 async function run({ flags }) {
   const before = flags.before ?? "origin/main";
   const after = flags.after ?? "WORKTREE";
@@ -1220,8 +1193,6 @@ async function run({ flags }) {
   console.log(`\nevidence: ${out}`);
 }
 
-// ---------------------------------------------------------------- cleanup
-
 async function cleanup() {
   const state = readState();
 
@@ -1243,8 +1214,6 @@ async function cleanup() {
   rmSync(LOGS, { recursive: true, force: true });
   console.log(`cleanup done; evidence kept in ${EVIDENCE}`);
 }
-
-// ---------------------------------------------------------------- helpers
 
 function readState() {
   return existsSync(STATE)
@@ -1271,7 +1240,6 @@ function forget(kind, pid) {
   writeState(state);
 }
 
-// 이 스크립트가 띄운 PID 만 죽입니다. 프로세스 이름으로 찾지 않습니다.
 function killTree(pid) {
   if (!isAlive(pid)) {
     return;

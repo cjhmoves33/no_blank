@@ -29,15 +29,15 @@ const RENDERER = {
 
 const SCENE = { environmentIntensity: LATE_AFTERNOON.environmentIntensity };
 
-// 카메라는 로프에서 15 cm 까지 다가가므로 near 면을 R3F 기본값(0.1)보다 앞에 둡니다.
-// far 는 near 와의 비율(1:10000)을 지켜, 벽 앞 2 cm 에 칠한 띠가 벽과 깊이를 다투지 않게 합니다.
+const DEPTH_RANGE = 10_000;
+
 const CAMERA = {
   fov: RING_VIEW.fov,
   position: RING_VIEW.home,
   // R3F 는 rotation 이 없으면 카메라가 원점(바닥)을 보게 하므로, 첫 프레임부터 target 을 보게 합니다.
   rotation: facing(RING_VIEW.home, RING_VIEW.target),
-  near: 0.05,
-  far: 500,
+  near: RING_VIEW.near,
+  far: RING_VIEW.near * DEPTH_RANGE,
 };
 
 function facing(
@@ -55,13 +55,9 @@ function facing(
 }
 
 /**
- * 늦은 오후의 오래된 복싱 체육관입니다. 캔버스와 색 처리, 링 시점, 빛, 건물, 링, 소품을 여기서 정합니다.
  * - children 은 GYM.shape.center 를 원점으로 두고 그립니다. 반지름 GYM.shape.radius 구 안에 놓이며, 건물과 소품은 그 자리를 비워 두고, 그 안은 도형을 비추는 빛이 밝힙니다.
  * - children 의 메시는 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다.
  * - 포인터 이벤트 핸들러를 달지 않습니다. 누를 수 있는 것은 children 이 정합니다. 누름으로 카메라가 돌지 않게 하려면 pointerdown 에서 nativeEvent.stopPropagation() 을 부릅니다.
- * - 체육관은 RING_VIEW 가 허락하는 모든 카메라 위치에서 빈 곳 없이 보여야 합니다.
- * - 소품을 더하려면 props/heavy-bags.tsx(그림 텍스처가 있으면 props/wall-clock.tsx)를 본떠 props/ 에 파일을 만들고, props/plan.ts 에 자리를 적고, 아래에 그 자리로 감싼 한 줄을 넣습니다.
- *   소품 파일은 기준점(건물에 닿는 점)을 원점에 두고 그리며 크기를 내보냅니다. props/plan.test.ts 가 그 크기로 소품끼리 겹치지 않는지 검사합니다.
  */
 export function Gym({ reducedMotion, children }: GymProps) {
   const [orbitSurface, setOrbitSurface] = useState<HTMLDivElement | null>(null);

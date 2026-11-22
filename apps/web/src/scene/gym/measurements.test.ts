@@ -3,9 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import { GYM, RING_VIEW } from "./measurements";
 
-// 로프 반지름 바깥으로 카메라 near 면(0.05)이 로프에 닿지 않을 여유입니다.
-const ROPE_MARGIN = 0.1;
-// 0.75 m 보다 낮으면 매트 무늬만 보입니다.
 const EYE_ABOVE_MAT = 0.75;
 const TARGET = new Vector3(...RING_VIEW.target);
 
@@ -36,8 +33,8 @@ function allowedCameraPositions(): Vector3[] {
 }
 
 describe("RING_VIEW", () => {
-  it("카메라는 어디로 돌려도 로프 안쪽에 있다", () => {
-    const limit = GYM.ropes.half - GYM.ropes.radius - ROPE_MARGIN;
+  it("카메라는 어디로 돌려도 로프 안쪽에 있고, near 면도 로프에 닿지 않는다", () => {
+    const limit = GYM.ropes.half - GYM.ropes.radius - RING_VIEW.near;
 
     for (const position of allowedCameraPositions()) {
       expect(
@@ -46,7 +43,7 @@ describe("RING_VIEW", () => {
     }
   });
 
-  it("카메라는 매트에서 충분히 높이 있다", () => {
+  it("카메라는 매트에서 충분히 높아서, 화면에 매트 무늬만 보이지는 않는다", () => {
     for (const position of allowedCameraPositions()) {
       expect(position.y - GYM.mat.y).toBeGreaterThanOrEqual(EYE_ABOVE_MAT);
     }
