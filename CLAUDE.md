@@ -20,8 +20,10 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 | web에서 API 호출         | `apps/web/src/lib/api.ts`                                      |
 | web 테스트               | `apps/web/src/lib/api.test.ts`                                 |
 | DB 스키마와 마이그레이션 | `apps/server/src/db/schema.ts`, README의 "DB 스키마 변경 방법" |
-| 3D 장면                  | `apps/web/src/scene/home-scene.tsx`                            |
+| 3D 장면                  | `apps/web/src/scene/space.tsx`                                 |
 | 3D 오브젝트              | `apps/web/src/scene/spinning-shape.tsx`                        |
+| 체육관 소품              | `apps/web/src/scene/gym/heavy-bags.tsx`                        |
+| 그림 텍스처가 있는 소품  | `apps/web/src/scene/gym/wall-clock.tsx`                        |
 | 3D 오브젝트 테스트       | `apps/web/src/scene/spinning-shape.test.tsx`                   |
 | 효과음                   | `apps/web/src/audio/sounds.ts`                                 |
 | 효과음 재생 테스트       | `apps/web/src/audio/play-sound.test.ts`                        |
