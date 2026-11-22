@@ -7,6 +7,7 @@ import {
   type Blow,
   CHAIN_REACH,
   farthestReach,
+  joltOf,
   restingSwing,
   strike,
   type Swing,
@@ -246,6 +247,88 @@ describe("swing", () => {
 
       expect(byFrames.fromPivot.distanceTo(atOnce)).toBeLessThan(0.01);
     }
+  });
+});
+
+describe("덜컹", () => {
+  /** 프레임마다 흘려 보내며, 덜컹한 시각과 세기, 그리고 공의 높이를 모읍니다. */
+  function watch(swing: Swing, seconds: number, feel: SwingFeel = normal) {
+    const jolts: { at: number; strength: number }[] = [];
+    const heights: number[] = [];
+    let current = swing;
+
+    for (let i = 0; i * FRAME < seconds; i++) {
+      current = advance(current, FRAME, feel);
+      heights.push(current.fromPivot.y);
+
+      const jolt = joltOf(current);
+
+      if (jolt) {
+        jolts.push({ at: i, strength: jolt.strength });
+      }
+    }
+
+    return { jolts, heights, last: current };
+  }
+
+  it("들린 공이 떨어져 사슬이 팽팽해지면 덜컹 되튀고, 점점 작게 몇 번 덜컹하다 멈춘다", () => {
+    const { jolts, heights, last } = watch(
+      hit(restingSwing(), UNDER, normal),
+      1.5,
+    );
+    const [first, second] = jolts;
+
+    if (!first || !second) {
+      throw new Error("덜컹이 두 번 이상 있어야 합니다.");
+    }
+
+    expect(second.strength).toBeLessThan(first.strength);
+    expect(Math.max(...heights.slice(first.at + 1, second.at))).toBeGreaterThan(
+      (heights[first.at] ?? 0) + 0.005,
+    );
+    expect(last.fromPivot.length()).toBeCloseTo(CHAIN_REACH, 9);
+    expect(joltOf(advance(last, 1, normal))).toBeNull();
+  });
+
+  it("세게 올려 칠수록 세게 덜컹한다", () => {
+    const firstJolt = (blow: Blow) =>
+      watch(strike(restingSwing(), blow, normal).swing, 1.5).jolts[0]
+        ?.strength ?? 0;
+
+    expect(firstJolt(swipe(UP, FASTEST_SWIPE))).toBeGreaterThan(
+      firstJolt(jab(UNDER)),
+    );
+    expect(firstJolt(swipe(UP, FASTEST_SWIPE))).toBeGreaterThan(0.8);
+  });
+
+  it("가만히 매달려 있거나 팽팽한 사슬에 매달려 흔들리는 동안에는 덜컹하지 않는다", () => {
+    for (const feel of [normal, reduced]) {
+      expect(watch(restingSwing(), 3, feel).jolts).toEqual([]);
+      expect(watch(hit(restingSwing(), RIGHT, feel), 3, feel).jolts).toEqual(
+        [],
+      );
+    }
+
+    for (const blow of [
+      jab(RIGHT),
+      jab(FRONT),
+      swipe(TO_THE_RIGHT, FASTEST_SWIPE),
+    ]) {
+      expect(
+        watch(strike(restingSwing(), blow, normal).swing, 5).jolts,
+      ).toEqual([]);
+    }
+  });
+
+  it("동작 줄이기에서는 덜컹해도 되튀지 않는다", () => {
+    const { jolts, heights } = watch(moving(new Vector3(0, 4, 0)), 1, reduced);
+    const [first] = jolts;
+
+    if (!first) {
+      throw new Error("덜컹이 있어야 합니다.");
+    }
+
+    expect(Math.max(...heights.slice(first.at))).toBeLessThan(REST.y + 0.001);
   });
 });
 

@@ -12,7 +12,7 @@ import { ceilingMount, PLAN, wallMount } from "./props/plan";
 import { WallClock } from "./props/wall-clock";
 import { Ring } from "./ring";
 import { RingControls } from "./ring-controls";
-import type { Strike } from "./wrecking-ball/swing";
+import type { Jolt, Strike } from "./wrecking-ball/swing";
 import {
   WreckingBall,
   type WreckingBallHandle,
@@ -24,6 +24,7 @@ const WALL_CLOCK = wallMount(PLAN.wallClock);
 export interface GymProps {
   readonly reducedMotion: boolean;
   readonly onStrike: (strike: Strike) => void;
+  readonly onJolt: (jolt: Jolt) => void;
 }
 
 // R3F 기본값 ACES 는 노출에 1/0.6 을 곱하고 밝은 색의 채도를 뺍니다. Neutral 은 밝지 않은 색을 그대로 내서 레킹볼의 가죽이 제 색으로 보입니다.
@@ -60,7 +61,7 @@ function facing(
 }
 
 /** 레킹볼을 치는 마우스 입력은 장면 위에 덮인 surface 하나에서 RingControls 가 모두 받습니다. */
-export function Gym({ reducedMotion, onStrike }: GymProps) {
+export function Gym({ reducedMotion, onStrike, onJolt }: GymProps) {
   const [surface, setSurface] = useState<HTMLDivElement | null>(null);
   const [ball, setBall] = useState<WreckingBallHandle | null>(null);
 
@@ -93,7 +94,11 @@ export function Gym({ reducedMotion, onStrike }: GymProps) {
           />
         ) : null}
         <group position={GYM.wreckingBall.restCenter}>
-          <WreckingBall ref={setBall} reducedMotion={reducedMotion} />
+          <WreckingBall
+            ref={setBall}
+            reducedMotion={reducedMotion}
+            onJolt={onJolt}
+          />
         </group>
       </Canvas>
     </div>

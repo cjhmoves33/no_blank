@@ -2,15 +2,9 @@ import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import { GYM } from "../measurements";
+import { RESTING_SPRING, settle, type SpringFeel } from "./spring";
 import type { Blow } from "./swing";
-import {
-  restingTwist,
-  type Twist,
-  TWIST_FEEL,
-  twistBy,
-  type TwistFeel,
-  unwind,
-} from "./twist";
+import { type Twist, TWIST_FEEL, twistBy } from "./twist";
 
 const { radius } = GYM.wreckingBall;
 const INTO_SCREEN = new Vector3(0, 0, -1);
@@ -33,31 +27,31 @@ function swipe(fist: Vector3): Blow {
 function angles(
   twist: Twist,
   seconds: number,
-  feel: TwistFeel = normal,
+  feel: SpringFeel = normal,
 ): number[] {
   const seen: number[] = [];
   let current = twist;
 
   for (let t = 0; t < seconds; t += FRAME) {
-    current = unwind(current, FRAME, feel);
+    current = settle(current, FRAME, feel);
     seen.push(current.angle);
   }
 
   return seen;
 }
 
-function widest(twist: Twist, feel: TwistFeel = normal): number {
+function widest(twist: Twist, feel: SpringFeel = normal): number {
   return Math.max(...angles(twist, 3, feel).map(Math.abs));
 }
 
 describe("twist", () => {
   it("정면 가운데를 잽으로 치면 비틀리지 않는다", () => {
-    expect(widest(twistBy(restingTwist(), jab(FRONT), 1))).toBe(0);
+    expect(widest(twistBy(RESTING_SPRING, jab(FRONT), 1))).toBe(0);
   });
 
   it("옆 가장자리를 잽으로 치면 비틀리고, 반대쪽 가장자리는 반대로 비틀린다", () => {
-    const right = twistBy(restingTwist(), jab(RIGHT), 0.4);
-    const left = twistBy(restingTwist(), jab(LEFT), 0.4);
+    const right = twistBy(RESTING_SPRING, jab(RIGHT), 0.4);
+    const left = twistBy(RESTING_SPRING, jab(LEFT), 0.4);
     const [firstRight = 0] = angles(right, FRAME);
     const [firstLeft = 0] = angles(left, FRAME);
 
@@ -67,23 +61,23 @@ describe("twist", () => {
 
   it("옆으로 휘두르면(훅) 비틀리고, 아래에서 위로 휘두르면(어퍼컷) 비틀리지 않는다", () => {
     expect(
-      widest(twistBy(restingTwist(), swipe(TO_THE_RIGHT), 1)),
+      widest(twistBy(RESTING_SPRING, swipe(TO_THE_RIGHT), 1)),
     ).toBeGreaterThan(0.5);
-    expect(widest(twistBy(restingTwist(), swipe(UPWARD), 1))).toBeLessThan(
+    expect(widest(twistBy(RESTING_SPRING, swipe(UPWARD), 1))).toBeLessThan(
       1e-9,
     );
   });
 
   it("타격 세기가 클수록 크게 비틀리고, 세기가 0 이면 비틀리지 않는다", () => {
     const by = (strength: number) =>
-      widest(twistBy(restingTwist(), jab(RIGHT), strength));
+      widest(twistBy(RESTING_SPRING, jab(RIGHT), strength));
 
     expect(by(0)).toBe(0);
     expect(by(0.4)).toBeLessThan(by(1));
   });
 
   it("꼬인 사슬이 풀리듯 반대쪽으로 넘어갔다가, 10초쯤 지나면 거의 멈춘다", () => {
-    const twisted = twistBy(restingTwist(), swipe(TO_THE_RIGHT), 1);
+    const twisted = twistBy(RESTING_SPRING, swipe(TO_THE_RIGHT), 1);
     const seen = angles(twisted, 10);
     const last = seen.at(-1) ?? Infinity;
 
@@ -92,7 +86,7 @@ describe("twist", () => {
   });
 
   it("동작 줄이기에서는 넘어가지 않고 1초 안에 멈춘다", () => {
-    const twisted = twistBy(restingTwist(), swipe(TO_THE_RIGHT), 1);
+    const twisted = twistBy(RESTING_SPRING, swipe(TO_THE_RIGHT), 1);
     const seen = angles(twisted, 1, reduced);
 
     expect(Math.min(...seen)).toBeGreaterThanOrEqual(0);
@@ -100,14 +94,14 @@ describe("twist", () => {
   });
 
   it("프레임 속도와 관계없이 같은 비틀림이 된다", () => {
-    const twisted = twistBy(restingTwist(), jab(RIGHT), 1);
-    const atOnce = unwind(twisted, 1.5, normal).angle;
+    const twisted = twistBy(RESTING_SPRING, jab(RIGHT), 1);
+    const atOnce = settle(twisted, 1.5, normal).angle;
 
     for (const fps of [60, 144]) {
       let byFrames = twisted;
 
       for (let i = 0; i < 1.5 * fps; i++) {
-        byFrames = unwind(byFrames, 1 / fps, normal);
+        byFrames = settle(byFrames, 1 / fps, normal);
       }
 
       expect(byFrames.angle).toBeCloseTo(atOnce, 6);

@@ -20,6 +20,27 @@ export function strikeSound(strength: number): Sound {
   };
 }
 
+// TODO(you): Claude 가 쓴 초안입니다. 귀로 들으며 고치거나, 직접 만든 소리로 바꿔 주세요.
+//  - 덜컹(느슨했던 사슬이 팽팽해지는 순간)의 "철컥" 소리입니다. 고리들이 한꺼번에 당겨지는 둔한 쇳소리(clank)에 짤랑거림(clink)이 뒤따릅니다.
+//  - strength(덜컹의 세기, 0~1)가 클수록 크고 짤랑거림이 많습니다.
+export function chainSound(strength: number): Sound {
+  return (output) => {
+    const hit: Hit = {
+      ...output,
+      strength,
+      level: (0.25 + 0.45 * strength) * decibels(spread(1.5)),
+      pitch: 1 + spread(0.06),
+    };
+    const clinks = 1 + Math.round(3 * strength);
+
+    clank(hit);
+
+    for (let i = 0; i < clinks; i++) {
+      clink(hit, 0.02 + Math.random() * 0.12);
+    }
+  };
+}
+
 interface Hit {
   readonly context: BaseAudioContext;
   readonly destination: AudioNode;
@@ -69,6 +90,38 @@ function thump({ context, destination, startAt, strength, level, pitch }: Hit) {
   body.connect(envelope).connect(destination);
   body.start(startAt);
   body.stop(startAt + duration);
+}
+
+/** 고리들이 한꺼번에 당겨지며 부딪치는 둔한 쇳소리입니다. 걸러 낸 잡음에 짧은 금속 울림을 겹칩니다. */
+function clank({ context, destination, startAt, level, pitch }: Hit) {
+  const duration = 0.07;
+  const source = new AudioBufferSourceNode(context, {
+    buffer: noiseOf(context),
+  });
+  const tone = new BiquadFilterNode(context, {
+    type: "bandpass",
+    frequency: 900 * pitch,
+    Q: 2.5,
+  });
+  const ring = new OscillatorNode(context, {
+    type: "triangle",
+    frequency: 620 * pitch,
+  });
+  const envelope = new GainNode(context, { gain: 0 });
+  const ringEnvelope = new GainNode(context, { gain: 0 });
+
+  envelope.gain.setValueAtTime(0, startAt);
+  envelope.gain.linearRampToValueAtTime(0.5 * level, startAt + 0.002);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  ringEnvelope.gain.setValueAtTime(0, startAt);
+  ringEnvelope.gain.linearRampToValueAtTime(0.12 * level, startAt + 0.002);
+  ringEnvelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  source.connect(tone).connect(envelope).connect(destination);
+  ring.connect(ringEnvelope).connect(destination);
+  source.start(startAt);
+  source.stop(startAt + duration);
+  ring.start(startAt);
+  ring.stop(startAt + duration);
 }
 
 /** 타격 뒤 0.05~0.25초 사이에 사슬 고리가 부딪치는 짤랑거림입니다. 센 타격일수록 많이 부딪칩니다. */

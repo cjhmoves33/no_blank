@@ -4,7 +4,7 @@ import { catchError } from "next/error";
 import { useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
-import { strikeSound } from "@/audio/sounds";
+import { chainSound, strikeSound } from "@/audio/sounds";
 
 import { Gym } from "./gym/gym";
 import { LATE_AFTERNOON } from "./gym/light/late-afternoon";
@@ -25,6 +25,9 @@ export function HomeScene() {
           reducedMotion={reducedMotion}
           onStrike={(strike) => {
             playSound(strikeSound(strike.strength));
+          }}
+          onJolt={(jolt) => {
+            playSound(chainSound(jolt.strength));
           }}
         />
       </HideOnError>
