@@ -2,11 +2,12 @@ import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
 import { type Group, type Mesh, Quaternion, Sphere, Vector3 } from "three";
 
-import { addBlotches, addGrain } from "../brushes";
 import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
-import { PaintedTexture, type Painting } from "../painted-texture";
+import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
+import { HANGING_POINT, Leather, type LeatherHandle } from "./leather";
+import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
   type Blow,
@@ -35,43 +36,15 @@ export interface WreckingBallProps {
 const { radius, pivotY } = GYM.wreckingBall;
 const TO_CEILING = GYM.building.ceilingY - pivotY;
 
-const LEATHER_ROUGHNESS = 0.65;
-const SEAM = { color: "#3a2214", roughness: 0.8, tube: 0.006 } as const;
-const CAP_LEATHER = "#5a3420";
-const CAP = { radius: 0.07, height: 0.04 } as const;
-const SHACKLE = { radius: 0.03, tube: 0.008 } as const;
 const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
-const CHAIN_BOTTOM = radius + CAP.height + SHACKLE.radius * 2;
-const CHAIN_LENGTH = CHAIN_REACH - CHAIN_BOTTOM;
+const CHAIN_LENGTH = CHAIN_REACH - HANGING_POINT;
+const PIVOT = new Vector3(0, CHAIN_REACH, 0);
 const LINKS = 12;
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
 const UP = new Vector3(0, 1, 0);
 const SWEEP = farthestReach() + radius;
-
-const LEATHER: Painting = {
-  width: 1024,
-  height: 512,
-  tiles: true,
-  paint: (context) => {
-    const { width, height } = context.canvas;
-
-    context.fillStyle = "#7d4a2a";
-    context.fillRect(0, 0, width, height);
-    addBlotches(context, {
-      count: 90,
-      colors: [
-        "rgba(60, 32, 16, 0.35)",
-        "rgba(160, 106, 64, 0.25)",
-        "rgba(40, 22, 12, 0.2)",
-      ],
-      maxRadius: 90,
-      seed: 23,
-    });
-    addGrain(context, 18, 29);
-  },
-};
 
 export const WRECKING_BALL_SIZE: Box = {
   min: [-SWEEP, -radius, -SWEEP],
@@ -83,9 +56,12 @@ const REST_LINKS = chainLinks(restingSwing().fromPivot);
 /** 메시는 모두 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다. */
 export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
   const ball = useRef<Group>(null);
+  const leather = useRef<LeatherHandle>(null);
+  const dust = useRef<StrikeDustHandle>(null);
   const links = useRef<(Mesh | null)[]>([]);
   const swing = useRef(restingSwing());
   const twist = useRef(restingTwist());
+  const impact = useRef<Impact | null>(null);
   const feel = reducedMotion ? "reduced" : "normal";
 
   useImperativeHandle(
@@ -97,9 +73,21 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
           : null,
       take: (blow) => {
         const struck = strike(swing.current, blow, SWING_FEEL[feel]);
+        const { strength } = struck.strike;
+        // 패임은 공에 남아 함께 비틀리도록, 맞은 자리를 공의 좌표로 옮겨 둡니다.
+        const toLeather = ball.current?.quaternion.clone().invert();
+        const dent = toLeather
+          ? impactOf(blow.at.clone().applyQuaternion(toLeather), strength)
+          : null;
 
         swing.current = struck.swing;
-        twist.current = twistBy(twist.current, blow, struck.strike.strength);
+        twist.current = twistBy(twist.current, blow, strength);
+        impact.current = dent ?? impact.current;
+        dust.current?.burst(
+          PIVOT.clone().add(struck.swing.fromPivot).add(blow.at),
+          blow.at.clone().normalize(),
+          strength,
+        );
 
         return struck.strike;
       },
@@ -109,9 +97,22 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
+    // 히트스톱 동안에는 공과 사슬이 멈추고, 그 시간은 흔들림에 쓰이지 않습니다.
+    const aged = impact.current
+      ? age(impact.current, seconds)
+      : { impact: null, moving: seconds };
 
-    swing.current = advance(swing.current, seconds, SWING_FEEL[feel]);
-    twist.current = unwind(twist.current, seconds, TWIST_FEEL[feel]);
+    impact.current = aged.impact;
+    swing.current = advance(swing.current, aged.moving, SWING_FEEL[feel]);
+    twist.current = unwind(twist.current, aged.moving, TWIST_FEEL[feel]);
+    leather.current?.dent(
+      impact.current
+        ? {
+            at: impact.current.at,
+            depth: dentDepth(impact.current, DENT_FEEL[feel]),
+          }
+        : null,
+    );
 
     const { fromPivot } = swing.current;
 
@@ -152,49 +153,10 @@ export function WreckingBall({ reducedMotion, ref }: WreckingBallProps) {
           </mesh>
         ))}
         <group ref={ball} position-y={-CHAIN_REACH}>
-          <mesh castShadow receiveShadow>
-            <sphereGeometry args={[radius, 48, 32]} />
-            <meshStandardMaterial roughness={LEATHER_ROUGHNESS}>
-              <PaintedTexture attach="map" painting={LEATHER} />
-            </meshStandardMaterial>
-            {[
-              [Math.PI / 2, 0],
-              [0, 0],
-              [0, Math.PI / 2],
-            ].map(([tilt, turn]) => (
-              <mesh
-                key={`${tilt}-${turn}`}
-                receiveShadow
-                rotation-x={tilt}
-                rotation-y={turn}
-              >
-                <torusGeometry args={[radius, SEAM.tube, 6, 96]} />
-                <meshStandardMaterial
-                  color={SEAM.color}
-                  roughness={SEAM.roughness}
-                />
-              </mesh>
-            ))}
-            <mesh castShadow receiveShadow position-y={radius + CAP.height / 2}>
-              <cylinderGeometry
-                args={[CAP.radius, CAP.radius, CAP.height, 24]}
-              />
-              <meshStandardMaterial
-                color={CAP_LEATHER}
-                roughness={LEATHER_ROUGHNESS}
-              />
-            </mesh>
-            <mesh
-              castShadow
-              receiveShadow
-              position-y={radius + CAP.height + SHACKLE.radius}
-            >
-              <torusGeometry args={[SHACKLE.radius, SHACKLE.tube, 8, 24]} />
-              <meshStandardMaterial {...STEEL} />
-            </mesh>
-          </mesh>
+          <Leather ref={leather} />
         </group>
       </group>
+      {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
 }
@@ -219,7 +181,7 @@ interface ChainLink {
 function chainLinks(fromPivot: Vector3): ChainLink[] {
   const end = fromPivot
     .clone()
-    .addScaledVector(fromPivot.clone().negate().normalize(), CHAIN_BOTTOM);
+    .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_POINT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );

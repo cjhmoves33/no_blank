@@ -1,6 +1,14 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
-import { Mesh, Quaternion, SphereGeometry, Vector3 } from "three";
+import {
+  BufferGeometry,
+  Mesh,
+  Points,
+  Quaternion,
+  SphereGeometry,
+  TorusGeometry,
+  Vector3,
+} from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
@@ -51,23 +59,89 @@ function centerOf(ball: WreckingBallHandle): Vector3 {
   return sphere.center;
 }
 
-/** 가죽 공이 위에서 볼 때 사슬 축으로 얼마나 돌았는지입니다(라디안). 흔들려 기울어진 것은 빼고 봅니다. */
-function heading(renderer: Renderer): number {
+interface LeatherView {
+  readonly geometry: SphereGeometry;
+  readonly turn: Quaternion;
+}
+
+function leatherOf(renderer: Renderer): LeatherView {
   const [leather] = renderer.scene
-    .findAll(
-      (node) =>
-        node.instance instanceof Mesh &&
-        node.instance.geometry instanceof SphereGeometry,
-    )
-    .map((node) => node.instance);
+    .findAll(() => true)
+    .flatMap((node) =>
+      node.instance instanceof Mesh &&
+      node.instance.geometry instanceof SphereGeometry
+        ? [
+            {
+              geometry: node.instance.geometry,
+              turn: node.instance.getWorldQuaternion(new Quaternion()),
+            },
+          ]
+        : [],
+    );
 
   if (!leather) {
     throw new Error("가죽 공이 없습니다.");
   }
 
-  const side = new Vector3(1, 0, 0).applyQuaternion(
-    leather.getWorldQuaternion(new Quaternion()),
-  );
+  return leather;
+}
+
+/** 가죽 표면에서 중심에 가장 가까운 점까지의 거리입니다. 패이면 반지름보다 짧아집니다. */
+function shallowest(renderer: Renderer): number {
+  const positions = leatherOf(renderer).geometry.getAttribute("position");
+  let nearest = Infinity;
+
+  for (let i = 0; i < positions.count; i++) {
+    nearest = Math.min(
+      nearest,
+      Math.hypot(positions.getX(i), positions.getY(i), positions.getZ(i)),
+    );
+  }
+
+  return nearest;
+}
+
+/** 솔기 정점 가운데 공의 중심에 가장 가까운 것까지의 거리입니다. */
+function seamsShallowest(renderer: Renderer): number {
+  const distances = renderer.scene
+    .findAll(() => true)
+    .flatMap((node) => {
+      if (
+        !(node.instance instanceof Mesh) ||
+        !(node.instance.geometry instanceof TorusGeometry) ||
+        node.instance.geometry.parameters.radius !== radius
+      ) {
+        return [];
+      }
+
+      const positions = node.instance.geometry.getAttribute("position");
+
+      return Array.from({ length: positions.count }, (_, i) =>
+        Math.hypot(positions.getX(i), positions.getY(i), positions.getZ(i)),
+      );
+    });
+
+  return Math.min(...distances);
+}
+
+/** 지금 그려지는 타격 먼지 알 수입니다. */
+function dustGrains(renderer: Renderer): number {
+  return renderer.scene
+    .findAll(() => true)
+    .reduce(
+      (sum, node) =>
+        sum +
+        (node.instance instanceof Points &&
+        node.instance.geometry instanceof BufferGeometry
+          ? node.instance.geometry.drawRange.count
+          : 0),
+      0,
+    );
+}
+
+/** 가죽 공이 위에서 볼 때 사슬 축으로 얼마나 돌았는지입니다(라디안). 흔들려 기울어진 것은 빼고 봅니다. */
+function heading(renderer: Renderer): number {
+  const side = new Vector3(1, 0, 0).applyQuaternion(leatherOf(renderer).turn);
 
   return Math.atan2(-side.z, side.x);
 }
@@ -99,6 +173,60 @@ describe("WreckingBall", () => {
     await renderer.advanceFrames(24, FRAME);
 
     expect(centerOf(ball).x).toBeLessThan(-0.2);
+  });
+
+  it("맞으면 히트스톱 동안 멈췄다가 밀려 나간다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(3, FRAME);
+
+    expect(centerOf(ball).length()).toBeLessThan(1e-9);
+
+    await renderer.advanceFrames(21, FRAME);
+
+    expect(centerOf(ball).x).toBeLessThan(-0.2);
+  });
+
+  it("맞은 자리가 잠깐 패였다가 둥글게 돌아온다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(shallowest(renderer)).toBeLessThan(radius - 0.008);
+
+    await renderer.advanceFrames(30, FRAME);
+
+    expect(shallowest(renderer)).toBeCloseTo(radius, 6);
+  });
+
+  it("솔기도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
+    const { renderer, ball } = await renderBall();
+    const before = seamsShallowest(renderer);
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(seamsShallowest(renderer)).toBeLessThan(before - 0.008);
+  });
+
+  it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {
+    const moving = await renderBall();
+
+    moving.ball.take(jab(RIGHT));
+    await moving.renderer.advanceFrames(1, FRAME);
+
+    expect(dustGrains(moving.renderer)).toBeGreaterThan(0);
+
+    await moving.renderer.unmount();
+
+    const calm = await renderBall({ reducedMotion: true });
+
+    calm.ball.take(jab(RIGHT));
+    await calm.renderer.advanceFrames(1, FRAME);
+
+    expect(dustGrains(calm.renderer)).toBe(0);
   });
 
   it("칠 때마다 그 타격의 세기를 돌려준다", async () => {
