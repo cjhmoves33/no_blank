@@ -99,13 +99,13 @@ pnpm dev
 
 코드 규칙과 커밋 메시지는 아래 단계에서 검사합니다. `pnpm install`을 실행하면 husky가 git hook을 자동으로 등록합니다.
 
-| 단계                             | 대상           | 검사 내용                                                        | 실패하면                |
-| -------------------------------- | -------------- | ---------------------------------------------------------------- | ----------------------- |
-| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                 | 커밋이 중단됩니다.      |
-| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                           | 커밋이 중단됩니다.      |
-| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                     | push가 중단됩니다.      |
-| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                     | PR에 실패가 표시됩니다. |
-| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`에서 Hello World 확인 | PR에 실패가 표시됩니다. |
+| 단계                             | 대상           | 검사 내용                                                                                                           | 실패하면                |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 커밋 직전 (pre-commit)           | staged 파일만  | ESLint 자동 수정 → Prettier 포맷                                                                                    | 커밋이 중단됩니다.      |
+| 커밋 메시지 (commit-msg)         | 커밋 메시지    | Conventional Commits 형식 (commitlint)                                                                              | 커밋이 중단됩니다.      |
+| push 직전 (pre-push)             | 작업 트리 전체 | `pnpm check`                                                                                                        | push가 중단됩니다.      |
+| push, PR (CI: Code checks)       | 저장소 전체    | `pnpm check`                                                                                                        | PR에 실패가 표시됩니다. |
+| push, PR (CI: Docker smoke test) | 전체 스택      | `docker compose`로 기동 후 `localhost:3000`의 3D 장면(`<canvas`)과 `localhost:4000/api/greeting`의 Hello World 확인 | PR에 실패가 표시됩니다. |
 
 - **pre-commit:** 자동 수정 가능한 문제는 고쳐진 상태로 커밋됩니다. 고칠 수 없는 ESLint 오류나 경고가 있으면 커밋이 중단됩니다.
 - **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.

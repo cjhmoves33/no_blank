@@ -44,16 +44,17 @@ jobs:
       - name: Start stack
         run: docker compose up -d
 
-      - name: Wait for Hello World
+      - name: Wait for the home page canvas and the API greeting
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000 | grep -q "Hello World"; then
-              echo "Hello World is served on http://localhost:3000"
+            if curl -fsS http://localhost:3000 | grep -q "<canvas" &&
+              curl -fsS http://localhost:4000/api/greeting | grep -q "Hello World"; then
+              echo "The home page canvas is served on http://localhost:3000 and Hello World on http://localhost:4000/api/greeting"
               exit 0
             fi
             sleep 2
           done
-          echo "Timed out waiting for Hello World"
+          echo "Timed out waiting for the home page canvas and the API greeting"
           exit 1
 
       - name: Show logs
