@@ -20,10 +20,10 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 | web에서 API 호출         | `apps/web/src/lib/api.ts`                                      |
 | web 테스트               | `apps/web/src/lib/api.test.ts`                                 |
 | DB 스키마와 마이그레이션 | `apps/server/src/db/schema.ts`, README의 "DB 스키마 변경 방법" |
-| 3D 장면                  | `apps/web/src/scene/space.tsx`                                 |
+| 3D 장면                  | `apps/web/src/scene/gym/gym.tsx`                               |
 | 3D 오브젝트              | `apps/web/src/scene/spinning-shape.tsx`                        |
-| 체육관 소품              | `apps/web/src/scene/gym/heavy-bags.tsx`                        |
-| 그림 텍스처가 있는 소품  | `apps/web/src/scene/gym/wall-clock.tsx`                        |
+| 체육관 소품              | `apps/web/src/scene/gym/props/heavy-bags.tsx`                  |
+| 그림 텍스처가 있는 소품  | `apps/web/src/scene/gym/props/wall-clock.tsx`                  |
 | 3D 오브젝트 테스트       | `apps/web/src/scene/spinning-shape.test.tsx`                   |
 | 효과음                   | `apps/web/src/audio/sounds.ts`                                 |
 | 효과음 재생 테스트       | `apps/web/src/audio/play-sound.test.ts`                        |
@@ -61,5 +61,6 @@ await expect(getGreeting()).resolves.toEqual({ message: "Hello World" });
 
 - HTTP 요청과 응답, 환경 변수, 외부 JSON처럼 밖에서 들어오는 데이터는 경계에서 타입이 정해진 값으로 바꿉니다. 숫자, JSON처럼 형식 검사가 필요한 값은 파서를 씁니다. API 데이터의 파서는 `packages/shared`에 둡니다.
 - 코드 주석과 문서는 한국어로 씁니다. 주석은 코드만 봐서는 알 수 없는 이유가 있을 때만 씁니다.
+- 이름을 짓거나 주석과 문서를 쓰기 전에 [`docs/GLOSSARY.md`](docs/GLOSSARY.md)를 읽고, 거기 정의된 용어를 씁니다.
 - Next.js 코드를 쓰기 전에 `apps/web/AGENTS.md`를 읽습니다. 이 저장소의 Next.js는 학습 데이터와 다를 수 있습니다.
 - `apps/server/src/routes/health.ts`의 `TODO(you)`는 사용자가 직접 작성합니다. 요청받기 전에는 구현하지 않습니다.
