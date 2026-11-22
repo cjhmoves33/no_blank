@@ -3,15 +3,15 @@ import { describe, expect, it } from "vitest";
 
 import { GYM, RING_VIEW } from "../measurements";
 import {
+  ballLightPosition,
   hazeShaftFrames,
   LATE_AFTERNOON,
-  shapeLightPosition,
   sunlightTravel,
   sunPosition,
   sunTarget,
 } from "./late-afternoon";
 
-const SHAPE = new Vector3(...GYM.shape.center);
+const BALL = new Vector3(...GYM.wreckingBall.center);
 
 function isInWindow(y: number, z: number): boolean {
   const { spans, sillY, headY } = GYM.windows;
@@ -37,15 +37,15 @@ function passesWindowOpenings(point: Vector3): boolean {
   });
 }
 
-function pointsOnShape(count: number): Vector3[] {
+function pointsOnBall(count: number): Vector3[] {
   return Array.from({ length: count }, (_, i) => {
     const y = 1 - (2 * (i + 0.5)) / count;
     const ring = Math.sqrt(1 - y * y);
     const turn = i * Math.PI * (3 - Math.sqrt(5));
 
     return new Vector3(Math.cos(turn) * ring, y, Math.sin(turn) * ring)
-      .multiplyScalar(GYM.shape.radius)
-      .add(SHAPE);
+      .multiplyScalar(GYM.wreckingBall.radius)
+      .add(BALL);
   });
 }
 
@@ -102,7 +102,7 @@ function ropeSegments(): Segment[] {
 }
 
 function isFacing(point: Vector3, light: Vector3): boolean {
-  const outward = point.clone().sub(SHAPE);
+  const outward = point.clone().sub(BALL);
 
   return light.clone().sub(point).dot(outward) > 0;
 }
@@ -120,7 +120,7 @@ function cameraPositions(): Vector3[] {
             (Math.PI * 2 * i) / steps,
           ),
         )
-        .add(SHAPE),
+        .add(BALL),
     ),
   );
 }
@@ -165,8 +165,8 @@ describe("LATE_AFTERNOON", () => {
     }
   });
 
-  it("링 가운데의 도형에는 햇빛이 곧바로 닿지 않는다", () => {
-    const lit = pointsOnShape(400).filter(passesWindowOpenings);
+  it("링 가운데의 레킹볼에는 햇빛이 곧바로 닿지 않는다", () => {
+    const lit = pointsOnBall(400).filter(passesWindowOpenings);
 
     expect(lit).toEqual([]);
   });
@@ -178,17 +178,17 @@ describe("LATE_AFTERNOON", () => {
     expect(litShare).toBeGreaterThan(0.2);
   });
 
-  it("도형을 비추는 빛은 카메라가 어디로 돌아도 도형의 보이는 쪽을 고르게 밝힌다", () => {
-    const { reach } = LATE_AFTERNOON.shapeLight;
+  it("레킹볼을 비추는 빛은 카메라가 어디로 돌아도 공의 보이는 쪽을 고르게 밝힌다", () => {
+    const { reach } = LATE_AFTERNOON.ballLight;
 
     for (const camera of cameraPositions()) {
-      const light = new Vector3(...shapeLightPosition(camera));
+      const light = new Vector3(...ballLightPosition(camera));
       const nearestToCamera = camera
         .clone()
-        .sub(SHAPE)
-        .setLength(GYM.shape.radius)
-        .add(SHAPE);
-      const facing = pointsOnShape(400).filter((point) =>
+        .sub(BALL)
+        .setLength(GYM.wreckingBall.radius)
+        .add(BALL);
+      const facing = pointsOnBall(400).filter((point) =>
         isFacing(point, light),
       );
       const farthestFacing = Math.max(
@@ -201,11 +201,11 @@ describe("LATE_AFTERNOON", () => {
     }
   });
 
-  it("도형을 비추는 빛은 카메라가 어디로 돌아도 매트와 로프에 닿지 않는다", () => {
-    const { reach } = LATE_AFTERNOON.shapeLight;
+  it("레킹볼을 비추는 빛은 카메라가 어디로 돌아도 매트와 로프에 닿지 않는다", () => {
+    const { reach } = LATE_AFTERNOON.ballLight;
 
     for (const camera of cameraPositions()) {
-      const light = new Vector3(...shapeLightPosition(camera));
+      const light = new Vector3(...ballLightPosition(camera));
       const nearestRope = Math.min(
         ...ropeSegments().map((segment) => distanceToSegment(light, segment)),
       );

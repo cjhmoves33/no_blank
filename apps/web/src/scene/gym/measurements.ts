@@ -2,7 +2,8 @@ import type { OrbitLimits } from "../orbit-rig";
 
 /** 길이는 미터입니다. 원점은 링 가운데 아래의 건물 바닥이고, y 가 위쪽입니다. */
 export const GYM = {
-  shape: { center: [0, 2.3, 0], radius: 0.5 },
+  /** center 는 멈춰 있을 때의 공 중심이고, 공은 그 바로 위 pivotY 높이에 매달립니다. */
+  wreckingBall: { center: [0, 2.3, 0], radius: 0.3, pivotY: 3.8 },
   mat: { y: 1, half: 3.65 },
   ropes: {
     half: 3.15,
@@ -37,8 +38,8 @@ export interface RingView extends OrbitLimits {
 export const RING_VIEW: RingView = {
   fov: 40,
   near: 0.05,
-  target: GYM.shape.center,
-  home: [1.575, GYM.shape.center[1] + 0.825, 2.4],
+  target: GYM.wreckingBall.center,
+  home: [1.575, GYM.wreckingBall.center[1] + 0.825, 2.4],
   distance: { min: 2.1, max: GYM.ropes.half - ROPE_CLEARANCE },
   polar: { min: Math.PI * 0.28, max: Math.PI * 0.55 },
 };

@@ -23,7 +23,7 @@ export interface OrbitRigProps {
 /**
  * surface 를 끌면 카메라가 돌고, 휠을 굴리면 다가가거나 물러납니다. surface 의 커서(grab, grabbing)도 여기서만 정합니다.
  * surface 는 R3F 가 이벤트를 듣는 요소의 바깥에 있어야 합니다. pointerdown 은 안에서 밖으로 올라오므로 장면의 오브젝트가 먼저 받고,
- * 그 오브젝트가 nativeEvent.stopPropagation() 을 부르면 그 누름으로는 카메라가 돌지 않습니다.
+ * 그 오브젝트가 nativeEvent.stopPropagation() 을 부르면 그 pointerdown 으로는 카메라가 돌지 않습니다.
  */
 export function OrbitRig({ surface, inertia, limits }: OrbitRigProps) {
   const camera = useThree((state) => state.camera);
