@@ -1,6 +1,5 @@
 import { Vector3 } from "three";
 
-/** 타격 먼지 한 알입니다. age 와 life 는 초입니다. */
 export interface Grain {
   readonly position: Vector3;
   readonly velocity: Vector3;
@@ -8,29 +7,24 @@ export interface Grain {
   readonly life: number;
 }
 
-/** 타격 세기 1 인 타격이 피워 올리는 먼지 알 수입니다. */
 export const GRAINS_AT_FULL_STRENGTH = 40;
 
 const SPEED = { slowest: 0.08, fastest: 0.35 } as const;
 const LIFE = { shortest: 1.5, longest: 2.5 } as const;
-// 먼지는 가벼워서 공기에 금방 멈추고, 천천히 가라앉습니다.
 const AIR_DRAG = 2.5;
 const SETTLING = 0.06;
 const FADE_IN = 0.08;
 const UP = new Vector3(0, 1, 0);
 
-/**
- * 맞은 자리에서 먼지를 피워 올립니다. outward 는 맞은 자리의 바깥 법선(단위 벡터)입니다.
- * 먼지는 표면을 따라 퍼지면서 조금 바깥으로 나갑니다.
- */
 export function burst(
   at: Vector3,
-  outward: Vector3,
+  fromCenter: Vector3,
   {
     strength,
     random,
   }: { readonly strength: number; readonly random: () => number },
 ): Grain[] {
+  const outward = fromCenter.clone().normalize();
   const count = Math.round(GRAINS_AT_FULL_STRENGTH * strength);
   const side = alongSurface(outward);
   const across = outward.clone().cross(side);
@@ -56,7 +50,6 @@ export function burst(
   });
 }
 
-/** seconds 동안 먼지가 퍼지고 가라앉습니다. 수명이 다한 알은 빠집니다. */
 export function drift(grains: readonly Grain[], seconds: number): Grain[] {
   const slowdown = Math.exp(-AIR_DRAG * seconds);
 
@@ -77,7 +70,6 @@ export function drift(grains: readonly Grain[], seconds: number): Grain[] {
     });
 }
 
-/** 먼지 알의 밝기(0~1)입니다. 피어오르며 금방 밝아졌다가 수명 끝으로 갈수록 흐려집니다. */
 export function glow({ age, life }: Grain): number {
   return Math.min(age / FADE_IN, 1) * Math.max(1 - age / life, 0);
 }

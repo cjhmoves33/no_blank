@@ -27,18 +27,9 @@ export interface RingControlsProps {
 type Cursor = "default" | "pointer" | "grabbing";
 
 const PRIMARY_BUTTON = 0;
-// PointerEvent.buttons 에서 각 버튼이 눌려 있는지 나타내는 비트입니다.
 const PRIMARY_HELD = 1;
 const SECONDARY_HELD = 2;
 
-/**
- * 링 시점에서 마우스가 하는 일을 모두 맡습니다. 카메라와 surface 의 커서는 여기서만 바꿉니다.
- * - 주 버튼: 레킹볼 위에서 누르면 잽, 밖에서 눌러 끌다 레킹볼에 들어가면 휘두르기입니다. 한 번 누르는 동안 한 번만 칩니다.
- * - 오른쪽 끌기: 카메라가 limits.target 둘레를 돕니다. 휠과 가운데 끌기: 다가가거나 물러납니다.
- * - 커서: 오른쪽으로 끄는 동안 grabbing, 레킹볼 위에서 pointer, 그 밖에는 기본 화살표입니다.
- * 타격은 ball.take 가 돌려준 그대로 onStrike 로 알립니다. 맞힌 포인터 이벤트 안에서 부르므로 소리는 맞힌 순간에 납니다.
- * 타격 세기만큼 화면이 떨립니다. 동작 줄이기에서는 떨리지 않습니다.
- */
 export function RingControls({
   surface,
   ball,
@@ -81,7 +72,7 @@ export function RingControls({
     let press: Press | null = null;
 
     const sampleOf = (event: PointerEvent): PointerSample => ({
-      ray: rayThrough(camera, pointerOn(surface, event)),
+      ray: rayThrough(camera, ndcOf(surface, event)),
       seconds: event.timeStamp / 1000,
     });
 
@@ -104,22 +95,21 @@ export function RingControls({
     const handleDown = (event: PointerEvent): void => {
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
 
-      const sphere = ball.sphere();
+      const sphere = ball.worldSphere();
 
       if (event.button !== PRIMARY_BUTTON || !sphere) {
         return;
       }
 
-      // 끄는 커서가 캔버스나 창 밖으로 나가도 놓을 때까지 움직임을 받습니다.
       surface.setPointerCapture(event.pointerId);
       land(pressDown(sampleOf(event), sphere));
     };
 
     const handleMove = (event: PointerEvent): void => {
-      const sphere = ball.sphere();
+      const sphere = ball.worldSphere();
 
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
-      pointer.current = pointerOn(surface, event);
+      pointer.current = ndcOf(surface, event);
 
       if (press && sphere) {
         land(dragTo(press, sampleOf(event), sphere));
@@ -170,14 +160,13 @@ export function RingControls({
       camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
     }
 
-    const sphere = ball.sphere();
-    const over =
+    const sphere = ball.worldSphere();
+    const overBall =
       pointer.current !== null &&
       sphere !== null &&
       touches(rayThrough(camera, pointer.current), sphere);
 
-    // 커서가 가만히 있어도 레킹볼이 그 밑으로 흔들려 오가므로, 이벤트가 아니라 프레임마다 정합니다.
-    showCursor(surface, cursorFor(orbiting.current, over));
+    showCursor(surface, cursorFor(orbiting.current, overBall));
   });
 
   return null;
@@ -198,8 +187,7 @@ function showCursor(surface: HTMLElement, cursor: Cursor): void {
   }
 }
 
-/** 커서 자리를 정규화 장치 좌표(-1~1, y 는 위쪽)로 바꿉니다. 캡처 중에는 이벤트 대상이 surface 라 offsetX 를 쓰지 않습니다. */
-function pointerOn(surface: HTMLElement, event: PointerEvent): Vector2 {
+function ndcOf(surface: HTMLElement, event: PointerEvent): Vector2 {
   const box = surface.getBoundingClientRect();
 
   return new Vector2(

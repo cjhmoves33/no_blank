@@ -1,3 +1,4 @@
+// @refresh reset
 import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
 import { type Group, type Mesh, Quaternion, Sphere, Vector3 } from "three";
@@ -15,7 +16,7 @@ import {
   settleLean,
   UPRIGHT,
 } from "./lean";
-import { HANGING_POINT, Leather, type LeatherHandle } from "./leather";
+import { HANGING_HEIGHT, Leather, type LeatherHandle } from "./leather";
 import { RESTING_SPRING, settle } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
@@ -32,18 +33,14 @@ import {
 } from "./swing";
 import { TWIST_FEEL, twistBy } from "./twist";
 
-/** 레킹볼을 다루는 손잡이입니다. 레킹볼의 움직임은 이 둘로만 읽히고 바뀝니다. */
 export interface WreckingBallHandle {
-  /** 지금 가죽 공이 차지한 구(월드 좌표)입니다. 아직 장면에 붙지 않았으면 null 입니다. */
-  readonly sphere: () => Sphere | null;
-  /** 주먹을 받아 흔들림과 비틀림을 바꾸고 그 타격을 돌려줍니다. 맞힌 순간에 한 번 부릅니다. */
+  readonly worldSphere: () => Sphere | null;
   readonly take: (blow: Blow) => Strike;
 }
 
 export interface WreckingBallProps {
   readonly reducedMotion: boolean;
   readonly ref: Ref<WreckingBallHandle>;
-  /** 덜컹할 때마다 그 프레임 안에서 한 번 불립니다. */
   readonly onJolt: (jolt: Jolt) => void;
 }
 
@@ -52,8 +49,7 @@ const TO_CEILING = GYM.building.ceilingY - pivotY;
 
 const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
-const CHAIN_LENGTH = CHAIN_REACH - HANGING_POINT;
-const PIVOT = new Vector3(0, CHAIN_REACH, 0);
+const CHAIN_LENGTH = CHAIN_REACH - HANGING_HEIGHT;
 const LINKS = 12;
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
@@ -67,7 +63,6 @@ export const WRECKING_BALL_SIZE: Box = {
 
 const REST_LINKS = chainLinks(restingSwing().fromPivot);
 
-/** 메시는 모두 receiveShadow 를 켭니다. 그래야 창 사이 벽 그림자에 들어 따뜻한 햇빛에 색이 바래지 않습니다. */
 export function WreckingBall({
   reducedMotion,
   ref,
@@ -86,34 +81,38 @@ export function WreckingBall({
   useImperativeHandle(
     ref,
     () => ({
-      sphere: () =>
+      worldSphere: () =>
         ball.current
           ? new Sphere(ball.current.getWorldPosition(new Vector3()), radius)
           : null,
       take: (blow) => {
         const struck = strike(swing.current, blow, SWING_FEEL[feel]);
         const { strength } = struck.strike;
-        // 패임은 공에 남아 함께 비틀리도록, 맞은 자리를 공의 좌표로 옮겨 둡니다.
         const toLeather = ball.current?.quaternion.clone().invert();
         const dent = toLeather
-          ? impactOf(blow.at.clone().applyQuaternion(toLeather), strength)
+          ? impactOf(
+              blow.hitFromCenter.clone().applyQuaternion(toLeather),
+              strength,
+            )
           : null;
+        const center = ball.current?.getWorldPosition(new Vector3());
 
         swing.current = struck.swing;
         twist.current = twistBy(twist.current, blow, strength);
         lean.current = leanBy(
           lean.current,
-          { at: blow.at, push: struck.push, strength },
+          { hitFromCenter: blow.hitFromCenter, push: struck.push, strength },
           LEAN_FEEL[feel],
         );
         impact.current = dent ?? impact.current;
-        dust.current?.burst(
-          PIVOT.clone()
-            .add(ball.current?.position ?? struck.swing.fromPivot)
-            .add(blow.at),
-          blow.at.clone().normalize(),
-          strength,
-        );
+
+        if (center) {
+          dust.current?.burst(
+            center.add(blow.hitFromCenter),
+            blow.hitFromCenter,
+            strength,
+          );
+        }
 
         return struck.strike;
       },
@@ -123,15 +122,22 @@ export function WreckingBall({
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
-    // 히트스톱 동안에는 공과 사슬이 멈추고, 그 시간은 흔들림에 쓰이지 않습니다.
     const aged = impact.current
       ? age(impact.current, seconds)
-      : { impact: null, moving: seconds };
+      : { impact: null, movingSeconds: seconds };
 
     impact.current = aged.impact;
-    swing.current = advance(swing.current, aged.moving, SWING_FEEL[feel]);
-    twist.current = settle(twist.current, aged.moving, TWIST_FEEL[feel]);
-    lean.current = settleLean(lean.current, aged.moving, LEAN_FEEL[feel]);
+    swing.current = advance(
+      swing.current,
+      aged.movingSeconds,
+      SWING_FEEL[feel],
+    );
+    twist.current = settle(twist.current, aged.movingSeconds, TWIST_FEEL[feel]);
+    lean.current = settleLean(
+      lean.current,
+      aged.movingSeconds,
+      LEAN_FEEL[feel],
+    );
 
     const jolt = joltOf(swing.current);
 
@@ -147,7 +153,7 @@ export function WreckingBall({
     leather.current?.dent(
       impact.current
         ? {
-            at: impact.current.at,
+            onLeather: impact.current.onLeather,
             depth: dentDepth(impact.current, DENT_FEEL[feel]),
           }
         : null,
@@ -199,10 +205,6 @@ export function WreckingBall({
   );
 }
 
-/**
- * 사슬 끝에 매달린 가죽 공의 자리와 방향입니다. 공은 사슬 쪽으로 마개를 향하고, 마개 축으로 비틀리고,
- * 걸이를 축으로 기우뚱합니다. 사슬은 걸이까지만 닿으므로 기우뚱해도 사슬은 그대로입니다.
- */
 function hangingPose(
   fromPivot: Vector3,
   lean: Lean,
@@ -210,12 +212,12 @@ function hangingPose(
 ): { readonly position: Vector3; readonly quaternion: Quaternion } {
   const tilt = leanTurn(lean);
   const toPivot = fromPivot.clone().negate().normalize();
-  const hinge = fromPivot.clone().addScaledVector(toPivot, HANGING_POINT);
+  const hinge = fromPivot.clone().addScaledVector(toPivot, HANGING_HEIGHT);
 
   return {
     position: toPivot
       .clone()
-      .multiplyScalar(-HANGING_POINT)
+      .multiplyScalar(-HANGING_HEIGHT)
       .applyQuaternion(tilt)
       .add(hinge),
     quaternion: tilt
@@ -244,7 +246,7 @@ interface ChainLink {
 function chainLinks(fromPivot: Vector3): ChainLink[] {
   const end = fromPivot
     .clone()
-    .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_POINT);
+    .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_HEIGHT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );

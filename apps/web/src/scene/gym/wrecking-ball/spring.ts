@@ -1,10 +1,8 @@
-/** 제자리(0)로 되돌아오려는 각입니다. angle 은 라디안, rate 는 그 각속도(라디안/초)입니다. */
 export interface Spring {
   readonly angle: number;
   readonly rate: number;
 }
 
-/** stiffness 가 클수록 빨리 되돌아오고, damping 이 클수록 빨리 멈춥니다. damping 이 임계 감쇠보다 크면 임계 감쇠로 봅니다. */
 export interface SpringFeel {
   readonly stiffness: number;
   readonly damping: number;
@@ -16,7 +14,6 @@ export function criticallyDamped(stiffness: number): SpringFeel {
   return { stiffness, damping: 2 * Math.sqrt(stiffness) };
 }
 
-/** seconds 동안 제자리로 되돌아옵니다. 닫힌 꼴로 풀어 프레임 속도와 관계없이 같은 움직임이 됩니다. */
 export function settle(
   spring: Spring,
   seconds: number,
@@ -27,7 +24,7 @@ export function settle(
 
   return ratio < 1
     ? oscillating(spring, seconds, { natural, ratio })
-    : stopping(spring, seconds, natural);
+    : settleCriticallyDamped(spring, seconds, natural);
 }
 
 function oscillating(
@@ -51,7 +48,7 @@ function oscillating(
   };
 }
 
-function stopping(
+function settleCriticallyDamped(
   { angle, rate }: Spring,
   seconds: number,
   natural: number,

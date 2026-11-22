@@ -26,15 +26,18 @@ function struck(strength: number): Impact {
   return impact;
 }
 
-/** 프레임마다 흘려 보내며 패인 깊이를 모읍니다. */
-function play(impact: Impact, seconds: number, feel: DentFeel = normal) {
+function depthsPerFrame(
+  impact: Impact,
+  seconds: number,
+  feel: DentFeel = normal,
+) {
   const depths: number[] = [];
   let current: Impact | null = impact;
 
   for (let t = 0; t < seconds; t += FRAME) {
     const aged: ReturnType<typeof age> = current
       ? age(current, FRAME)
-      : { impact: null, moving: FRAME };
+      : { impact: null, movingSeconds: FRAME };
 
     current = aged.impact;
     depths.push(current ? dentDepth(current, feel) : 0);
@@ -50,7 +53,7 @@ function stillFor(impact: Impact): number {
   while (current) {
     const aged = age(current, 0.001);
 
-    if (aged.moving > 0) {
+    if (aged.movingSeconds > 0) {
       return still;
     }
 
@@ -71,8 +74,8 @@ describe("히트스톱", () => {
   it("멈춘 동안에는 레킹볼이 움직이지 않고, 멈춤이 끝나면 남은 시간만큼 움직인다", () => {
     const impact = struck(1);
 
-    expect(age(impact, 0.05).moving).toBe(0);
-    expect(age(impact, 0.25).moving).toBeCloseTo(0.15, 9);
+    expect(age(impact, 0.05).movingSeconds).toBe(0);
+    expect(age(impact, 0.25).movingSeconds).toBeCloseTo(0.15, 9);
   });
 
   it("레킹볼을 바꾸지 못한 타격은 멈추지도 패지도 않는다", () => {
@@ -82,7 +85,7 @@ describe("히트스톱", () => {
 
 describe("패임", () => {
   it("히트스톱 동안 가장 깊고, 센 타격일수록 깊다", () => {
-    const { depths } = play(struck(1), 0.08);
+    const { depths } = depthsPerFrame(struck(1), 0.08);
 
     expect(Math.min(...depths)).toBeCloseTo(0.03, 9);
     expect(dentDepth(struck(0.4), normal)).toBeLessThan(
@@ -92,17 +95,17 @@ describe("패임", () => {
 
   it("멈춤이 끝나고 0.12초쯤이면 거의 돌아오고, 살짝 튀어나왔다 돌아간다", () => {
     const impact = struck(1);
-    const { depths, left } = play(impact, impact.hold + 0.12);
+    const { depths, left } = depthsPerFrame(impact, impact.hitStopLeft + 0.12);
     const deepest = dentDepth(impact, normal);
 
     expect(Math.abs(depths.at(-1) ?? Infinity)).toBeLessThan(deepest * 0.05);
     expect(Math.min(...depths)).toBeLessThan(-deepest * 0.05);
-    expect(play(impact, 1).left).toBeNull();
+    expect(depthsPerFrame(impact, 1).left).toBeNull();
     expect(left).not.toBeNull();
   });
 
   it("동작 줄이기에서는 튀어나오지 않고 돌아온다", () => {
-    const { depths } = play(struck(1), 0.4, reduced);
+    const { depths } = depthsPerFrame(struck(1), 0.4, reduced);
 
     expect(Math.min(...depths)).toBeGreaterThanOrEqual(0);
   });

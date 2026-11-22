@@ -15,20 +15,21 @@ import {
 } from "./dust";
 
 export interface StrikeDustHandle {
-  /** at 에서 먼지를 피워 올립니다. at 은 이 컴포넌트의 좌표, outward 는 맞은 자리의 바깥 법선입니다. */
-  readonly burst: (at: Vector3, outward: Vector3, strength: number) => void;
+  readonly burst: (
+    worldHit: Vector3,
+    fromCenter: Vector3,
+    strength: number,
+  ) => void;
 }
 
 export interface StrikeDustProps {
   readonly ref: Ref<StrikeDustHandle>;
 }
 
-// 빠르게 연달아 쳐도 이만큼만 그립니다. 넘치면 가장 오래된 먼지부터 지웁니다.
 const CAPACITY = GRAINS_AT_FULL_STRENGTH * 4;
 const { color, opacity, size } = LATE_AFTERNOON.dust;
 const TINT = new Color(color);
 
-/** 타격 먼지입니다. 더하는 빛으로 그리므로 흐려진 알은 검게 칠해 보이지 않게 합니다. */
 export function StrikeDust({ ref }: StrikeDustProps) {
   const points = useRef<Points>(null);
   const grains = useRef<Grain[]>([]);
@@ -41,10 +42,16 @@ export function StrikeDust({ ref }: StrikeDustProps) {
   useImperativeHandle(
     ref,
     () => ({
-      burst: (at, outward, strength) => {
+      burst: (worldHit, fromCenter, strength) => {
+        if (!points.current) {
+          return;
+        }
+
+        const at = points.current.worldToLocal(worldHit.clone());
+
         grains.current = [
           ...grains.current,
-          ...burst(at, outward, { strength, random }),
+          ...burst(at, fromCenter, { strength, random }),
         ].slice(-CAPACITY);
       },
     }),

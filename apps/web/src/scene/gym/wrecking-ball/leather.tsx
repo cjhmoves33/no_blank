@@ -14,14 +14,12 @@ import { GYM } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 import { dentedNormal, sinking } from "./impact";
 
-/** 가죽 공의 패임입니다. at 은 공의 좌표에서 본 맞은 자리의 방향, depth 는 그 자리가 들어간 깊이(m)입니다. */
 interface Dent {
-  readonly at: Vector3;
+  readonly onLeather: Vector3;
   readonly depth: number;
 }
 
 export interface LeatherHandle {
-  /** 가죽과 솔기를 이 패임 모양으로 바꿉니다. null 이면 둥근 모양으로 되돌립니다. 매 프레임 불러도 됩니다. */
   readonly dent: (dent: Dent | null) => void;
 }
 
@@ -42,8 +40,7 @@ const CAP_LEATHER = "#5a3420";
 const CAP = { radius: 0.07, height: 0.04 } as const;
 const SHACKLE = { radius: 0.03, tube: 0.008 } as const;
 
-/** 공의 중심에서 사슬이 걸리는 걸이 꼭대기까지의 높이(m)입니다. */
-export const HANGING_POINT = radius + CAP.height + SHACKLE.radius * 2;
+export const HANGING_HEIGHT = radius + CAP.height + SHACKLE.radius * 2;
 
 const LEATHER: Painting = {
   width: 1024,
@@ -70,18 +67,19 @@ const LEATHER: Painting = {
 
 type Attribute = BufferAttribute | InterleavedBufferAttribute;
 
-/** 패이기 전의 정점입니다. 솔기는 자기 좌표로 그려지므로 공의 좌표로 옮기는 회전을 함께 둡니다. */
-interface Rest {
+interface UndentedMesh {
   readonly geometry: BufferGeometry;
   readonly positions: Float32Array;
   readonly toBall: Quaternion;
 }
 
-/** 가죽 공입니다. 가죽, 솔기 셋, 마개, 걸이로 이루어지고, 원점이 공의 중심입니다. */
 export function Leather({ ref }: LeatherProps) {
   const sphere = useRef<Mesh>(null);
   const seams = useRef<(Mesh | null)[]>([]);
-  const rest = useRef<{ readonly leather: Rest; readonly seams: Rest[] }>(null);
+  const rest = useRef<{
+    readonly leather: UndentedMesh;
+    readonly seams: UndentedMesh[];
+  }>(null);
   const dented = useRef(false);
 
   useImperativeHandle(
@@ -150,7 +148,10 @@ export function Leather({ ref }: LeatherProps) {
 function restOf(
   leather: Mesh | null,
   seams: readonly (Mesh | null)[],
-): { readonly leather: Rest; readonly seams: Rest[] } | null {
+): {
+  readonly leather: UndentedMesh;
+  readonly seams: UndentedMesh[];
+} | null {
   const seamMeshes = seams.filter((seam) => seam !== null);
 
   if (!leather || seamMeshes.length !== SEAM_TURNS.length) {
@@ -163,7 +164,7 @@ function restOf(
   };
 }
 
-function restOfMesh(mesh: Mesh): Rest {
+function restOfMesh(mesh: Mesh): UndentedMesh {
   const { geometry } = mesh;
 
   return {
@@ -176,8 +177,7 @@ function restOfMesh(mesh: Mesh): Rest {
 const point = new Vector3();
 const direction = new Vector3();
 
-/** 가죽은 중심 쪽으로 들어가고, 법선도 패인 모양을 따라 기울어 그늘이 집니다. 둥근 가죽의 법선은 중심에서 본 방향입니다. */
-function dentLeather(rest: Rest, dent: Dent | null): void {
+function dentLeather(rest: UndentedMesh, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const normals = rest.geometry.getAttribute("normal");
 
@@ -186,12 +186,12 @@ function dentLeather(rest: Rest, dent: Dent | null): void {
     direction.copy(point).normalize();
 
     const normal = dent
-      ? dentedNormal(direction, dent.at, dent.depth)
+      ? dentedNormal(direction, dent.onLeather, dent.depth)
       : direction;
 
     point.addScaledVector(
       direction,
-      dent ? -sinking(direction, dent.at, dent.depth) : 0,
+      dent ? -sinking(direction, dent.onLeather, dent.depth) : 0,
     );
     positions.setXYZ(i, point.x, point.y, point.z);
     normals.setXYZ(i, normal.x, normal.y, normal.z);
@@ -200,8 +200,7 @@ function dentLeather(rest: Rest, dent: Dent | null): void {
   changed(positions, normals);
 }
 
-/** 솔기는 가죽과 같은 만큼 들어가 가죽 위에 떠 보이지 않습니다. */
-function dentSeam(rest: Rest, dent: Dent | null): void {
+function dentSeam(rest: UndentedMesh, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
   const toSeam = rest.toBall.clone().invert();
 
@@ -212,7 +211,10 @@ function dentSeam(rest: Rest, dent: Dent | null): void {
       point.applyQuaternion(rest.toBall);
       direction.copy(point).normalize();
       point
-        .addScaledVector(direction, -sinking(direction, dent.at, dent.depth))
+        .addScaledVector(
+          direction,
+          -sinking(direction, dent.onLeather, dent.depth),
+        )
         .applyQuaternion(toSeam);
     }
 

@@ -10,7 +10,6 @@ export interface DustMotesProps {
   readonly drifting: boolean;
 }
 
-/** 먼지 한 알의 부드러운 점입니다. 타격 먼지도 같은 점을 씁니다. */
 export const MOTE: Painting = {
   width: 64,
   height: 64,
