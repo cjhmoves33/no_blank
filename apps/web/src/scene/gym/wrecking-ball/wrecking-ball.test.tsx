@@ -1,6 +1,13 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
-import { BufferGeometry, Mesh, Points, Quaternion, Vector3 } from "three";
+import {
+  BufferGeometry,
+  Matrix3,
+  Mesh,
+  Points,
+  Quaternion,
+  Vector3,
+} from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
@@ -125,6 +132,21 @@ function farthestFrom(renderer: Renderer, rest: readonly Vector3[]): number {
       point.distanceTo(rest[i] ?? point),
     ),
   );
+}
+
+function stretchAlong(renderer: Renderer, axis: Vector3): number {
+  const [leather] = meshesNamed(renderer, "leather");
+
+  if (!leather) {
+    throw new Error("가죽 공이 없습니다.");
+  }
+
+  leather.updateWorldMatrix(true, false);
+
+  return axis
+    .clone()
+    .applyMatrix3(new Matrix3().setFromMatrix4(leather.matrixWorld))
+    .length();
 }
 
 function strapPoints(renderer: Renderer): Vector3[] {
@@ -300,6 +322,36 @@ describe("WreckingBall", () => {
     await renderer.advanceFrames(1, FRAME);
 
     expect(nearestStrapToCenter(renderer)).toBeLessThan(before - 0.008);
+  });
+
+  it("맞으면 몸통이 맞은 방향으로 잠깐 납작해졌다가 둥글게 돌아오고, 동작 줄이기에서는 그대로다", async () => {
+    const moving = await renderBall();
+
+    moving.ball.take(jab(RIGHT));
+    await moving.renderer.advanceFrames(1, FRAME);
+
+    expect(stretchAlong(moving.renderer, new Vector3(1, 0, 0))).toBeLessThan(
+      0.98,
+    );
+    expect(stretchAlong(moving.renderer, new Vector3(0, 0, 1))).toBeGreaterThan(
+      1.005,
+    );
+
+    await moving.renderer.advanceFrames(40, FRAME);
+
+    expect(stretchAlong(moving.renderer, new Vector3(1, 0, 0))).toBeCloseTo(
+      1,
+      3,
+    );
+
+    await moving.renderer.unmount();
+
+    const calm = await renderBall({ reducedMotion: true });
+
+    calm.ball.take(jab(RIGHT));
+    await calm.renderer.advanceFrames(1, FRAME);
+
+    expect(stretchAlong(calm.renderer, new Vector3(1, 0, 0))).toBeCloseTo(1, 9);
   });
 
   it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {

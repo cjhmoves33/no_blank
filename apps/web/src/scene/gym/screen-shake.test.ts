@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calmed, shaken, tiltOf, WIDEST_TILT } from "./screen-shake";
+import { calmed, shaken, tiltOf } from "./screen-shake";
 
 function widestOver(trauma: number): number {
   let widest = 0;
@@ -25,10 +25,13 @@ describe("화면 떨림", () => {
     expect(calmed(1, 0.4)).toBe(0);
   });
 
-  it("떨림은 정해진 각을 넘지 않고, 약한 타격은 센 타격보다 훨씬 작게 떨린다", () => {
-    expect(widestOver(1)).toBeLessThanOrEqual(WIDEST_TILT);
-    expect(widestOver(1)).toBeGreaterThan(WIDEST_TILT * 0.8);
-    expect(widestOver(0.4)).toBeLessThan(widestOver(1) * 0.2);
+  it("가장 센 타격은 0.4도까지 떨린다", () => {
+    expect(widestOver(1)).toBeLessThanOrEqual((0.4 * Math.PI) / 180);
+    expect(widestOver(1)).toBeGreaterThan((0.3 * Math.PI) / 180);
+  });
+
+  it("떨림은 트라우마에 정비례해서, 잽(0.4)도 가장 센 타격의 40% 만큼 떨린다", () => {
+    expect(widestOver(0.4) / widestOver(1)).toBeCloseTo(0.4, 2);
   });
 
   it("트라우마가 없으면 떨리지 않는다", () => {

@@ -1,9 +1,17 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useEffectEvent, useRef } from "react";
-import { type Camera, MOUSE, type Ray, Raycaster, Vector2 } from "three";
+import {
+  type Camera,
+  MOUSE,
+  type Ray,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import type { OrbitLimits } from "./measurements";
+import { agedKicks, type Kick, pushedBack } from "./recoil";
 import { calmed, shaken, tiltOf } from "./screen-shake";
 import {
   dragTo,
@@ -42,6 +50,8 @@ export function RingControls({
   const orbiting = useRef(false);
   const pointer = useRef<Vector2 | null>(null);
   const trauma = useRef(0);
+  const kicks = useRef<Kick[]>([]);
+  const pushed = useRef(new Vector3());
   const reportStrike = useEffectEvent(onStrike);
 
   useEffect(() => {
@@ -87,6 +97,10 @@ export function RingControls({
 
       if (!reducedMotion) {
         trauma.current = shaken(trauma.current, strike.strength);
+        kicks.current = [
+          ...kicks.current,
+          { age: 0, strength: strike.strength },
+        ];
       }
 
       reportStrike(strike);
@@ -149,6 +163,8 @@ export function RingControls({
   }, [surface, camera, ball, reducedMotion]);
 
   useFrame(({ clock }, delta) => {
+    // update 는 지금 카메라 위치에서 다음 위치를 구하므로, 지난 프레임에 더한 되밀림을 먼저 빼야 밀림이 쌓이지 않습니다.
+    camera.position.sub(pushed.current);
     // 관성은 매 프레임 update 를 불러야 줄어들며 멈춥니다.
     controls.current?.update();
     trauma.current = calmed(trauma.current, delta);
@@ -159,6 +175,13 @@ export function RingControls({
 
       camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
     }
+
+    kicks.current = agedKicks(kicks.current, delta);
+    pushed.current = camera.position
+      .clone()
+      .sub(controls.current?.target ?? camera.position)
+      .setLength(pushedBack(kicks.current));
+    camera.position.add(pushed.current);
 
     const sphere = ball.worldSphere();
     const overBall =

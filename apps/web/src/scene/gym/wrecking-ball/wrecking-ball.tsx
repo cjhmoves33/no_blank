@@ -21,6 +21,7 @@ import {
 } from "./lean";
 import { Leather, type LeatherHandle } from "./leather";
 import { RESTING_SPRING } from "./spring";
+import { flattening, SQUASH_FEEL, squashMatrix } from "./squash";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
@@ -72,6 +73,7 @@ export function WreckingBall({
 }: WreckingBallProps) {
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
+  const squashed = useRef<Group>(null);
   const dust = useRef<StrikeDustHandle>(null);
   const chain = useRef<ChainLinksHandle>(null);
   const swing = useRef(restingSwing());
@@ -160,14 +162,11 @@ export function WreckingBall({
       onJolt(jolt);
     }
 
-    leather.current?.dent(
-      impact.current
-        ? {
-            onLeather: impact.current.onLeather,
-            depth: dentDepth(impact.current, DENT_FEEL[feel]),
-          }
-        : null,
-    );
+    showImpact(impact.current, {
+      leather: leather.current,
+      squashed: squashed.current,
+      feel,
+    });
 
     const { fromPivot } = swing.current;
     const pose = hangingPose(fromPivot, lean.current, twist.current.angle);
@@ -186,13 +185,47 @@ export function WreckingBall({
       <group position-y={CHAIN_REACH}>
         <ChainLinks ref={chain} poses={REST_LINKS} />
         <group ref={ball} position-y={-CHAIN_REACH}>
-          <Leather ref={leather} />
+          <group ref={squashed} matrixAutoUpdate={false}>
+            <Leather ref={leather} />
+          </group>
           <Hanging />
         </group>
       </group>
       {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
+}
+
+function showImpact(
+  impact: Impact | null,
+  {
+    leather,
+    squashed,
+    feel,
+  }: {
+    readonly leather: LeatherHandle | null;
+    readonly squashed: Group | null;
+    readonly feel: keyof typeof SWING_FEEL;
+  },
+): void {
+  leather?.dent(
+    impact
+      ? {
+          onLeather: impact.onLeather,
+          depth: dentDepth(impact, DENT_FEEL[feel]),
+        }
+      : null,
+  );
+
+  if (squashed) {
+    squashed.matrix.copy(
+      squashMatrix(
+        impact?.onLeather ?? UP,
+        impact ? flattening(impact, SQUASH_FEEL[feel]) : 0,
+      ),
+    );
+    squashed.matrixWorldNeedsUpdate = true;
+  }
 }
 
 function hangingPose(

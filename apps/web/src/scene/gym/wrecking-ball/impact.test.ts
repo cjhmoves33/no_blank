@@ -65,17 +65,17 @@ function stillFor(impact: Impact): number {
 }
 
 describe("히트스톱", () => {
-  it("센 타격일수록 길게 멈추고, 0.03초에서 0.1초 사이다", () => {
-    expect(stillFor(struck(0.01))).toBeCloseTo(0.03, 2);
+  it("센 타격일수록 길게 멈추고, 0.05초에서 0.12초 사이다", () => {
+    expect(stillFor(struck(0.01))).toBeCloseTo(0.05, 2);
     expect(stillFor(struck(0.4))).toBeGreaterThan(stillFor(struck(0.01)));
-    expect(stillFor(struck(1))).toBeCloseTo(0.1, 2);
+    expect(stillFor(struck(1))).toBeCloseTo(0.12, 2);
   });
 
   it("멈춘 동안에는 레킹볼이 움직이지 않고, 멈춤이 끝나면 남은 시간만큼 움직인다", () => {
     const impact = struck(1);
 
     expect(age(impact, 0.05).movingSeconds).toBe(0);
-    expect(age(impact, 0.25).movingSeconds).toBeCloseTo(0.15, 9);
+    expect(age(impact, 0.25).movingSeconds).toBeCloseTo(0.13, 9);
   });
 
   it("레킹볼을 바꾸지 못한 타격은 멈추지도 패지도 않는다", () => {
@@ -84,10 +84,10 @@ describe("히트스톱", () => {
 });
 
 describe("패임", () => {
-  it("히트스톱 동안 가장 깊고, 센 타격일수록 깊다", () => {
-    const { depths } = depthsPerFrame(struck(1), 0.08);
+  it("히트스톱 동안 가장 깊고, 가장 센 타격은 6 cm 패이며, 센 타격일수록 깊다", () => {
+    const { depths } = depthsPerFrame(struck(1), 0.1);
 
-    expect(Math.min(...depths)).toBeCloseTo(0.03, 9);
+    expect(Math.min(...depths)).toBeCloseTo(0.06, 9);
     expect(dentDepth(struck(0.4), normal)).toBeLessThan(
       dentDepth(struck(1), normal),
     );
