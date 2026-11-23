@@ -1,6 +1,24 @@
+import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { agedKicks, pushedBack, recoilAfter } from "./recoil";
+import { agedKicks, pushBack, pushedBack, recoilAfter } from "./recoil";
+
+const TARGET = new Vector3(0, 2.3, 0);
+const SIDE_OF_BALL = new Vector3(0.3, 2.3, 0);
+
+function cameraAt(distance: number): PerspectiveCamera {
+  const camera = new PerspectiveCamera(40, 1.6, 0.05, 100);
+
+  camera.position.set(0, 2.3, distance);
+  camera.lookAt(TARGET);
+  camera.updateMatrixWorld();
+
+  return camera;
+}
+
+function seenAt(camera: PerspectiveCamera): Vector3 {
+  return SIDE_OF_BALL.clone().project(camera);
+}
 
 function over(seconds: number, strength: number): number[] {
   return Array.from({ length: Math.round(seconds / 0.001) + 1 }, (_, i) =>
@@ -46,5 +64,23 @@ describe("되밀림", () => {
       expect(kick.age).toBeCloseTo((kicks[i]?.age ?? 0) + 0.01, 9);
     });
     expect(agedKicks(kicks, 2)).toEqual([]);
+  });
+
+  it("카메라 위치는 그대로 두고, 그만큼 뒤로 물러난 카메라와 똑같이 보이게 한다", () => {
+    const pushed = cameraAt(3);
+
+    pushBack(pushed, { by: 0.04, from: TARGET });
+
+    expect(pushed.position.distanceTo(TARGET)).toBeCloseTo(3, 12);
+    expect(seenAt(pushed).x).toBeCloseTo(seenAt(cameraAt(3.04)).x, 9);
+  });
+
+  it("밀림이 없으면 원래대로 보인다", () => {
+    const camera = cameraAt(3);
+
+    pushBack(camera, { by: 0.04, from: TARGET });
+    pushBack(camera, { by: 0, from: TARGET });
+
+    expect(seenAt(camera).x).toBeCloseTo(seenAt(cameraAt(3)).x, 12);
   });
 });

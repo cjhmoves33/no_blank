@@ -15,7 +15,13 @@ import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 import { linkCount, type LinkPose, linksAlong, turnedRing } from "./chain";
 import { ChainLinks, type ChainLinksHandle } from "./chain-links";
-import { Hanging, HANGING_HEIGHT, SWIVEL_EYE, SwivelEye } from "./hanging";
+import {
+  Hanging,
+  HANGING_HEIGHT,
+  type HangingHandle,
+  SWIVEL_EYE,
+  SwivelEye,
+} from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
@@ -82,6 +88,7 @@ export function WreckingBall({
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
   const squashed = useRef<Group>(null);
+  const hanging = useRef<HangingHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
   const chain = useRef<ChainLinksHandle>(null);
   const eye = useRef<Mesh>(null);
@@ -171,6 +178,7 @@ export function WreckingBall({
     showImpact(impact.current, {
       leather: leather.current,
       squashed: squashed.current,
+      hanging: hanging.current,
       feel,
     });
 
@@ -206,7 +214,7 @@ export function WreckingBall({
           <group ref={squashed} matrixAutoUpdate={false}>
             <Leather ref={leather} />
           </group>
-          <Hanging />
+          <Hanging ref={hanging} />
         </group>
       </group>
       {reducedMotion ? null : <StrikeDust ref={dust} />}
@@ -219,10 +227,12 @@ function showImpact(
   {
     leather,
     squashed,
+    hanging,
     feel,
   }: {
     readonly leather: LeatherHandle | null;
     readonly squashed: Group | null;
+    readonly hanging: HangingHandle | null;
     readonly feel: keyof typeof SWING_FEEL;
   },
 ): void {
@@ -235,15 +245,17 @@ function showImpact(
       : null,
   );
 
+  const squash = squashMatrix(
+    impact?.onLeather ?? UP,
+    impact ? flattening(impact, SQUASH_FEEL[feel]) : 0,
+  );
+
   if (squashed) {
-    squashed.matrix.copy(
-      squashMatrix(
-        impact?.onLeather ?? UP,
-        impact ? flattening(impact, SQUASH_FEEL[feel]) : 0,
-      ),
-    );
+    squashed.matrix.copy(squash);
     squashed.matrixWorldNeedsUpdate = true;
   }
+
+  hanging?.follow(squash);
 }
 
 function shapeOf(ball: Group): BallShape {
