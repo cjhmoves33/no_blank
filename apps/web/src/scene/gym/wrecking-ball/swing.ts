@@ -11,6 +11,7 @@ export interface Swing {
 
 export interface SwingFeel {
   readonly fistSpeed: number;
+  readonly closingSpeedShare: number;
   readonly maxBottomSpeed: number;
   readonly gravity: number;
   readonly drag: number;
@@ -51,22 +52,24 @@ export const STRAIGHT_CHAIN_AXIS = new Vector3(0, 1, 0);
 
 const JAB_SPEED = 1.3;
 
-const FULL_STRENGTH_IN_JABS = 2.5;
+const HARDEST_SWIPE_IN_JABS = 2.5;
 
 const JOLT_MARGIN = 0.3;
 
 export const SWING_FEEL = {
   normal: {
     fistSpeed: JAB_SPEED,
+    closingSpeedShare: 0.21,
     maxBottomSpeed: 2.4,
     gravity: 9.81,
-    drag: 0.6,
+    drag: dragHalvingSwingIn(5),
     rebound: 0.35,
   },
   reduced: criticallyDamped({ fistSpeed: 0.4, gravity: 96 }),
 } as const satisfies Record<string, SwingFeel>;
 
-const FULLEST_JOLT = SWING_FEEL.normal.maxBottomSpeed;
+const HARDEST_SWIPE_LAUNCH_SPEED =
+  JAB_SPEED * HARDEST_SWIPE_IN_JABS * SWING_FEEL.normal.closingSpeedShare;
 
 const STEP = 1 / 240;
 
@@ -87,21 +90,22 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
     return { swing, strike: { strength: 0 }, push };
   }
 
-  const added = push.clone().multiplyScalar(speed - along);
+  const closing = speed - along;
+  const hardest = feel.fistSpeed * HARDEST_SWIPE_IN_JABS;
   const velocity = capSwingEnergy(
     swing.fromPivot,
-    swing.velocity.clone().add(added),
+    swing.velocity
+      .clone()
+      .addScaledVector(
+        push,
+        Math.min(closing, hardest) * feel.closingSpeedShare,
+      ),
     feel,
   );
 
   return {
     swing: { ...swing, velocity },
-    strike: {
-      strength: Math.min(
-        added.length() / (feel.fistSpeed * FULL_STRENGTH_IN_JABS),
-        1,
-      ),
-    },
+    strike: { strength: Math.min(closing / hardest, 1) },
     push,
   };
 }
@@ -131,7 +135,7 @@ export function advance(swing: Swing, seconds: number, feel: SwingFeel): Swing {
 
 export function joltOf(swing: Swing): Jolt | null {
   return swing.joltSpeed > 0
-    ? { strength: Math.min(swing.joltSpeed / FULLEST_JOLT, 1) }
+    ? { strength: Math.min(swing.joltSpeed / HARDEST_SWIPE_LAUNCH_SPEED, 1) }
     : null;
 }
 
@@ -168,11 +172,16 @@ function criticallyDamped({
 }: Pick<SwingFeel, "fistSpeed" | "gravity">): SwingFeel {
   return {
     fistSpeed,
+    closingSpeedShare: 1,
     maxBottomSpeed: fistSpeed,
     gravity,
     drag: 2 * Math.sqrt(gravity / CHAIN_REACH),
     rebound: 0,
   };
+}
+
+function dragHalvingSwingIn(seconds: number): number {
+  return (2 * Math.LN2) / seconds;
 }
 
 function highestRise({ maxBottomSpeed, gravity }: SwingFeel): number {

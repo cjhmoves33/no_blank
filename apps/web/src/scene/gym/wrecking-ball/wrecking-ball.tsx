@@ -98,7 +98,11 @@ export function WreckingBall({
         const center = ball.current?.getWorldPosition(new Vector3());
 
         swing.current = struck.swing;
-        twist.current = twistBy(twist.current, blow, strength);
+        twist.current = twistBy(
+          twist.current,
+          { blow, strength },
+          TWIST_FEEL[feel],
+        );
         lean.current = leanBy(
           lean.current,
           { hitFromCenter: blow.hitFromCenter, push: struck.push, strength },
