@@ -62,30 +62,30 @@ function slap({ context, destination, startAt, strength, level, pitch }: Hit) {
   });
   const tone = new BiquadFilterNode(context, {
     type: "bandpass",
-    frequency: (1600 + 2600 * strength) * pitch,
+    frequency: (1200 + 1800 * strength) * pitch,
     Q: 0.8,
   });
   const envelope = new GainNode(context, { gain: 0 });
 
   envelope.gain.setValueAtTime(0, startAt);
-  envelope.gain.linearRampToValueAtTime(0.5 * level, startAt + 0.001);
+  envelope.gain.linearRampToValueAtTime(0.32 * level, startAt + 0.001);
   envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
   source.connect(tone).connect(envelope).connect(destination);
   source.start(startAt);
   source.stop(startAt + duration);
 }
 
-/** 무게감을 주는 낮은 소리입니다. 음높이가 내려가며 0.22초 동안 납니다. */
+/** 무게감을 주는 낮은 소리입니다. 음높이가 내려가며 0.32초 동안 납니다. */
 function thump({ context, destination, startAt, strength, level, pitch }: Hit) {
-  const duration = 0.22;
+  const duration = 0.32;
   const body = new OscillatorNode(context, { type: "sine" });
   const envelope = new GainNode(context, { gain: 0 });
-  const from = (140 - 45 * strength) * pitch;
+  const from = (110 - 45 * strength) * pitch;
 
   body.frequency.setValueAtTime(from, startAt);
-  body.frequency.exponentialRampToValueAtTime(from * 0.45, startAt + duration);
+  body.frequency.exponentialRampToValueAtTime(from * 0.4, startAt + duration);
   envelope.gain.setValueAtTime(0, startAt);
-  envelope.gain.linearRampToValueAtTime(0.55 * level, startAt + 0.004);
+  envelope.gain.linearRampToValueAtTime(0.65 * level, startAt + 0.004);
   envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
   body.connect(envelope).connect(destination);
   body.start(startAt);
@@ -100,12 +100,12 @@ function clank({ context, destination, startAt, level, pitch }: Hit) {
   });
   const tone = new BiquadFilterNode(context, {
     type: "bandpass",
-    frequency: 900 * pitch,
+    frequency: 700 * pitch,
     Q: 2.5,
   });
   const ring = new OscillatorNode(context, {
     type: "triangle",
-    frequency: 620 * pitch,
+    frequency: 480 * pitch,
   });
   const envelope = new GainNode(context, { gain: 0 });
   const ringEnvelope = new GainNode(context, { gain: 0 });
@@ -144,8 +144,8 @@ function clink(
   });
   const ring = new BiquadFilterNode(context, {
     type: "bandpass",
-    frequency: (3200 + Math.random() * 2800) * pitch,
-    Q: 14,
+    frequency: (2200 + Math.random() * 1800) * pitch,
+    Q: 9,
   });
   const envelope = new GainNode(context, { gain: 0 });
 

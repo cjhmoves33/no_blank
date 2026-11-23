@@ -255,6 +255,7 @@ export function Leather({ ref }: LeatherProps) {
       {STRAP_TOPS.map(({ position, angle }) => (
         <mesh
           key={angle}
+          name="leather-tab"
           castShadow
           receiveShadow
           position={[position.x, (SHOULDER.y + STRAP.topY) / 2, position.z]}

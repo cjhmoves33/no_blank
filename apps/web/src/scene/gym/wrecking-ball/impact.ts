@@ -20,10 +20,10 @@ export const DENT_FEEL = {
   reduced: { fadeSeconds: 0.035, overshootRate: 0 },
 } as const satisfies Record<keyof typeof SWING_FEEL, DentFeel>;
 
-const HIT_STOP = { shortest: 0.03, longest: 0.1 } as const;
-const DEEPEST = 0.03;
+const HIT_STOP = { shortest: 0.05, longest: 0.12 } as const;
+const DEEPEST = 0.06;
 const DENT_WIDTH = 0.1;
-const DENT_LIFE = 0.3;
+const IMPACT_LIFE = 0.45;
 
 const { radius } = GYM.wreckingBall;
 
@@ -51,7 +51,7 @@ export function age(
 
   return {
     impact:
-      sinceHitStop > DENT_LIFE
+      sinceHitStop > IMPACT_LIFE
         ? null
         : { ...impact, hitStopLeft: impact.hitStopLeft - held, sinceHitStop },
     movingSeconds,

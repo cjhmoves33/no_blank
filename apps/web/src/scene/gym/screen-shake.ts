@@ -4,7 +4,7 @@ export interface Tilt {
   readonly roll: number;
 }
 
-export const WIDEST_TILT = (0.3 * Math.PI) / 180;
+const WIDEST_TILT = (0.4 * Math.PI) / 180;
 
 const SETTLE_SECONDS = 0.4;
 
@@ -23,7 +23,7 @@ export function calmed(trauma: number, seconds: number): number {
 }
 
 export function tiltOf(trauma: number, elapsedSeconds: number): Tilt {
-  const widest = WIDEST_TILT * trauma ** 2;
+  const widest = WIDEST_TILT * trauma;
 
   return {
     pitch: widest * wobble(WOBBLE_HZ.pitch, elapsedSeconds),

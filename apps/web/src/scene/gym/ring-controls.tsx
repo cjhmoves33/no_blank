@@ -4,6 +4,7 @@ import { type Camera, MOUSE, type Ray, Raycaster, Vector2 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import type { OrbitLimits } from "./measurements";
+import { agedKicks, type Kick, pushBack, pushedBack } from "./recoil";
 import { calmed, shaken, tiltOf } from "./screen-shake";
 import {
   dragTo,
@@ -42,6 +43,7 @@ export function RingControls({
   const orbiting = useRef(false);
   const pointer = useRef<Vector2 | null>(null);
   const trauma = useRef(0);
+  const kicks = useRef<Kick[]>([]);
   const reportStrike = useEffectEvent(onStrike);
 
   useEffect(() => {
@@ -87,6 +89,10 @@ export function RingControls({
 
       if (!reducedMotion) {
         trauma.current = shaken(trauma.current, strike.strength);
+        kicks.current = [
+          ...kicks.current,
+          { age: 0, strength: strike.strength },
+        ];
       }
 
       reportStrike(strike);
@@ -158,6 +164,14 @@ export function RingControls({
       const { pitch, yaw, roll } = tiltOf(trauma.current, clock.elapsedTime);
 
       camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
+    }
+
+    kicks.current = agedKicks(kicks.current, delta);
+    if (controls.current) {
+      pushBack(camera, {
+        by: pushedBack(kicks.current),
+        from: controls.current.target,
+      });
     }
 
     const shape = ball.worldShape();

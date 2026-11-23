@@ -1,8 +1,10 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
 import {
+  Box3,
   BufferGeometry,
   InstancedMesh,
+  Matrix3,
   Matrix4,
   Mesh,
   Points,
@@ -12,6 +14,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
+import { LINK_PITCH } from "./chain";
 import { type Blow, CHAIN_REACH, type Jolt } from "./swing";
 import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
@@ -135,6 +138,21 @@ function farthestFrom(renderer: Renderer, rest: readonly Vector3[]): number {
   );
 }
 
+function stretchAlong(renderer: Renderer, axis: Vector3): number {
+  const [leather] = meshesNamed(renderer, "leather");
+
+  if (!leather) {
+    throw new Error("가죽 공이 없습니다.");
+  }
+
+  leather.updateWorldMatrix(true, false);
+
+  return axis
+    .clone()
+    .applyMatrix3(new Matrix3().setFromMatrix4(leather.matrixWorld))
+    .length();
+}
+
 function pointsOf(renderer: Renderer, name: string): Vector3[] {
   return meshesNamed(renderer, name).flatMap((strap) => {
     const positions = strap.geometry.getAttribute("position");
@@ -197,6 +215,57 @@ function swivelEyeFacing(renderer: Renderer): Vector3 {
   eye.updateWorldMatrix(true, false);
 
   return ringFacing(eye.matrixWorld);
+}
+
+function dRingsAboveTabs(renderer: Renderer): number[] {
+  const tabs = meshesNamed(renderer, "leather-tab");
+  const rings = meshesNamed(renderer, "d-ring");
+
+  if (tabs.length !== 4 || rings.length !== 4) {
+    throw new Error("가죽 끈 탭과 D링이 네 개씩 있어야 합니다.");
+  }
+
+  return tabs.map((tab, i) => {
+    const ring = rings[i];
+
+    tab.updateWorldMatrix(true, false);
+    ring?.updateWorldMatrix(true, false);
+
+    const tabTop = new Box3().setFromObject(tab, true).max.y;
+    const ringBottom = ring
+      ? new Box3().setFromObject(ring, true).min.y
+      : Infinity;
+
+    return ringBottom - tabTop;
+  });
+}
+
+function strandGapsAtDRings(renderer: Renderer): number[] {
+  const [strands] = meshesNamed(renderer, "strands");
+
+  if (!(strands instanceof InstancedMesh)) {
+    throw new Error("사슬 가닥이 없습니다.");
+  }
+
+  strands.updateWorldMatrix(true, false);
+
+  const links = Array.from({ length: strands.count }, (_, i) => {
+    const link = new Matrix4();
+
+    strands.getMatrixAt(i, link);
+
+    return new Vector3().setFromMatrixPosition(
+      strands.matrixWorld.clone().multiply(link),
+    );
+  });
+
+  return meshesNamed(renderer, "d-ring").map((ring) => {
+    const top = ring
+      .getWorldPosition(new Vector3())
+      .add(UP.clone().multiplyScalar(0.02));
+
+    return Math.min(...links.map((link) => link.distanceTo(top)));
+  });
 }
 
 function dustGrains(renderer: Renderer): number {
@@ -372,6 +441,50 @@ describe("WreckingBall", () => {
     expect(nearestToCenter(renderer, "leather-strap")).toBeLessThan(
       before - 0.008,
     );
+  });
+
+  it("맞으면 몸통이 맞은 방향으로 잠깐 납작해졌다가 둥글게 돌아오고, 동작 줄이기에서는 그대로다", async () => {
+    const moving = await renderBall();
+
+    moving.ball.take(jab(RIGHT));
+    await moving.renderer.advanceFrames(1, FRAME);
+
+    expect(stretchAlong(moving.renderer, new Vector3(1, 0, 0))).toBeLessThan(
+      0.98,
+    );
+    expect(stretchAlong(moving.renderer, new Vector3(0, 0, 1))).toBeGreaterThan(
+      1.005,
+    );
+
+    await moving.renderer.advanceFrames(40, FRAME);
+
+    expect(stretchAlong(moving.renderer, new Vector3(1, 0, 0))).toBeCloseTo(
+      1,
+      3,
+    );
+
+    await moving.renderer.unmount();
+
+    const calm = await renderBall({ reducedMotion: true });
+
+    calm.ball.take(jab(RIGHT));
+    await calm.renderer.advanceFrames(1, FRAME);
+
+    expect(stretchAlong(calm.renderer, new Vector3(1, 0, 0))).toBeCloseTo(1, 9);
+  });
+
+  it("가장 세게 올려 쳐서 납작해져도 D링은 가죽 끈 탭에 걸려 있고, 사슬 가닥도 D링에서 끊기지 않는다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(Math.max(...dRingsAboveTabs(renderer))).toBeLessThan(0);
+
+    ball.take({ kind: "swipe", hitFromCenter: UNDER, fist: UP, speed: 100 });
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(Math.max(...dRingsAboveTabs(renderer))).toBeLessThan(0);
+    expect(Math.max(...strandGapsAtDRings(renderer))).toBeLessThan(LINK_PITCH);
   });
 
   it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {

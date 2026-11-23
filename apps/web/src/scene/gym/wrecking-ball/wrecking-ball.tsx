@@ -15,7 +15,13 @@ import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 import { linkCount, type LinkPose, linksAlong, turnedRing } from "./chain";
 import { ChainLinks, type ChainLinksHandle } from "./chain-links";
-import { Hanging, HANGING_HEIGHT, SWIVEL_EYE, SwivelEye } from "./hanging";
+import {
+  Hanging,
+  HANGING_HEIGHT,
+  type HangingHandle,
+  SWIVEL_EYE,
+  SwivelEye,
+} from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
@@ -29,6 +35,7 @@ import {
 import { Leather, type LeatherHandle } from "./leather";
 import type { BallShape } from "./press";
 import { RESTING_SPRING } from "./spring";
+import { flattening, SQUASH_FEEL, squashMatrix } from "./squash";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
@@ -80,6 +87,8 @@ export function WreckingBall({
 }: WreckingBallProps) {
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
+  const squashed = useRef<Group>(null);
+  const hanging = useRef<HangingHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
   const chain = useRef<ChainLinksHandle>(null);
   const eye = useRef<Mesh>(null);
@@ -166,14 +175,12 @@ export function WreckingBall({
       onJolt(jolt);
     }
 
-    leather.current?.dent(
-      impact.current
-        ? {
-            onLeather: impact.current.onLeather,
-            depth: dentDepth(impact.current, DENT_FEEL[feel]),
-          }
-        : null,
-    );
+    showImpact(impact.current, {
+      leather: leather.current,
+      squashed: squashed.current,
+      hanging: hanging.current,
+      feel,
+    });
 
     const { fromPivot } = swing.current;
     const pose = hangingPose(fromPivot, lean.current, twist.current.angle);
@@ -204,13 +211,51 @@ export function WreckingBall({
           quaternion={RESTING_CHAIN.eye.quaternion}
         />
         <group ref={ball} position-y={-CHAIN_REACH}>
-          <Leather ref={leather} />
-          <Hanging />
+          <group ref={squashed} matrixAutoUpdate={false}>
+            <Leather ref={leather} />
+          </group>
+          <Hanging ref={hanging} />
         </group>
       </group>
       {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
+}
+
+function showImpact(
+  impact: Impact | null,
+  {
+    leather,
+    squashed,
+    hanging,
+    feel,
+  }: {
+    readonly leather: LeatherHandle | null;
+    readonly squashed: Group | null;
+    readonly hanging: HangingHandle | null;
+    readonly feel: keyof typeof SWING_FEEL;
+  },
+): void {
+  leather?.dent(
+    impact
+      ? {
+          onLeather: impact.onLeather,
+          depth: dentDepth(impact, DENT_FEEL[feel]),
+        }
+      : null,
+  );
+
+  const squash = squashMatrix(
+    impact?.onLeather ?? UP,
+    impact ? flattening(impact, SQUASH_FEEL[feel]) : 0,
+  );
+
+  if (squashed) {
+    squashed.matrix.copy(squash);
+    squashed.matrixWorldNeedsUpdate = true;
+  }
+
+  hanging?.follow(squash);
 }
 
 function shapeOf(ball: Group): BallShape {
