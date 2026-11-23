@@ -15,8 +15,13 @@ export interface LinkPose {
 }
 
 const UP = new Vector3(0, 1, 0);
+const DOWN = new Vector3(0, -1, 0);
 const QUARTER_TURN = new Quaternion().setFromAxisAngle(UP, Math.PI / 2);
 const SAMPLES = 64;
+
+export function turnedRing({ quaternion }: LinkPose): Quaternion {
+  return quaternion.clone().multiply(QUARTER_TURN);
+}
 
 export function linkCount(length: number): number {
   return Math.max(1, Math.round(length / LINK_PITCH));
@@ -31,20 +36,40 @@ export function linksAlong(
   );
   const reached = distancesAlong(points);
   const total = reached.at(-1) ?? 0;
+  const along = Array.from({ length: count }, (_, i) =>
+    pointAt(points, reached, ((i + 0.5) / count) * total),
+  );
+  const frames = carriedAlong(along.map(({ tangent }) => tangent));
 
-  return Array.from({ length: count }, (_, i) => {
-    const { position, tangent } = pointAt(
-      points,
-      reached,
-      ((i + 0.5) / count) * total,
-    );
-    const quaternion = new Quaternion().setFromUnitVectors(UP, tangent);
+  return along.map(({ position }, i) => {
+    const frame = frames[i] ?? new Quaternion();
 
     return {
       position,
-      quaternion: i % 2 === 0 ? quaternion : quaternion.multiply(QUARTER_TURN),
+      quaternion: i % 2 === 0 ? frame : frame.clone().multiply(QUARTER_TURN),
     };
   });
+}
+
+// 고리마다 따로 방향을 정하면, 사슬이 거의 똑바로 아래를 볼 때 고리가 제멋대로 돌아갑니다. 첫 고리의 방향을 다음 고리로 조금씩 돌려 넘깁니다.
+function carriedAlong(tangents: readonly Vector3[]): Quaternion[] {
+  return tangents.reduce<Quaternion[]>((frames, tangent, i) => {
+    const before = frames[i - 1];
+    const previousTangent = tangents[i - 1];
+
+    frames.push(
+      before && previousTangent
+        ? new Quaternion()
+            .setFromUnitVectors(previousTangent, tangent)
+            .multiply(before)
+        : new Quaternion().setFromUnitVectors(
+            tangent.y < 0 ? DOWN : UP,
+            tangent,
+          ),
+    );
+
+    return frames;
+  }, []);
 }
 
 function distancesAlong(points: readonly Vector3[]): number[] {

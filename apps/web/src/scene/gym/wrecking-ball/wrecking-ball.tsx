@@ -1,14 +1,21 @@
 // @refresh reset
 import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
-import { type Group, Quaternion, Sphere, Vector3 } from "three";
+import {
+  type Group,
+  type Mesh,
+  Plane,
+  Quaternion,
+  Sphere,
+  Vector3,
+} from "three";
 
 import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
-import { linkCount, type LinkPose, linksAlong } from "./chain";
+import { linkCount, type LinkPose, linksAlong, turnedRing } from "./chain";
 import { ChainLinks, type ChainLinksHandle } from "./chain-links";
-import { Hanging, HANGING_HEIGHT } from "./hanging";
+import { Hanging, HANGING_HEIGHT, SWIVEL_EYE, SwivelEye } from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
@@ -20,6 +27,7 @@ import {
   UPRIGHT,
 } from "./lean";
 import { Leather, type LeatherHandle } from "./leather";
+import type { BallShape } from "./press";
 import { RESTING_SPRING } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
@@ -37,7 +45,7 @@ import {
 import { spinDown, TWIST_FEEL, twistBy } from "./twist";
 
 export interface WreckingBallHandle {
-  readonly worldSphere: () => Sphere | null;
+  readonly worldShape: () => BallShape | null;
   readonly take: (blow: Blow) => Strike;
 }
 
@@ -47,7 +55,7 @@ export interface WreckingBallProps {
   readonly onJolt: (jolt: Jolt) => void;
 }
 
-const { radius, pivotY } = GYM.wreckingBall;
+const { radius, lidHeight, pivotY } = GYM.wreckingBall;
 const TO_CEILING = GYM.building.ceilingY - pivotY;
 
 const ROD_RADIUS = 0.02;
@@ -63,7 +71,7 @@ export const WRECKING_BALL_SIZE: Box = {
   max: [SWEEP, CHAIN_REACH, SWEEP],
 };
 
-const REST_LINKS = chainLinks(restingSwing().fromPivot);
+const RESTING_CHAIN = upperChain(restingSwing().fromPivot);
 
 export function WreckingBall({
   reducedMotion,
@@ -74,6 +82,7 @@ export function WreckingBall({
   const leather = useRef<LeatherHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
   const chain = useRef<ChainLinksHandle>(null);
+  const eye = useRef<Mesh>(null);
   const swing = useRef(restingSwing());
   const twist = useRef(RESTING_SPRING);
   const lean = useRef<Lean>(UPRIGHT);
@@ -83,10 +92,7 @@ export function WreckingBall({
   useImperativeHandle(
     ref,
     () => ({
-      worldSphere: () =>
-        ball.current
-          ? new Sphere(ball.current.getWorldPosition(new Vector3()), radius)
-          : null,
+      worldShape: () => (ball.current ? shapeOf(ball.current) : null),
       take: (blow) => {
         const struck = strike(swing.current, blow, SWING_FEEL[feel]);
         const { strength } = struck.strike;
@@ -174,7 +180,10 @@ export function WreckingBall({
 
     ball.current?.position.copy(pose.position);
     ball.current?.quaternion.copy(pose.quaternion);
-    chain.current?.place(chainLinks(fromPivot));
+    hangChain(upperChain(fromPivot), {
+      chain: chain.current,
+      eye: eye.current,
+    });
   });
 
   return (
@@ -184,7 +193,16 @@ export function WreckingBall({
         <meshStandardMaterial {...STEEL} />
       </mesh>
       <group position-y={CHAIN_REACH}>
-        <ChainLinks ref={chain} poses={REST_LINKS} />
+        <ChainLinks
+          ref={chain}
+          name="upper-chain"
+          poses={RESTING_CHAIN.links}
+        />
+        <SwivelEye
+          ref={eye}
+          position={RESTING_CHAIN.eye.position}
+          quaternion={RESTING_CHAIN.eye.quaternion}
+        />
         <group ref={ball} position-y={-CHAIN_REACH}>
           <Leather ref={leather} />
           <Hanging />
@@ -193,6 +211,21 @@ export function WreckingBall({
       {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
+}
+
+function shapeOf(ball: Group): BallShape {
+  const center = ball.getWorldPosition(new Vector3());
+  const up = UP.clone().applyQuaternion(
+    ball.getWorldQuaternion(new Quaternion()),
+  );
+
+  return {
+    sphere: new Sphere(center, radius),
+    lid: new Plane().setFromNormalAndCoplanarPoint(
+      up,
+      center.clone().addScaledVector(up, lidHeight),
+    ),
+  };
 }
 
 function hangingPose(
@@ -227,22 +260,46 @@ function aroundCap(angle: number): Quaternion {
   return new Quaternion().setFromAxisAngle(UP, angle);
 }
 
-function chainLinks(fromPivot: Vector3): LinkPose[] {
+interface UpperChain {
+  readonly links: LinkPose[];
+  readonly eye: LinkPose;
+}
+
+function upperChain(fromPivot: Vector3): UpperChain {
   const end = fromPivot
     .clone()
     .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_HEIGHT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );
+  const path = (t: number) =>
+    end
+      .clone()
+      .multiplyScalar(t)
+      .addScaledVector(bow, 4 * t * (1 - t));
+  const links = linksAlong(path, LINKS);
+  const last = links.at(-1);
+  const downward = end.clone().sub(path(0.99)).normalize();
 
-  return linksAlong(
-    (t) =>
-      end
-        .clone()
-        .multiplyScalar(t)
-        .addScaledVector(bow, 4 * t * (1 - t)),
-    LINKS,
-  );
+  return {
+    links,
+    eye: {
+      position: end.clone().addScaledVector(downward, SWIVEL_EYE.radius),
+      quaternion: last ? turnedRing(last) : new Quaternion(),
+    },
+  };
+}
+
+function hangChain(
+  { links, eye }: UpperChain,
+  {
+    chain,
+    eye: eyeMesh,
+  }: { readonly chain: ChainLinksHandle | null; readonly eye: Mesh | null },
+): void {
+  chain?.place(links);
+  eyeMesh?.position.copy(eye.position);
+  eyeMesh?.quaternion.copy(eye.quaternion);
 }
 
 function sagOfSlackChain(span: number): number {

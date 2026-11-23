@@ -1,6 +1,14 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
-import { BufferGeometry, Mesh, Points, Quaternion, Vector3 } from "three";
+import {
+  BufferGeometry,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  Points,
+  Quaternion,
+  Vector3,
+} from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
@@ -52,7 +60,7 @@ function jab(hitFromCenter: Vector3): Blow {
 }
 
 function centerOf(ball: WreckingBallHandle): Vector3 {
-  const sphere = ball.worldSphere();
+  const sphere = ball.worldShape()?.sphere;
 
   if (!sphere) {
     throw new Error("레킹볼이 장면에 없습니다.");
@@ -127,8 +135,8 @@ function farthestFrom(renderer: Renderer, rest: readonly Vector3[]): number {
   );
 }
 
-function strapPoints(renderer: Renderer): Vector3[] {
-  return meshesNamed(renderer, "leather-strap").flatMap((strap) => {
+function pointsOf(renderer: Renderer, name: string): Vector3[] {
+  return meshesNamed(renderer, name).flatMap((strap) => {
     const positions = strap.geometry.getAttribute("position");
 
     return Array.from({ length: positions.count }, (_, i) =>
@@ -137,8 +145,8 @@ function strapPoints(renderer: Renderer): Vector3[] {
   });
 }
 
-function nearestStrapToCenter(renderer: Renderer): number {
-  return Math.min(...strapPoints(renderer).map((point) => point.length()));
+function nearestToCenter(renderer: Renderer, name: string): number {
+  return Math.min(...pointsOf(renderer, name).map((point) => point.length()));
 }
 
 function middleOfFirstStrap(renderer: Renderer): Vector3 {
@@ -158,6 +166,37 @@ function middleOfFirstStrap(renderer: Renderer): Vector3 {
   return middle
     .normalize()
     .applyQuaternion(strap.getWorldQuaternion(new Quaternion()));
+}
+
+function ringFacing(matrixWorld: Matrix4): Vector3 {
+  return new Vector3(0, 0, 1).transformDirection(matrixWorld);
+}
+
+function lastUpperLinkFacing(renderer: Renderer): Vector3 {
+  const [chain] = meshesNamed(renderer, "upper-chain");
+
+  if (!(chain instanceof InstancedMesh)) {
+    throw new Error("위쪽 사슬이 없습니다.");
+  }
+
+  const last = new Matrix4();
+
+  chain.getMatrixAt(chain.count - 1, last);
+  chain.updateWorldMatrix(true, false);
+
+  return ringFacing(chain.matrixWorld.clone().multiply(last));
+}
+
+function swivelEyeFacing(renderer: Renderer): Vector3 {
+  const [eye] = meshesNamed(renderer, "swivel-eye");
+
+  if (!eye) {
+    throw new Error("회전 고리의 위쪽 고리가 없습니다.");
+  }
+
+  eye.updateWorldMatrix(true, false);
+
+  return ringFacing(eye.matrixWorld);
 }
 
 function dustGrains(renderer: Renderer): number {
@@ -213,12 +252,26 @@ describe("WreckingBall", () => {
     vi.unstubAllGlobals();
   });
 
-  it("손잡이는 가죽 공이 지금 차지한 구를 알려 준다", async () => {
+  it("손잡이는 가죽 공이 지금 차지한 모양, 곧 구와 납작한 덮개를 알려 준다", async () => {
     const { ball } = await renderBall();
-    const sphere = ball.worldSphere();
+    const shape = ball.worldShape();
 
-    expect(sphere?.radius).toBe(radius);
-    expect(sphere?.center.length()).toBeLessThan(1e-9);
+    expect(shape?.sphere.radius).toBe(radius);
+    expect(shape?.sphere.center.length()).toBeLessThan(1e-9);
+    expect(shape?.lid.normal.y).toBeCloseTo(1, 9);
+    expect(shape?.lid.distanceToPoint(new Vector3())).toBeCloseTo(
+      -GYM.wreckingBall.lidHeight,
+      9,
+    );
+  });
+
+  it("그려진 가죽의 납작한 윗면은 손잡이가 알려 준 덮개 높이에 있다", async () => {
+    const { renderer } = await renderBall();
+    const highest = Math.max(
+      ...leatherPoints(renderer).map((point) => point.y),
+    );
+
+    expect(highest).toBeCloseTo(GYM.wreckingBall.lidHeight, 6);
   });
 
   it("창 사이 벽 그림자에 들면 햇빛에 바래지 않도록, 메시는 모두 그림자를 받는다", async () => {
@@ -292,14 +345,33 @@ describe("WreckingBall", () => {
     );
   });
 
+  it("덮개 테두리도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
+    const { renderer, ball } = await renderBall();
+    const before = nearestToCenter(renderer, "leather-rim");
+    const [onRim] = pointsOf(renderer, "leather-rim");
+
+    if (!onRim) {
+      throw new Error("덮개 테두리가 없습니다.");
+    }
+
+    ball.take(jab(onRim.clone().setLength(radius)));
+    await renderer.advanceFrames(1, FRAME);
+
+    expect(nearestToCenter(renderer, "leather-rim")).toBeLessThan(
+      before - 0.008,
+    );
+  });
+
   it("가죽 끈도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
     const { renderer, ball } = await renderBall();
-    const before = nearestStrapToCenter(renderer);
+    const before = nearestToCenter(renderer, "leather-strap");
 
     ball.take(jab(middleOfFirstStrap(renderer).multiplyScalar(radius)));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(nearestStrapToCenter(renderer)).toBeLessThan(before - 0.008);
+    expect(nearestToCenter(renderer, "leather-strap")).toBeLessThan(
+      before - 0.008,
+    );
   });
 
   it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {
@@ -362,6 +434,25 @@ describe("WreckingBall", () => {
 
     expect(Math.abs(stopped)).toBeGreaterThan(0.05);
     expect(heading(renderer)).toBeCloseTo(stopped, 3);
+  });
+
+  it("레킹볼이 여러 번 비틀려도 회전 고리의 위쪽 고리는 위쪽 사슬의 마지막 고리와 90도로 맞물린다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    for (let i = 0; i < 3; i++) {
+      ball.take({
+        kind: "swipe",
+        hitFromCenter: FRONT,
+        fist: new Vector3(1, 0, 0),
+        speed: 100,
+      });
+      await renderer.advanceFrames(150, FRAME);
+    }
+
+    expect(Math.abs(heading(renderer))).toBeGreaterThan(0.5);
+    expect(
+      Math.abs(swivelEyeFacing(renderer).dot(lastUpperLinkFacing(renderer))),
+    ).toBeLessThan(0.05);
   });
 
   it("옆구리를 맞으면 회전 고리를 축으로 기우뚱했다가 돌아온다", async () => {

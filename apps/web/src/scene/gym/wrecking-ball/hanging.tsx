@@ -1,4 +1,5 @@
-import { Vector3 } from "three";
+import type { Ref } from "react";
+import { type Mesh, type Quaternion, Vector3 } from "three";
 
 import { STEEL } from "../finishes";
 import { linkCount, linksAlong } from "./chain";
@@ -12,8 +13,9 @@ const D_RING = { radius: 0.02, tube: 0.0045, above: 0.012 } as const;
 const SWIVEL = {
   ring: { radius: 0.022, tube: 0.005, below: 0.075 },
   body: { top: 0.013, bottom: 0.016, height: 0.05 },
-  eye: { radius: 0.014, tube: 0.0045 },
 } as const;
+
+export const SWIVEL_EYE = { radius: 0.014, tube: 0.0045 } as const;
 const SWIVEL_RING_Y = HANGING_HEIGHT - SWIVEL.ring.below;
 
 const STRAND_LINKS = STRAP_TOPS.flatMap(({ position, angle }) => {
@@ -45,7 +47,7 @@ export function Hanging() {
           <meshStandardMaterial {...STEEL} />
         </mesh>
       ))}
-      <ChainLinks poses={STRAND_LINKS} />
+      <ChainLinks name="strands" poses={STRAND_LINKS} />
       <mesh castShadow receiveShadow position-y={SWIVEL_RING_Y}>
         <torusGeometry args={[SWIVEL.ring.radius, SWIVEL.ring.tube, 8, 20]} />
         <meshStandardMaterial {...STEEL} />
@@ -60,15 +62,29 @@ export function Hanging() {
         />
         <meshStandardMaterial {...STEEL} />
       </mesh>
-      <mesh
-        castShadow
-        receiveShadow
-        position-y={HANGING_HEIGHT - SWIVEL.eye.radius}
-        rotation-y={Math.PI / 2}
-      >
-        <torusGeometry args={[SWIVEL.eye.radius, SWIVEL.eye.tube, 8, 16]} />
-        <meshStandardMaterial {...STEEL} />
-      </mesh>
     </>
+  );
+}
+
+export interface SwivelEyeProps {
+  readonly ref: Ref<Mesh>;
+  readonly position: Vector3;
+  readonly quaternion: Quaternion;
+}
+
+/** 회전 고리의 위쪽 고리입니다. 위쪽 사슬에 걸려 있어서, 레킹볼이 비틀려도 따라 돌지 않습니다. */
+export function SwivelEye({ ref, position, quaternion }: SwivelEyeProps) {
+  return (
+    <mesh
+      ref={ref}
+      name="swivel-eye"
+      castShadow
+      receiveShadow
+      position={position}
+      quaternion={quaternion}
+    >
+      <torusGeometry args={[SWIVEL_EYE.radius, SWIVEL_EYE.tube, 8, 16]} />
+      <meshStandardMaterial {...STEEL} />
+    </mesh>
   );
 }

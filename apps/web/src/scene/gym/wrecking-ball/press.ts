@@ -1,4 +1,4 @@
-import { Plane, type Ray, type Sphere, Vector3 } from "three";
+import { Plane, Ray, type Sphere, Vector3 } from "three";
 
 import type { Blow } from "./swing";
 
@@ -15,6 +15,12 @@ export type Press =
       readonly withinSpeedWindow: readonly PointerSample[];
     };
 
+/** 레킹볼이 차지한 모양입니다. 구에서 납작한 덮개(lid) 바깥쪽을 잘라 낸 모양입니다. */
+export interface BallShape {
+  readonly sphere: Sphere;
+  readonly lid: Plane;
+}
+
 export interface PressStep {
   readonly press: Press;
   readonly blow: Blow | null;
@@ -28,12 +34,12 @@ const SPEED_WINDOW_SECONDS = 0.05;
 
 const SPENT: Press = { kind: "spent" };
 
-export function touches(ray: Ray, ball: Sphere): boolean {
-  return ray.intersectsSphere(ball);
+export function touches(ray: Ray, ball: BallShape): boolean {
+  return entryOf(ray, ball) !== null;
 }
 
-export function pressDown(sample: PointerSample, ball: Sphere): PressStep {
-  const hit = sample.ray.intersectSphere(ball, new Vector3());
+export function pressDown(sample: PointerSample, ball: BallShape): PressStep {
+  const hit = entryOf(sample.ray, ball);
 
   if (!hit) {
     return {
@@ -46,7 +52,7 @@ export function pressDown(sample: PointerSample, ball: Sphere): PressStep {
     press: SPENT,
     blow: {
       kind: "jab",
-      hitFromCenter: hit.sub(ball.center),
+      hitFromCenter: hit.sub(ball.sphere.center),
       fist: sample.ray.direction.clone().normalize(),
     },
   };
@@ -55,13 +61,13 @@ export function pressDown(sample: PointerSample, ball: Sphere): PressStep {
 export function dragTo(
   press: Press,
   sample: PointerSample,
-  ball: Sphere,
+  ball: BallShape,
 ): PressStep {
   if (press.kind === "spent") {
     return { press, blow: null };
   }
 
-  const entry = firstEntry(
+  const entry = enteredAt(
     {
       eye: press.latest.ray.origin,
       from: press.latest.ray.direction,
@@ -79,9 +85,9 @@ export function dragTo(
     press: SPENT,
     blow: {
       kind: "swipe",
-      hitFromCenter: (
-        sample.ray.intersectSphere(ball, new Vector3()) ?? entry
-      ).sub(ball.center),
+      hitFromCenter: (entryOf(sample.ray, ball) ?? entry).sub(
+        ball.sphere.center,
+      ),
       fist: hand.clone().normalize(),
       speed: hand.length(),
     },
@@ -112,6 +118,42 @@ interface CursorPath {
   readonly eye: Vector3;
   readonly from: Vector3;
   readonly to: Vector3;
+}
+
+function entryOf(ray: Ray, { sphere, lid }: BallShape): Vector3 | null {
+  const onSphere = ray.intersectSphere(sphere, new Vector3());
+
+  if (!onSphere) {
+    return null;
+  }
+
+  if (lid.distanceToPoint(onSphere) <= 0) {
+    return onSphere;
+  }
+
+  const onLid = ray.intersectPlane(lid, new Vector3());
+
+  return onLid && sphere.containsPoint(onLid) ? onLid : null;
+}
+
+// 구로 들어가는 순간을 먼저 구하고, 그 자리가 덮개 위의 빈 곳이면 이번 이벤트의 끝 커서로 다시 봅니다.
+function enteredAt(path: CursorPath, ball: BallShape): Vector3 | null {
+  if (entryOf(new Ray(path.eye, path.from.clone().normalize()), ball)) {
+    return null;
+  }
+
+  const onSphere = firstEntry(path, ball.sphere);
+  const throughSphere = onSphere
+    ? entryOf(
+        new Ray(path.eye, onSphere.clone().sub(path.eye).normalize()),
+        ball,
+      )
+    : null;
+
+  return (
+    throughSphere ??
+    entryOf(new Ray(path.eye, path.to.clone().normalize()), ball)
+  );
 }
 
 function firstEntry(
@@ -204,7 +246,7 @@ function quadraticRoots(a: number, b: number, c: number): number[] {
 function handVelocity(
   press: Swiping,
   sample: PointerSample,
-  ball: Sphere,
+  { sphere: ball }: BallShape,
 ): Vector3 | null {
   const [oldest = press.latest] = recent(
     [...press.withinSpeedWindow, press.latest],

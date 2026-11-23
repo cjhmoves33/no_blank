@@ -1,8 +1,9 @@
-import { Ray, Sphere, Vector3 } from "three";
+import { Plane, Ray, Sphere, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import { GYM } from "../measurements";
 import {
+  type BallShape,
   dragTo,
   type PointerSample,
   type Press,
@@ -12,10 +13,20 @@ import {
 } from "./press";
 import type { Blow } from "./swing";
 
-const { radius } = GYM.wreckingBall;
+const { radius, lidHeight } = GYM.wreckingBall;
 const EYE = new Vector3(0, 0, 5);
-const BALL = new Sphere(new Vector3(), radius);
+const BALL = ballAt(new Vector3());
 const EVENT_GAP = 0.008;
+
+function ballAt(center: Vector3): BallShape {
+  return {
+    sphere: new Sphere(center, radius),
+    lid: new Plane().setFromNormalAndCoplanarPoint(
+      new Vector3(0, 1, 0),
+      center.clone().add(new Vector3(0, lidHeight, 0)),
+    ),
+  };
+}
 
 function cursorAt(x: number, y: number, seconds: number): PointerSample {
   return {
@@ -193,7 +204,7 @@ describe("press", () => {
 
   it("레킹볼이 가만한 커서 밑으로 흔들려 와도 치지 않는다", () => {
     const press = pressedAt(-0.5, 0);
-    const swungUnder = new Sphere(new Vector3(-0.5, 0, 0), radius);
+    const swungUnder = ballAt(new Vector3(-0.5, 0, 0));
     const under = dragTo(press, cursorAt(-0.5, 0, 1.008), swungUnder);
     const still = drag(
       under.press,
@@ -210,7 +221,7 @@ describe("press", () => {
   });
 
   it("레킹볼이 커서 밑으로 흔들려 온 뒤에는 그 안에서 빠르게 끌어도 치지 않는다", () => {
-    const swungUnder = new Sphere(new Vector3(-0.5, 0, 0), radius);
+    const swungUnder = ballAt(new Vector3(-0.5, 0, 0));
     const inside = drag(
       pressedAt(-0.5, 0),
       { from: [-0.5, 0], to: [-0.35, 0], seconds: 0.03 },
@@ -218,6 +229,35 @@ describe("press", () => {
     );
 
     expect(inside.firstBlow).toBeNull();
+  });
+
+  it("납작한 덮개 위의 빈 곳을 누르면 치지 않고, 커서도 레킹볼 위에 있지 않다", () => {
+    const aboveLid = cursorAt(0, 0.27, 1);
+
+    expect(pressDown(aboveLid, BALL).blow).toBeNull();
+    expect(touches(aboveLid.ray, BALL)).toBe(false);
+  });
+
+  it("위에서 덮개를 누르면 덮개를 친다", () => {
+    const fromAbove: PointerSample = {
+      ray: new Ray(new Vector3(0.05, 5, 0), new Vector3(0, -1, 0)),
+      seconds: 1,
+    };
+    const { blow } = pressDown(fromAbove, BALL);
+
+    expect(blow?.kind).toBe("jab");
+    expect(blow?.hitFromCenter.y).toBeCloseTo(lidHeight, 9);
+  });
+
+  it("위에서 내려치며 덮개 위 빈 곳을 지나 들어가면, 덮개 높이 아래를 친다", () => {
+    const { firstBlow } = drag(pressedAt(0, 0.6), {
+      from: [0, 0.6],
+      to: [0, 0],
+      seconds: 0.1,
+    });
+
+    expect(firstBlow?.kind).toBe("swipe");
+    expect(firstBlow?.hitFromCenter.y).toBeLessThanOrEqual(lidHeight + 1e-9);
   });
 
   it("커서가 레킹볼 위에 있는지 알려 준다", () => {

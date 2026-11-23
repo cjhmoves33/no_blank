@@ -6,6 +6,7 @@ import {
   type InterleavedBufferAttribute,
   type Mesh,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from "three";
 
@@ -40,8 +41,7 @@ const FRONT_PANEL = Math.atan2(
   RING_VIEW.home[2] - RING_VIEW.target[2],
   RING_VIEW.home[0] - RING_VIEW.target[0],
 );
-const FLAT_TOP = 0.78 * radius;
-const TOP_SQUASH = 0.35;
+const FLAT_TOP = GYM.wreckingBall.lidHeight;
 const SEAM = { depth: 0.008, width: 0.012 } as const;
 const STRAP = {
   width: 0.2,
@@ -165,12 +165,14 @@ interface UndentedMesh {
 export function Leather({ ref }: LeatherProps) {
   const body = useRef<Mesh>(null);
   const straps = useRef<(Mesh | null)[]>([]);
+  const rim = useRef<Mesh>(null);
   const rest = useRef<{
     readonly body: UndentedMesh;
-    readonly straps: UndentedMesh[];
+    readonly trims: UndentedMesh[];
   }>(null);
   const dented = useRef(false);
   const geometry = useMemo(() => pillowedBody(), []);
+  const rimGeometry = useMemo(() => capRim(), []);
 
   useImperativeHandle(
     ref,
@@ -180,15 +182,15 @@ export function Leather({ ref }: LeatherProps) {
           return;
         }
 
-        rest.current ??= restOf(body.current, straps.current);
+        rest.current ??= restOf(body.current, [...straps.current, rim.current]);
 
         if (!rest.current) {
           return;
         }
 
         dentBody(rest.current.body, dent);
-        rest.current.straps.forEach((strap) => {
-          dentStrap(strap, dent);
+        rest.current.trims.forEach((trim) => {
+          sinkWithLeather(trim, dent);
         });
         dented.current = dent !== null;
       },
@@ -214,19 +216,12 @@ export function Leather({ ref }: LeatherProps) {
         </meshStandardMaterial>
       </mesh>
       <mesh
+        ref={rim}
+        name="leather-rim"
+        geometry={rimGeometry}
         castShadow
         receiveShadow
-        position-y={FLAT_TOP}
-        rotation-x={Math.PI / 2}
       >
-        <torusGeometry
-          args={[
-            radius * Math.sqrt(1 - (FLAT_TOP / radius) ** 2),
-            0.006,
-            6,
-            64,
-          ]}
-        />
         <meshStandardMaterial color={LOOK.cap} roughness={0.7} />
       </mesh>
       {STRAP_ANGLES.map((angle, i) => (
@@ -279,6 +274,17 @@ export function Leather({ ref }: LeatherProps) {
   );
 }
 
+function capRim(): BufferGeometry {
+  return new TorusGeometry(
+    radius * Math.sqrt(1 - (FLAT_TOP / radius) ** 2),
+    0.006,
+    6,
+    64,
+  )
+    .rotateX(Math.PI / 2)
+    .translate(0, FLAT_TOP, 0);
+}
+
 function pillowedBody(): BufferGeometry {
   const geometry = new SphereGeometry(radius, 128, 72);
   const positions = geometry.getAttribute("position");
@@ -287,17 +293,19 @@ function pillowedBody(): BufferGeometry {
   for (let i = 0; i < positions.count; i++) {
     point.fromBufferAttribute(positions, i).normalize();
 
+    const onLid = point.y * radius > FLAT_TOP;
     const across = Math.hypot(point.x, point.z);
     const fromPanelMiddle = angleFromPanelMiddle(Math.atan2(point.z, point.x));
     const toSeam = (PANEL_ANGLE / 2 - fromPanelMiddle) * radius * across;
     const awayFromPoles = Math.min(1, Math.max(0, (across - 0.25) / 0.25));
-    const groove =
-      SEAM.depth * Math.exp(-((toSeam / SEAM.width) ** 2)) * awayFromPoles;
+    const groove = onLid
+      ? 0
+      : SEAM.depth * Math.exp(-((toSeam / SEAM.width) ** 2)) * awayFromPoles;
 
     point.multiplyScalar(radius - groove);
 
-    if (point.y > FLAT_TOP) {
-      point.y = FLAT_TOP + (point.y - FLAT_TOP) * TOP_SQUASH;
+    if (onLid) {
+      point.y = FLAT_TOP;
     }
 
     positions.setXYZ(i, point.x, point.y, point.z);
@@ -410,20 +418,20 @@ function stitchesBeside(
 
 function restOf(
   body: Mesh | null,
-  straps: readonly (Mesh | null)[],
+  trims: readonly (Mesh | null)[],
 ): {
   readonly body: UndentedMesh;
-  readonly straps: UndentedMesh[];
+  readonly trims: UndentedMesh[];
 } | null {
-  const strapMeshes = straps.filter((strap) => strap !== null);
+  const trimMeshes = trims.filter((trim) => trim !== null);
 
-  if (!body || strapMeshes.length !== STRAP_ANGLES.length) {
+  if (!body || trimMeshes.length !== trims.length) {
     return null;
   }
 
   return {
     body: restOfMesh(body),
-    straps: strapMeshes.map(restOfMesh),
+    trims: trimMeshes.map(restOfMesh),
   };
 }
 
@@ -466,7 +474,7 @@ function dentBody(rest: UndentedMesh, dent: Dent | null): void {
   changed(positions, normals);
 }
 
-function dentStrap(rest: UndentedMesh, dent: Dent | null): void {
+function sinkWithLeather(rest: UndentedMesh, dent: Dent | null): void {
   const positions = rest.geometry.getAttribute("position");
 
   for (let i = 0; i < positions.count; i++) {

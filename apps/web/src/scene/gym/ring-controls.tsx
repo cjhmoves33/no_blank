@@ -95,24 +95,24 @@ export function RingControls({
     const handleDown = (event: PointerEvent): void => {
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
 
-      const sphere = ball.worldSphere();
+      const shape = ball.worldShape();
 
-      if (event.button !== PRIMARY_BUTTON || !sphere) {
+      if (event.button !== PRIMARY_BUTTON || !shape) {
         return;
       }
 
       surface.setPointerCapture(event.pointerId);
-      land(pressDown(sampleOf(event), sphere));
+      land(pressDown(sampleOf(event), shape));
     };
 
     const handleMove = (event: PointerEvent): void => {
-      const sphere = ball.worldSphere();
+      const shape = ball.worldShape();
 
       orbiting.current = (event.buttons & SECONDARY_HELD) !== 0;
       pointer.current = ndcOf(surface, event);
 
-      if (press && sphere) {
-        land(dragTo(press, sampleOf(event), sphere));
+      if (press && shape) {
+        land(dragTo(press, sampleOf(event), shape));
       }
     };
 
@@ -160,11 +160,11 @@ export function RingControls({
       camera.rotateX(pitch).rotateY(yaw).rotateZ(roll);
     }
 
-    const sphere = ball.worldSphere();
+    const shape = ball.worldShape();
     const overBall =
       pointer.current !== null &&
-      sphere !== null &&
-      touches(rayThrough(camera, pointer.current), sphere);
+      shape !== null &&
+      touches(rayThrough(camera, pointer.current), shape);
 
     showCursor(surface, cursorFor(orbiting.current, overBall));
   });
