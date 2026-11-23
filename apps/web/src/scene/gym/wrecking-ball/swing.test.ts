@@ -172,12 +172,13 @@ describe("swing", () => {
     }
   });
 
-  it("다가오던 공을 맞받아치면 방향을 바꾸지 못하고 늦추기만 한다", () => {
-    const coming = moving(new Vector3(0.5, 0, 0));
-    const struck = hit(coming, RIGHT, normal);
+  it("빠르게 되돌아오는 공은 맞받아쳐도 늦추기만 하고, 천천히 되돌아오는 공은 되밀린다", () => {
+    const fast = hit(moving(new Vector3(0.5, 0, 0)), RIGHT, normal);
+    const slow = hit(moving(new Vector3(0.2, 0, 0)), RIGHT, normal);
 
-    expect(struck.velocity.x).toBeGreaterThan(0);
-    expect(struck.velocity.x).toBeLessThan(0.5);
+    expect(fast.velocity.x).toBeGreaterThan(0);
+    expect(fast.velocity.x).toBeLessThan(0.5);
+    expect(slow.velocity.x).toBeLessThan(0);
   });
 
   it("공이 주먹보다 빨리 멀어지고 있으면 쳐도 흔들림이 바뀌지 않는다", () => {
@@ -408,6 +409,16 @@ describe("타격 세기", () => {
   it("빨리 휘두를수록 세다", () => {
     expect(strengthOf(restingSwing(), swipe(TO_THE_RIGHT, 1.5))).toBeLessThan(
       strengthOf(restingSwing(), swipe(TO_THE_RIGHT, 2.5)),
+    );
+  });
+
+  it("멀어지는 공을 아주 빠르게 휘둘러 쫓아가도, 다가가는 빠르기가 같으면 예전과 같은 세기다", () => {
+    const away = (speed: number) => moving(new Vector3(speed, 0, 0));
+
+    expect(strengthOf(away(0.68), swipe(TO_THE_RIGHT, 6.5))).toBe(1);
+    expect(strengthOf(away(0.3), swipe(TO_THE_RIGHT, 3))).toBeCloseTo(
+      2.7 / 3.25,
+      9,
     );
   });
 

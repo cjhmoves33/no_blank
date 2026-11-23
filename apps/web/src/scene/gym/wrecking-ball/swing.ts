@@ -91,19 +91,21 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   }
 
   const closing = speed - along;
+  const hardest = feel.fistSpeed * HARDEST_SWIPE_IN_JABS;
   const velocity = capSwingEnergy(
     swing.fromPivot,
     swing.velocity
       .clone()
-      .addScaledVector(push, closing * feel.closingSpeedShare),
+      .addScaledVector(
+        push,
+        Math.min(closing, hardest) * feel.closingSpeedShare,
+      ),
     feel,
   );
 
   return {
     swing: { ...swing, velocity },
-    strike: {
-      strength: Math.min(closing / (feel.fistSpeed * HARDEST_SWIPE_IN_JABS), 1),
-    },
+    strike: { strength: Math.min(closing / hardest, 1) },
     push,
   };
 }
@@ -154,7 +156,7 @@ function fistOf(
         speed: feel.fistSpeed,
       };
     case "swipe": {
-      const inJabs = Math.min(blow.speed / JAB_SPEED, HARDEST_SWIPE_IN_JABS);
+      const inJabs = blow.speed / JAB_SPEED;
 
       return {
         push: blow.fist.clone().normalize(),
