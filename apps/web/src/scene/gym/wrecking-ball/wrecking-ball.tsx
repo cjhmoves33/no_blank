@@ -1,11 +1,21 @@
 // @refresh reset
 import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
-import { type Group, type Mesh, Quaternion, Sphere, Vector3 } from "three";
+import {
+  type Group,
+  type Mesh,
+  Plane,
+  Quaternion,
+  Sphere,
+  Vector3,
+} from "three";
 
 import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
+import { linkCount, type LinkPose, linksAlong, turnedRing } from "./chain";
+import { ChainLinks, type ChainLinksHandle } from "./chain-links";
+import { Hanging, HANGING_HEIGHT, SWIVEL_EYE, SwivelEye } from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
@@ -16,8 +26,9 @@ import {
   settleLean,
   UPRIGHT,
 } from "./lean";
-import { HANGING_HEIGHT, Leather, type LeatherHandle } from "./leather";
-import { RESTING_SPRING, settle } from "./spring";
+import { Leather, type LeatherHandle } from "./leather";
+import type { BallShape } from "./press";
+import { RESTING_SPRING } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
@@ -31,10 +42,10 @@ import {
   strike,
   SWING_FEEL,
 } from "./swing";
-import { TWIST_FEEL, twistBy } from "./twist";
+import { spinDown, TWIST_FEEL, twistBy } from "./twist";
 
 export interface WreckingBallHandle {
-  readonly worldSphere: () => Sphere | null;
+  readonly worldShape: () => BallShape | null;
   readonly take: (blow: Blow) => Strike;
 }
 
@@ -44,13 +55,12 @@ export interface WreckingBallProps {
   readonly onJolt: (jolt: Jolt) => void;
 }
 
-const { radius, pivotY } = GYM.wreckingBall;
+const { radius, lidHeight, pivotY } = GYM.wreckingBall;
 const TO_CEILING = GYM.building.ceilingY - pivotY;
 
-const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
 const CHAIN_LENGTH = CHAIN_REACH - HANGING_HEIGHT;
-const LINKS = 12;
+const LINKS = linkCount(CHAIN_LENGTH);
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
 const UP = new Vector3(0, 1, 0);
@@ -61,7 +71,7 @@ export const WRECKING_BALL_SIZE: Box = {
   max: [SWEEP, CHAIN_REACH, SWEEP],
 };
 
-const REST_LINKS = chainLinks(restingSwing().fromPivot);
+const RESTING_CHAIN = upperChain(restingSwing().fromPivot);
 
 export function WreckingBall({
   reducedMotion,
@@ -71,7 +81,8 @@ export function WreckingBall({
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
-  const links = useRef<(Mesh | null)[]>([]);
+  const chain = useRef<ChainLinksHandle>(null);
+  const eye = useRef<Mesh>(null);
   const swing = useRef(restingSwing());
   const twist = useRef(RESTING_SPRING);
   const lean = useRef<Lean>(UPRIGHT);
@@ -81,10 +92,7 @@ export function WreckingBall({
   useImperativeHandle(
     ref,
     () => ({
-      worldSphere: () =>
-        ball.current
-          ? new Sphere(ball.current.getWorldPosition(new Vector3()), radius)
-          : null,
+      worldShape: () => (ball.current ? shapeOf(ball.current) : null),
       take: (blow) => {
         const struck = strike(swing.current, blow, SWING_FEEL[feel]);
         const { strength } = struck.strike;
@@ -136,7 +144,11 @@ export function WreckingBall({
       aged.movingSeconds,
       SWING_FEEL[feel],
     );
-    twist.current = settle(twist.current, aged.movingSeconds, TWIST_FEEL[feel]);
+    twist.current = spinDown(
+      twist.current,
+      aged.movingSeconds,
+      TWIST_FEEL[feel],
+    );
     lean.current = settleLean(
       lean.current,
       aged.movingSeconds,
@@ -168,12 +180,9 @@ export function WreckingBall({
 
     ball.current?.position.copy(pose.position);
     ball.current?.quaternion.copy(pose.quaternion);
-    chainLinks(fromPivot).forEach((link, i) => {
-      const mesh = links.current[i];
-
-      mesh?.position.copy(link.position);
-      mesh?.quaternion.copy(link.quaternion);
-      mesh?.scale.setY(link.length);
+    hangChain(upperChain(fromPivot), {
+      chain: chain.current,
+      eye: eye.current,
     });
   });
 
@@ -184,29 +193,39 @@ export function WreckingBall({
         <meshStandardMaterial {...STEEL} />
       </mesh>
       <group position-y={CHAIN_REACH}>
-        {REST_LINKS.map((link, i) => (
-          <mesh
-            key={i}
-            ref={(mesh) => {
-              links.current[i] = mesh;
-            }}
-            castShadow
-            receiveShadow
-            position={link.position}
-            quaternion={link.quaternion}
-            scale-y={link.length}
-          >
-            <cylinderGeometry args={[CHAIN_RADIUS, CHAIN_RADIUS, 1, 6]} />
-            <meshStandardMaterial {...STEEL} />
-          </mesh>
-        ))}
+        <ChainLinks
+          ref={chain}
+          name="upper-chain"
+          poses={RESTING_CHAIN.links}
+        />
+        <SwivelEye
+          ref={eye}
+          position={RESTING_CHAIN.eye.position}
+          quaternion={RESTING_CHAIN.eye.quaternion}
+        />
         <group ref={ball} position-y={-CHAIN_REACH}>
           <Leather ref={leather} />
+          <Hanging />
         </group>
       </group>
       {reducedMotion ? null : <StrikeDust ref={dust} />}
     </>
   );
+}
+
+function shapeOf(ball: Group): BallShape {
+  const center = ball.getWorldPosition(new Vector3());
+  const up = UP.clone().applyQuaternion(
+    ball.getWorldQuaternion(new Quaternion()),
+  );
+
+  return {
+    sphere: new Sphere(center, radius),
+    lid: new Plane().setFromNormalAndCoplanarPoint(
+      up,
+      center.clone().addScaledVector(up, lidHeight),
+    ),
+  };
 }
 
 function hangingPose(
@@ -241,39 +260,46 @@ function aroundCap(angle: number): Quaternion {
   return new Quaternion().setFromAxisAngle(UP, angle);
 }
 
-interface ChainLink {
-  readonly position: Vector3;
-  readonly quaternion: Quaternion;
-  readonly length: number;
+interface UpperChain {
+  readonly links: LinkPose[];
+  readonly eye: LinkPose;
 }
 
-function chainLinks(fromPivot: Vector3): ChainLink[] {
+function upperChain(fromPivot: Vector3): UpperChain {
   const end = fromPivot
     .clone()
     .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_HEIGHT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );
-  const along = (t: number) =>
+  const path = (t: number) =>
     end
       .clone()
       .multiplyScalar(t)
       .addScaledVector(bow, 4 * t * (1 - t));
+  const links = linksAlong(path, LINKS);
+  const last = links.at(-1);
+  const downward = end.clone().sub(path(0.99)).normalize();
 
-  return Array.from({ length: LINKS }, (_, i) => {
-    const from = along(i / LINKS);
-    const to = along((i + 1) / LINKS);
-    const length = from.distanceTo(to);
+  return {
+    links,
+    eye: {
+      position: end.clone().addScaledVector(downward, SWIVEL_EYE.radius),
+      quaternion: last ? turnedRing(last) : new Quaternion(),
+    },
+  };
+}
 
-    return {
-      position: from.clone().add(to).multiplyScalar(0.5),
-      quaternion: new Quaternion().setFromUnitVectors(
-        UP,
-        to.clone().sub(from).divideScalar(length),
-      ),
-      length,
-    };
-  });
+function hangChain(
+  { links, eye }: UpperChain,
+  {
+    chain,
+    eye: eyeMesh,
+  }: { readonly chain: ChainLinksHandle | null; readonly eye: Mesh | null },
+): void {
+  chain?.place(links);
+  eyeMesh?.position.copy(eye.position);
+  eyeMesh?.quaternion.copy(eye.quaternion);
 }
 
 function sagOfSlackChain(span: number): number {

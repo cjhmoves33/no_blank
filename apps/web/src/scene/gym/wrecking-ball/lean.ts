@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from "three";
 
-import { HANGING_HEIGHT } from "./leather";
+import { HANGING_HEIGHT } from "./hanging";
 import {
   criticallyDamped,
   RESTING_SPRING,

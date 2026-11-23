@@ -1,6 +1,11 @@
 /** 길이는 미터입니다. 원점은 링 가운데 아래의 건물 바닥이고, y 가 위쪽입니다. */
 export const GYM = {
-  wreckingBall: { restCenter: [0, 2.3, 0], radius: 0.3, pivotY: 3.8 },
+  wreckingBall: {
+    restCenter: [0, 2.3, 0],
+    radius: 0.3,
+    lidHeight: 0.234,
+    pivotY: 3.8,
+  },
   mat: { y: 1, half: 3.65 },
   ropes: {
     half: 3.15,
