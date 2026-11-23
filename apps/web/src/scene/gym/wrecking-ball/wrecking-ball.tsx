@@ -1,11 +1,14 @@
 // @refresh reset
 import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
-import { type Group, type Mesh, Quaternion, Sphere, Vector3 } from "three";
+import { type Group, Quaternion, Sphere, Vector3 } from "three";
 
 import type { Box } from "../building/slabs";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
+import { linkCount, type LinkPose, linksAlong } from "./chain";
+import { ChainLinks, type ChainLinksHandle } from "./chain-links";
+import { Hanging, HANGING_HEIGHT } from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
@@ -16,8 +19,8 @@ import {
   settleLean,
   UPRIGHT,
 } from "./lean";
-import { HANGING_HEIGHT, Leather, type LeatherHandle } from "./leather";
-import { RESTING_SPRING, settle } from "./spring";
+import { Leather, type LeatherHandle } from "./leather";
+import { RESTING_SPRING } from "./spring";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
 import {
   advance,
@@ -31,7 +34,7 @@ import {
   strike,
   SWING_FEEL,
 } from "./swing";
-import { TWIST_FEEL, twistBy } from "./twist";
+import { spinDown, TWIST_FEEL, twistBy } from "./twist";
 
 export interface WreckingBallHandle {
   readonly worldSphere: () => Sphere | null;
@@ -47,10 +50,9 @@ export interface WreckingBallProps {
 const { radius, pivotY } = GYM.wreckingBall;
 const TO_CEILING = GYM.building.ceilingY - pivotY;
 
-const CHAIN_RADIUS = 0.0125;
 const ROD_RADIUS = 0.02;
 const CHAIN_LENGTH = CHAIN_REACH - HANGING_HEIGHT;
-const LINKS = 12;
+const LINKS = linkCount(CHAIN_LENGTH);
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
 const UP = new Vector3(0, 1, 0);
@@ -71,7 +73,7 @@ export function WreckingBall({
   const ball = useRef<Group>(null);
   const leather = useRef<LeatherHandle>(null);
   const dust = useRef<StrikeDustHandle>(null);
-  const links = useRef<(Mesh | null)[]>([]);
+  const chain = useRef<ChainLinksHandle>(null);
   const swing = useRef(restingSwing());
   const twist = useRef(RESTING_SPRING);
   const lean = useRef<Lean>(UPRIGHT);
@@ -136,7 +138,11 @@ export function WreckingBall({
       aged.movingSeconds,
       SWING_FEEL[feel],
     );
-    twist.current = settle(twist.current, aged.movingSeconds, TWIST_FEEL[feel]);
+    twist.current = spinDown(
+      twist.current,
+      aged.movingSeconds,
+      TWIST_FEEL[feel],
+    );
     lean.current = settleLean(
       lean.current,
       aged.movingSeconds,
@@ -168,13 +174,7 @@ export function WreckingBall({
 
     ball.current?.position.copy(pose.position);
     ball.current?.quaternion.copy(pose.quaternion);
-    chainLinks(fromPivot).forEach((link, i) => {
-      const mesh = links.current[i];
-
-      mesh?.position.copy(link.position);
-      mesh?.quaternion.copy(link.quaternion);
-      mesh?.scale.setY(link.length);
-    });
+    chain.current?.place(chainLinks(fromPivot));
   });
 
   return (
@@ -184,24 +184,10 @@ export function WreckingBall({
         <meshStandardMaterial {...STEEL} />
       </mesh>
       <group position-y={CHAIN_REACH}>
-        {REST_LINKS.map((link, i) => (
-          <mesh
-            key={i}
-            ref={(mesh) => {
-              links.current[i] = mesh;
-            }}
-            castShadow
-            receiveShadow
-            position={link.position}
-            quaternion={link.quaternion}
-            scale-y={link.length}
-          >
-            <cylinderGeometry args={[CHAIN_RADIUS, CHAIN_RADIUS, 1, 6]} />
-            <meshStandardMaterial {...STEEL} />
-          </mesh>
-        ))}
+        <ChainLinks ref={chain} poses={REST_LINKS} />
         <group ref={ball} position-y={-CHAIN_REACH}>
           <Leather ref={leather} />
+          <Hanging />
         </group>
       </group>
       {reducedMotion ? null : <StrikeDust ref={dust} />}
@@ -241,39 +227,22 @@ function aroundCap(angle: number): Quaternion {
   return new Quaternion().setFromAxisAngle(UP, angle);
 }
 
-interface ChainLink {
-  readonly position: Vector3;
-  readonly quaternion: Quaternion;
-  readonly length: number;
-}
-
-function chainLinks(fromPivot: Vector3): ChainLink[] {
+function chainLinks(fromPivot: Vector3): LinkPose[] {
   const end = fromPivot
     .clone()
     .addScaledVector(fromPivot.clone().negate().normalize(), HANGING_HEIGHT);
   const bow = visibleBendSide(fromPivot).multiplyScalar(
     sagOfSlackChain(end.length()),
   );
-  const along = (t: number) =>
-    end
-      .clone()
-      .multiplyScalar(t)
-      .addScaledVector(bow, 4 * t * (1 - t));
 
-  return Array.from({ length: LINKS }, (_, i) => {
-    const from = along(i / LINKS);
-    const to = along((i + 1) / LINKS);
-    const length = from.distanceTo(to);
-
-    return {
-      position: from.clone().add(to).multiplyScalar(0.5),
-      quaternion: new Quaternion().setFromUnitVectors(
-        UP,
-        to.clone().sub(from).divideScalar(length),
-      ),
-      length,
-    };
-  });
+  return linksAlong(
+    (t) =>
+      end
+        .clone()
+        .multiplyScalar(t)
+        .addScaledVector(bow, 4 * t * (1 - t)),
+    LINKS,
+  );
 }
 
 function sagOfSlackChain(span: number): number {

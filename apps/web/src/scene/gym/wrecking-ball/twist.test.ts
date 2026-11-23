@@ -2,9 +2,15 @@ import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import { GYM } from "../measurements";
-import { RESTING_SPRING, settle, type SpringFeel } from "./spring";
+import { RESTING_SPRING } from "./spring";
 import type { Blow } from "./swing";
-import { type Twist, TWIST_FEEL, twistBy } from "./twist";
+import {
+  spinDown,
+  type Twist,
+  TWIST_FEEL,
+  twistBy,
+  type TwistFeel,
+} from "./twist";
 
 const { radius } = GYM.wreckingBall;
 const INTO_SCREEN = new Vector3(0, 0, -1);
@@ -27,20 +33,20 @@ function swipe(fist: Vector3): Blow {
 function angles(
   twist: Twist,
   seconds: number,
-  feel: SpringFeel = normal,
+  feel: TwistFeel = normal,
 ): number[] {
   const seen: number[] = [];
   let current = twist;
 
   for (let t = 0; t < seconds; t += FRAME) {
-    current = settle(current, FRAME, feel);
+    current = spinDown(current, FRAME, feel);
     seen.push(current.angle);
   }
 
   return seen;
 }
 
-function widest(twist: Twist, feel: SpringFeel = normal): number {
+function widest(twist: Twist, feel: TwistFeel = normal): number {
   return Math.max(...angles(twist, 3, feel).map(Math.abs));
 }
 
@@ -96,41 +102,65 @@ describe("twist", () => {
     expect(by(0.4)).toBeLessThan(by(1));
   });
 
-  it("무거워서 가장 센 타격에도 20도 넘게 비틀리지 않는다", () => {
-    expect(
-      widest(
-        twistBy(
-          RESTING_SPRING,
-          { blow: swipe(TO_THE_RIGHT), strength: 1 },
-          normal,
-        ),
-      ),
-    ).toBeLessThan((20 * Math.PI) / 180);
+  it("가장 센 훅에는 35도 안팎 돌고, 2초쯤에 멈춘다", () => {
+    const hooked = twistBy(
+      RESTING_SPRING,
+      { blow: swipe(TO_THE_RIGHT), strength: 1 },
+      normal,
+    );
+
+    expect(spinDown(hooked, 1.5, normal).rate).toBeGreaterThan(0);
+    expect(spinDown(hooked, 2.5, normal).rate).toBe(0);
+    expect(spinDown(hooked, 3, normal).angle).toBeGreaterThan(
+      (30 * Math.PI) / 180,
+    );
+    expect(spinDown(hooked, 3, normal).angle).toBeLessThan(
+      (40 * Math.PI) / 180,
+    );
   });
 
-  it("꼬인 사슬이 풀리듯 반대쪽으로 넘어갔다가, 10초쯤 지나면 거의 멈춘다", () => {
+  it("잽으로 가장자리를 치면 6도 안팎 돌고, 1초 안에 멈춘다", () => {
+    const jabbed = twistBy(
+      RESTING_SPRING,
+      { blow: jab(RIGHT), strength: 0.4 },
+      normal,
+    );
+
+    expect(spinDown(jabbed, 1, normal).rate).toBe(0);
+    expect(Math.abs(spinDown(jabbed, 1, normal).angle)).toBeGreaterThan(
+      (4 * Math.PI) / 180,
+    );
+    expect(Math.abs(spinDown(jabbed, 1, normal).angle)).toBeLessThan(
+      (8 * Math.PI) / 180,
+    );
+  });
+
+  it("회전 고리에서 돌므로 되감기지 않고, 마찰로 멈춘 뒤 그 방향에 머문다", () => {
     const twisted = twistBy(
       RESTING_SPRING,
       { blow: swipe(TO_THE_RIGHT), strength: 1 },
       normal,
     );
     const seen = angles(twisted, 10);
-    const last = seen.at(-1) ?? Infinity;
 
-    expect(Math.min(...seen)).toBeLessThan(-0.1);
-    expect(Math.abs(last)).toBeLessThan(widest(twisted) * 0.15);
+    seen.forEach((angle, i) => {
+      expect(angle).toBeGreaterThanOrEqual(seen[i - 1] ?? 0);
+    });
+    expect(seen.at(-1)).toBeGreaterThan(0.15);
+    expect(spinDown(twisted, 10, normal).rate).toBe(0);
   });
 
-  it("동작 줄이기에서는 넘어가지 않고 1초 안에 멈춘다", () => {
+  it("동작 줄이기에서는 가장 센 훅에도 조금만 돌고, 0.5초 안에 멈춘다", () => {
     const twisted = twistBy(
       RESTING_SPRING,
       { blow: swipe(TO_THE_RIGHT), strength: 1 },
       reduced,
     );
-    const seen = angles(twisted, 1, reduced);
 
-    expect(Math.min(...seen)).toBeGreaterThanOrEqual(0);
-    expect(Math.abs(seen.at(-1) ?? Infinity)).toBeLessThan(0.001);
+    expect(spinDown(twisted, 0.5, reduced).rate).toBe(0);
+    expect(spinDown(twisted, 0.5, reduced).angle).toBeLessThan(
+      (6 * Math.PI) / 180,
+    );
   });
 
   it("프레임 속도와 관계없이 같은 비틀림이 된다", () => {
@@ -139,13 +169,13 @@ describe("twist", () => {
       { blow: jab(RIGHT), strength: 1 },
       normal,
     );
-    const atOnce = settle(twisted, 1.5, normal).angle;
+    const atOnce = spinDown(twisted, 1.5, normal).angle;
 
     for (const fps of [60, 144]) {
       let byFrames = twisted;
 
       for (let i = 0; i < 1.5 * fps; i++) {
-        byFrames = settle(byFrames, 1 / fps, normal);
+        byFrames = spinDown(byFrames, 1 / fps, normal);
       }
 
       expect(byFrames.angle).toBeCloseTo(atOnce, 6);

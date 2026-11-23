@@ -1,14 +1,6 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
-import {
-  BufferGeometry,
-  Mesh,
-  Points,
-  Quaternion,
-  SphereGeometry,
-  TorusGeometry,
-  Vector3,
-} from "three";
+import { BufferGeometry, Mesh, Points, Quaternion, Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GYM } from "../measurements";
@@ -70,84 +62,102 @@ function centerOf(ball: WreckingBallHandle): Vector3 {
 }
 
 interface LeatherView {
-  readonly geometry: SphereGeometry;
+  readonly geometry: BufferGeometry;
   readonly turn: Quaternion;
 }
 
-function leatherOf(renderer: Renderer): LeatherView {
-  const [leather] = renderer.scene
+function meshesNamed(renderer: Renderer, name: string): Mesh[] {
+  const named = (object: unknown): object is Mesh =>
+    object instanceof Mesh && object.name === name;
+
+  return renderer.scene
     .findAll(() => true)
-    .flatMap((node) =>
-      node.instance instanceof Mesh &&
-      node.instance.geometry instanceof SphereGeometry
-        ? [
-            {
-              geometry: node.instance.geometry,
-              turn: node.instance.getWorldQuaternion(new Quaternion()),
-            },
-          ]
-        : [],
-    );
+    .map((node): unknown => node.instance)
+    .filter(named);
+}
+
+function leatherOf(renderer: Renderer): LeatherView {
+  const [leather] = meshesNamed(renderer, "leather");
 
   if (!leather) {
     throw new Error("가죽 공이 없습니다.");
   }
 
-  return leather;
+  return {
+    geometry: leather.geometry,
+    turn: leather.getWorldQuaternion(new Quaternion()),
+  };
 }
 
-function nearestLeatherToCenter(renderer: Renderer): number {
+function leatherPoints(renderer: Renderer): Vector3[] {
   const positions = leatherOf(renderer).geometry.getAttribute("position");
-  let nearest = Infinity;
 
-  for (let i = 0; i < positions.count; i++) {
-    nearest = Math.min(
-      nearest,
-      Math.hypot(positions.getX(i), positions.getY(i), positions.getZ(i)),
-    );
-  }
-
-  return nearest;
+  return Array.from({ length: positions.count }, (_, i) =>
+    new Vector3().fromBufferAttribute(positions, i),
+  );
 }
 
-function nearestSeamToCenter(renderer: Renderer): number {
-  const distances = renderer.scene
-    .findAll(() => true)
-    .flatMap((node) => {
-      if (
-        !(node.instance instanceof Mesh) ||
-        !(node.instance.geometry instanceof TorusGeometry) ||
-        node.instance.geometry.parameters.radius !== radius
-      ) {
-        return [];
-      }
+function deepestSink(
+  renderer: Renderer,
+  rest: readonly Vector3[],
+): { readonly depth: number; readonly direction: Vector3 } {
+  const now = leatherPoints(renderer);
+  let deepest = { depth: -Infinity, direction: new Vector3() };
 
-      const positions = node.instance.geometry.getAttribute("position");
+  now.forEach((point, i) => {
+    const before = rest[i] ?? point;
+    const depth = before.length() - point.length();
 
-      return Array.from({ length: positions.count }, (_, i) =>
-        Math.hypot(positions.getX(i), positions.getY(i), positions.getZ(i)),
-      );
-    });
-
-  return Math.min(...distances);
-}
-
-function deepestDentDirection(renderer: Renderer): Vector3 {
-  const { geometry, turn } = leatherOf(renderer);
-  const positions = geometry.getAttribute("position");
-  const deepest = new Vector3();
-  let nearest = Infinity;
-
-  for (let i = 0; i < positions.count; i++) {
-    const vertex = new Vector3().fromBufferAttribute(positions, i);
-
-    if (vertex.length() < nearest) {
-      nearest = vertex.length();
-      deepest.copy(vertex);
+    if (depth > deepest.depth) {
+      deepest = { depth, direction: before.clone().normalize() };
     }
+  });
+
+  return {
+    depth: deepest.depth,
+    direction: deepest.direction.applyQuaternion(leatherOf(renderer).turn),
+  };
+}
+
+function farthestFrom(renderer: Renderer, rest: readonly Vector3[]): number {
+  return Math.max(
+    ...leatherPoints(renderer).map((point, i) =>
+      point.distanceTo(rest[i] ?? point),
+    ),
+  );
+}
+
+function strapPoints(renderer: Renderer): Vector3[] {
+  return meshesNamed(renderer, "leather-strap").flatMap((strap) => {
+    const positions = strap.geometry.getAttribute("position");
+
+    return Array.from({ length: positions.count }, (_, i) =>
+      new Vector3().fromBufferAttribute(positions, i),
+    );
+  });
+}
+
+function nearestStrapToCenter(renderer: Renderer): number {
+  return Math.min(...strapPoints(renderer).map((point) => point.length()));
+}
+
+function middleOfFirstStrap(renderer: Renderer): Vector3 {
+  const [strap] = meshesNamed(renderer, "leather-strap");
+
+  if (!strap) {
+    throw new Error("가죽 끈이 없습니다.");
   }
 
-  return deepest.normalize().applyQuaternion(turn);
+  const positions = strap.geometry.getAttribute("position");
+  const middle = new Vector3();
+
+  for (let i = 0; i < positions.count; i++) {
+    middle.add(new Vector3().fromBufferAttribute(positions, i));
+  }
+
+  return middle
+    .normalize()
+    .applyQuaternion(strap.getWorldQuaternion(new Quaternion()));
 }
 
 function dustGrains(renderer: Renderer): number {
@@ -247,15 +257,16 @@ describe("WreckingBall", () => {
 
   it("맞은 자리가 잠깐 패였다가 둥글게 돌아온다", async () => {
     const { renderer, ball } = await renderBall();
+    const rest = leatherPoints(renderer);
 
     ball.take(jab(RIGHT));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(nearestLeatherToCenter(renderer)).toBeLessThan(radius - 0.008);
+    expect(deepestSink(renderer, rest).depth).toBeGreaterThan(0.008);
 
     await renderer.advanceFrames(30, FRAME);
 
-    expect(nearestLeatherToCenter(renderer)).toBeCloseTo(radius, 6);
+    expect(farthestFrom(renderer, rest)).toBeLessThan(1e-6);
   });
 
   it("이미 비틀리거나 기운 공을 쳐도 패임은 맞은 자리에 생긴다", async () => {
@@ -271,20 +282,24 @@ describe("WreckingBall", () => {
 
     expect(Math.abs(heading(renderer))).toBeGreaterThan(0.15);
 
+    const rest = leatherPoints(renderer);
+
     ball.take(jab(FRONT));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(deepestDentDirection(renderer).angleTo(FRONT)).toBeLessThan(0.05);
+    expect(deepestSink(renderer, rest).direction.angleTo(FRONT)).toBeLessThan(
+      0.05,
+    );
   });
 
-  it("솔기도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
+  it("가죽 끈도 가죽과 함께 패여서 패인 자리 위에 떠 보이지 않는다", async () => {
     const { renderer, ball } = await renderBall();
-    const before = nearestSeamToCenter(renderer);
+    const before = nearestStrapToCenter(renderer);
 
-    ball.take(jab(RIGHT));
+    ball.take(jab(middleOfFirstStrap(renderer).multiplyScalar(radius)));
     await renderer.advanceFrames(1, FRAME);
 
-    expect(nearestSeamToCenter(renderer)).toBeLessThan(before - 0.008);
+    expect(nearestStrapToCenter(renderer)).toBeLessThan(before - 0.008);
   });
 
   it("맞은 자리에서 타격 먼지가 피어오르고, 동작 줄이기에서는 피지 않는다", async () => {
@@ -317,7 +332,7 @@ describe("WreckingBall", () => {
     expect(second.strength).toBeLessThan(first.strength);
   });
 
-  it("옆 가장자리를 치면 사슬 축으로 비틀리고, 정면 가운데를 치면 비틀리지 않는다", async () => {
+  it("옆 가장자리를 치면 회전 고리를 축으로 비틀리고, 정면 가운데를 치면 비틀리지 않는다", async () => {
     const side = await renderBall();
 
     side.ball.take(jab(RIGHT));
@@ -335,7 +350,21 @@ describe("WreckingBall", () => {
     expect(Math.abs(heading(front.renderer))).toBeLessThan(1e-6);
   });
 
-  it("옆구리를 맞으면 걸이를 축으로 기우뚱했다가 돌아온다", async () => {
+  it("옆 가장자리를 맞아 비틀린 공은 멈춘 뒤에도 되감기지 않고 그 방향에 머문다", async () => {
+    const { renderer, ball } = await renderBall();
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(90, FRAME);
+
+    const stopped = heading(renderer);
+
+    await renderer.advanceFrames(120, FRAME);
+
+    expect(Math.abs(stopped)).toBeGreaterThan(0.05);
+    expect(heading(renderer)).toBeCloseTo(stopped, 3);
+  });
+
+  it("옆구리를 맞으면 회전 고리를 축으로 기우뚱했다가 돌아온다", async () => {
     const { renderer, ball } = await renderBall();
 
     ball.take(jab(RIGHT));
