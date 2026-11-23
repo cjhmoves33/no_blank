@@ -138,7 +138,7 @@ describe("swing", () => {
     expect(Math.abs(after.fromPivot.z)).toBeLessThan(1e-9);
   });
 
-  it("빨리 휘두를수록 멀리 밀리지만, 아무리 빨리 휘둘러도 한 번에 30 cm 남짓까지만 밀린다", () => {
+  it("빨리 휘두를수록 멀리 밀리지만, 아무리 빨리 휘둘러도 한 번에 25 cm 남짓까지만 밀린다", () => {
     const reach = (speed: number) =>
       largestOffset(
         track(
@@ -149,8 +149,8 @@ describe("swing", () => {
       );
 
     expect(reach(1.5)).toBeLessThan(reach(2.5));
-    expect(reach(FASTEST_SWIPE)).toBeGreaterThan(0.25);
-    expect(reach(FASTEST_SWIPE)).toBeLessThan(0.35);
+    expect(reach(FASTEST_SWIPE)).toBeGreaterThan(0.2);
+    expect(reach(FASTEST_SWIPE)).toBeLessThan(0.28);
     expect(reach(FASTEST_SWIPE)).toBeCloseTo(reach(FASTEST_SWIPE / 10), 9);
   });
 

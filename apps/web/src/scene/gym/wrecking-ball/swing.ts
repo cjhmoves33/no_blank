@@ -52,9 +52,7 @@ export const STRAIGHT_CHAIN_AXIS = new Vector3(0, 1, 0);
 
 const JAB_SPEED = 1.3;
 
-const FULL_STRENGTH_IN_JABS = 2.5;
-
-const HARDEST_SWIPE_IN_JABS = 3;
+const HARDEST_SWIPE_IN_JABS = 2.5;
 
 const JOLT_MARGIN = 0.3;
 
@@ -104,7 +102,7 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   return {
     swing: { ...swing, velocity },
     strike: {
-      strength: Math.min(closing / (feel.fistSpeed * FULL_STRENGTH_IN_JABS), 1),
+      strength: Math.min(closing / (feel.fistSpeed * HARDEST_SWIPE_IN_JABS), 1),
     },
     push,
   };
