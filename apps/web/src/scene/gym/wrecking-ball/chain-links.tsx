@@ -9,6 +9,7 @@ export interface ChainLinksHandle {
 }
 
 export interface ChainLinksProps {
+  readonly name: string;
   readonly poses: readonly LinkPose[];
   readonly ref?: Ref<ChainLinksHandle>;
 }
@@ -16,7 +17,7 @@ export interface ChainLinksProps {
 const STRETCH = new Vector3(1, CHAIN_LINK.stretch, 1);
 const matrix = new Matrix4();
 
-export function ChainLinks({ poses, ref }: ChainLinksProps) {
+export function ChainLinks({ name, poses, ref }: ChainLinksProps) {
   const links = useRef<InstancedMesh>(null);
 
   useLayoutEffect(() => {
@@ -40,6 +41,7 @@ export function ChainLinks({ poses, ref }: ChainLinksProps) {
   return (
     <instancedMesh
       ref={links}
+      name={name}
       args={[undefined, undefined, poses.length]}
       castShadow
       receiveShadow

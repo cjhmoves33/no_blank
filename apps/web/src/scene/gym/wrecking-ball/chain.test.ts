@@ -16,6 +16,11 @@ function sagging(t: number): Vector3 {
   return straight(t).add(new Vector3(0.2 * 4 * t * (1 - t), 0, 0));
 }
 
+// 들렸다 떨어지며 살짝 기운 레킹볼의 느슨한 사슬처럼, 거의 곧게 아래로 내려가며 옆으로 조금 휜 길입니다.
+function slackAndTilted(t: number): Vector3 {
+  return new Vector3(0.0074 * t, -0.745 * t, 0.03 * 4 * t * (1 - t));
+}
+
 function gaps(links: readonly LinkPose[]): number[] {
   return links
     .slice(1)
@@ -59,6 +64,23 @@ describe("사슬 고리", () => {
 
         expect(facing.dot(nextFacing)).toBeCloseTo(0, 6);
       }
+    });
+  });
+
+  it("거의 곧게 내려가다 조금 휜 사슬도 이웃 고리가 90도씩 엇갈린다", () => {
+    const links = linksAlong(slackAndTilted, linkCount(0.75));
+
+    links.slice(1).forEach((link, i) => {
+      const before = links[i];
+
+      if (!before) {
+        return;
+      }
+
+      const facing = RING_NORMAL.clone().applyQuaternion(before.quaternion);
+      const nextFacing = RING_NORMAL.clone().applyQuaternion(link.quaternion);
+
+      expect(Math.abs(facing.dot(nextFacing))).toBeLessThan(0.1);
     });
   });
 
