@@ -36,8 +36,14 @@ const GH =
     ? "C:/Program Files/GitHub CLI/gh.exe"
     : "gh");
 const VIEWPORT = { width: 1280, height: 800 };
+const FRAME_MS = 1000 / 60;
 const SETTLE_FRAMES = 30;
+const TAIL_FRAMES = 10;
+const SCENE_TIMEOUT_MS = 10_000;
+const SCENE_HOLDS = 30;
 const CHANGED_DELTA = 8;
+// 효과음은 실제 오디오 시계로 재생되어 같은 입력에서도 최대 진폭이 가끔 3% 안쪽으로 흔들립니다(2026-11-23, 26개 시점 5회).
+const AUDIO_PEAK_RATIO = 0.05;
 
 const ON_BALL = [0.5, 0.5];
 const ON_BALL_SIDE = [0.565, 0.5];
@@ -108,6 +114,22 @@ const VIEWS = {
   "struck-side-1.5s": [{ press: ON_BALL_SIDE }, { wait: 1500 }],
   "struck-under": [{ press: ON_BALL_UNDER }],
   "home-later": [{ wait: 2000 }],
+  "jab-side-clip": [
+    { down: ON_BALL_SIDE },
+    { record: 2 },
+    { up: ON_BALL_SIDE },
+    { record: 88 },
+  ],
+  "uppercut-clip": [
+    { drag: { from: BELOW_BALL, to: ON_BALL, seconds: SWIPE_SECONDS } },
+    { move: [0.02, 0.02] },
+    { record: 120 },
+  ],
+  "hook-clip": [
+    { drag: { from: LEFT_OF_BALL, to: ON_BALL, seconds: SWIPE_SECONDS } },
+    { move: [0.02, 0.02] },
+    { record: 90 },
+  ],
 };
 const DEFAULT_VIEWS = [
   "home",
@@ -117,12 +139,62 @@ const DEFAULT_VIEWS = [
   "low",
   "near",
   "far",
+  "hover-ball",
+  "jab-side-clip",
+  "uppercut-clip",
+  "hook-clip",
 ];
 
-const AUDIO_TAP = `(() => {
+// 페이지의 시계와 난수를 스크립트가 쥡니다. 시간은 __verifyAdvance 로만 흐르고, 프레임은 1/60초 격자에서만 돕니다.
+// 그래서 같은 입력은 화면 떨림, 먼지, 효과음의 무작위 음량까지 늘 같은 결과를 냅니다.
+const PAGE_SETUP = `(() => {
+  const frameMs = ${FRAME_MS};
+  let now = 0;
+  let nextFrame = frameMs;
+  let seed = 1;
+  let nextId = 1;
+  const callbacks = new Map();
+
+  Performance.prototype.now = function () { return now; };
+  Object.defineProperty(Event.prototype, "timeStamp", { get() { return now; }, configurable: true });
+  Math.random = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  window.requestAnimationFrame = (callback) => {
+    const id = nextId++;
+    callbacks.set(id, callback);
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => { callbacks.delete(id); };
+
+  const runFrame = () => {
+    const due = [...callbacks.values()];
+    callbacks.clear();
+    for (const callback of due) callback(now);
+  };
+  const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  window.__verifyHold = async () => {
+    runFrame();
+    await nextTask();
+  };
+  window.__verifyAdvance = async (ms) => {
+    const target = now + ms;
+    while (nextFrame <= target + 1e-6) {
+      now = nextFrame;
+      nextFrame += frameMs;
+      runFrame();
+      await nextTask();
+    }
+    now = target;
+  };
+
+  window.__verifyAudioPeak = 0;
   const connect = AudioNode.prototype.connect;
   const taps = new WeakMap();
-  window.__verifyAudioPeak = 0;
   AudioNode.prototype.connect = function (target, ...rest) {
     if (target instanceof AudioDestinationNode) {
       let analyser = taps.get(this.context);
@@ -130,14 +202,12 @@ const AUDIO_TAP = `(() => {
         analyser = new AnalyserNode(this.context, { fftSize: 2048 });
         taps.set(this.context, analyser);
         const samples = new Float32Array(analyser.fftSize);
-        const poll = () => {
+        setInterval(() => {
           analyser.getFloatTimeDomainData(samples);
           for (const value of samples) {
             window.__verifyAudioPeak = Math.max(window.__verifyAudioPeak, Math.abs(value));
           }
-          requestAnimationFrame(poll);
-        };
-        poll();
+        }, 10);
       }
       connect.call(this, analyser);
     }
@@ -345,7 +415,7 @@ async function shoot({ positional, flags }) {
 
   if (!name) {
     throw new Error(
-      "usage: shoot <name> [--port 3101] [--views a,b] [--motion] [--no-webgl] [--out dir]",
+      "usage: shoot <name> [--port 3101] [--views a,b] [--reduced-motion] [--no-webgl] [--out dir]",
     );
   }
 
@@ -354,7 +424,7 @@ async function shoot({ positional, flags }) {
   await shootBuild(name, {
     port: Number(flags.port ?? 3101),
     views: parseViews(flags.views),
-    motion: flags.motion === true,
+    motion: flags["reduced-motion"] !== true,
     webgl: flags["no-webgl"] !== true,
     out,
   });
@@ -397,7 +467,8 @@ async function shootBuild(name, { port, views, motion, webgl, out }) {
           url: `http://localhost:${port}/`,
           view,
           motion,
-          file: path.join(out, `${view}.png`),
+          webgl,
+          out,
         });
 
         writeFileSync(
@@ -409,7 +480,7 @@ async function shootBuild(name, { port, views, motion, webgl, out }) {
           ),
         );
         console.log(
-          `  ${view}: canvas=${meta.canvas} audioPeak=${meta.audioPeak.toFixed(3)} errors=${meta.errors.length}`,
+          `  ${view}: scene=${meta.scene} canvas=${meta.canvas} frames=${meta.frames} audioPeak=${meta.audioPeak.toFixed(3)} errors=${meta.errors.length}`,
         );
       }
     } finally {
@@ -520,7 +591,7 @@ async function stopChrome(chrome) {
   forget("chromes", chrome.pid);
 }
 
-async function shootView(cdp, { url, view, motion, file }) {
+async function shootView(cdp, { url, view, motion, webgl, out }) {
   const errors = [];
   const offConsole = cdp.on("Runtime.consoleAPICalled", ({ type, args }) => {
     if (type === "error" || type === "warning") {
@@ -557,7 +628,7 @@ async function shootView(cdp, { url, view, motion, file }) {
   const { identifier } = await cdp.send(
     "Page.addScriptToEvaluateOnNewDocument",
     {
-      source: AUDIO_TAP,
+      source: PAGE_SETUP,
     },
   );
   const loaded = cdp.once("Page.loadEventFired");
@@ -565,22 +636,38 @@ async function shootView(cdp, { url, view, motion, file }) {
   await cdp.send("Page.navigate", { url });
   await loaded;
 
-  await waitForCanvas(cdp);
-  await frames(cdp, SETTLE_FRAMES);
+  const scene = await waitForScene(cdp, { webgl });
+  const framesDir = path.join(out, view);
+  let frames = 0;
+
+  await advance(cdp, SETTLE_FRAMES);
+  rmSync(framesDir, { recursive: true, force: true });
 
   for (const action of VIEWS[view]) {
-    await perform(cdp, action);
+    if (action.record) {
+      mkdirSync(framesDir, { recursive: true });
+
+      for (let i = 0; i < action.record; i++, frames++) {
+        await advance(cdp, 1);
+        await screenshot(
+          cdp,
+          path.join(framesDir, `f${String(frames).padStart(3, "0")}.png`),
+        );
+      }
+    } else {
+      await perform(cdp, action);
+    }
   }
 
-  await frames(cdp, 10);
+  await advance(cdp, TAIL_FRAMES);
 
   const canvas = await evaluate(
     cdp,
     "document.querySelector('canvas') !== null",
   );
-  const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
 
-  writeFileSync(file, Buffer.from(data, "base64"));
+  await screenshot(cdp, path.join(out, `${view}.png`));
+  // 효과음은 실제 시간으로 재생되므로, 진폭은 실제 시간이 조금 흐른 뒤에 읽습니다.
   await sleep(400);
 
   const audioPeak = await evaluate(cdp, "window.__verifyAudioPeak ?? 0");
@@ -593,26 +680,50 @@ async function shootView(cdp, { url, view, motion, file }) {
   offConsole();
   offException();
 
-  return { view, actions: VIEWS[view], canvas, audioPeak, cursor, errors };
+  return {
+    view,
+    actions: VIEWS[view],
+    scene,
+    canvas,
+    frames,
+    audioPeak,
+    cursor,
+    errors,
+  };
 }
 
-async function waitForCanvas(cdp) {
-  for (let i = 0; i < 20; i++) {
-    if (await evaluate(cdp, "document.querySelector('canvas') !== null")) {
-      return true;
-    }
+// React 는 장면을 실제 시간에 마운트합니다. 그동안 시계를 0 에 묶어 두어야 장면의 시계가 늘 같은 시각에서 시작합니다.
+async function waitForScene(cdp, { webgl }) {
+  const deadline = Date.now() + SCENE_TIMEOUT_MS;
+  const sized = `document.querySelector('canvas')?.width === ${VIEWPORT.width}`;
+  let holds = 0;
 
-    await sleep(100);
+  while (Date.now() < deadline) {
+    await evaluate(cdp, "window.__verifyHold()");
+    await sleep(16);
+    holds++;
+
+    if (webgl ? await evaluate(cdp, sized) : holds >= SCENE_HOLDS * 2) {
+      for (let i = 0; i < SCENE_HOLDS; i++) {
+        await evaluate(cdp, "window.__verifyHold()");
+        await sleep(16);
+      }
+
+      return webgl;
+    }
   }
 
   return false;
 }
 
-function frames(cdp, count) {
-  return evaluate(
-    cdp,
-    `new Promise((resolve) => { let n = 0; const tick = () => (++n >= ${count} ? resolve(n) : requestAnimationFrame(tick)); requestAnimationFrame(tick); })`,
-  );
+function advance(cdp, frames) {
+  return evaluate(cdp, `window.__verifyAdvance(${frames * FRAME_MS})`);
+}
+
+async function screenshot(cdp, file) {
+  const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
+
+  writeFileSync(file, Buffer.from(data, "base64"));
 }
 
 function fractionToPixels([x, y]) {
@@ -624,7 +735,7 @@ function fractionToPixels([x, y]) {
 
 async function perform(cdp, action) {
   if (action.wait) {
-    await sleep(action.wait);
+    await advance(cdp, action.wait / FRAME_MS);
 
     return;
   }
@@ -639,8 +750,23 @@ async function perform(cdp, action) {
     const point = fractionToPixels(action.press);
 
     await mouse(cdp, "mousePressed", point, "left");
-    await frames(cdp, 2);
+    await advance(cdp, 2);
     await mouse(cdp, "mouseReleased", point, "left", 0);
+
+    return;
+  }
+
+  if (action.down) {
+    const point = fractionToPixels(action.down);
+
+    await mouse(cdp, "mouseMoved", point, "none");
+    await mouse(cdp, "mousePressed", point, "left");
+
+    return;
+  }
+
+  if (action.up) {
+    await mouse(cdp, "mouseReleased", fractionToPixels(action.up), "left", 0);
 
     return;
   }
@@ -664,7 +790,7 @@ async function perform(cdp, action) {
 
     for (let i = 1; i <= steps; i++) {
       if (seconds > 0) {
-        await sleep((seconds * 1000) / steps);
+        await advance(cdp, (seconds * 1000) / steps / FRAME_MS);
       }
 
       await mouse(cdp, "mouseMoved", between(i), button);
@@ -723,7 +849,7 @@ async function compare({ positional, flags }) {
     throw new Error("usage: compare <before-dir> <after-dir> [--out dir]");
   }
 
-  const report = compareDirs(
+  const { report } = compareDirs(
     before,
     after,
     flags.out ?? path.join(path.dirname(after), "diff"),
@@ -750,42 +876,146 @@ function compareDirs(beforeDir, afterDir, outDir) {
   const views = readdirSync(afterDir)
     .filter((file) => file.endsWith(".png"))
     .map((file) => file.slice(0, -4));
-  const rows = views.map((view) => {
-    const before = path.join(beforeDir, `${view}.png`);
-
-    if (!existsSync(before)) {
-      return { view, stats: null };
-    }
-
-    return {
-      view,
-      stats: diffImages(
-        before,
-        path.join(afterDir, `${view}.png`),
-        path.join(outDir, `${view}.png`),
-      ),
-    };
-  });
+  const rows = views.map((view) =>
+    compareView(beforeDir, afterDir, outDir, view),
+  );
+  const changed = rows.filter((row) => row.changed).map((row) => row.view);
   const lines = [
     `# Before / after`,
     "",
     `- before: ${beforeDir}`,
     `- after: ${afterDir}`,
-    `- diff images: ${outDir} (changed pixels in red over a dimmed after image)`,
+    `- diff images: ${outDir} (changed pixels in red over a dimmed after image; a clip keeps its first changed frame)`,
     "",
-    "| view | changed pixels | max channel delta | mean delta |",
-    "| ---- | -------------- | ----------------- | ---------- |",
-    ...rows.map(({ view, stats }) =>
-      stats
-        ? `| ${view} | ${stats.changed} (${stats.percent.toFixed(3)}%) | ${stats.maxDelta} | ${stats.meanDelta.toFixed(3)} |`
-        : `| ${view} | missing in before | | |`,
-    ),
+    "| view | changed pixels | max channel delta | frames changed | audio peak | cursor | errors |",
+    "| ---- | -------------- | ----------------- | -------------- | ---------- | ------ | ------ |",
+    ...rows.map(formatRow),
+    "",
+    changed.length ? `changed: ${changed.join(", ")}` : "changed: none",
   ];
   const report = lines.join("\n");
 
   writeFileSync(path.join(path.dirname(outDir), "report.md"), `${report}\n`);
 
-  return report;
+  return { report, rows };
+}
+
+function compareView(beforeDir, afterDir, outDir, view) {
+  const before = path.join(beforeDir, `${view}.png`);
+
+  if (!existsSync(before)) {
+    return { view, missing: true, changed: true };
+  }
+
+  const still = diffImages(
+    before,
+    path.join(afterDir, `${view}.png`),
+    path.join(outDir, `${view}.png`),
+  );
+  const clip = compareClips(
+    path.join(beforeDir, view),
+    path.join(afterDir, view),
+    path.join(outDir, view),
+  );
+  const signals = compareSignals(
+    readMeta(beforeDir, view),
+    readMeta(afterDir, view),
+  );
+
+  return {
+    view,
+    still,
+    clip,
+    signals,
+    changed:
+      still.changed > 0 ||
+      (clip !== null && clip.changed > 0) ||
+      signals.changed,
+  };
+}
+
+function compareClips(beforeDir, afterDir, outPrefix) {
+  const framesOf = (dir) =>
+    existsSync(dir)
+      ? readdirSync(dir)
+          .filter((file) => file.endsWith(".png"))
+          .sort()
+      : [];
+  const before = framesOf(beforeDir);
+  const after = framesOf(afterDir);
+
+  if (before.length === 0 && after.length === 0) {
+    return null;
+  }
+
+  let changed = Math.abs(before.length - after.length);
+  let first = null;
+
+  for (const frame of after.filter((name) => before.includes(name))) {
+    const out = `${outPrefix}-${frame}`;
+    const stats = diffImages(
+      path.join(beforeDir, frame),
+      path.join(afterDir, frame),
+      first === null ? out : undefined,
+    );
+
+    if (stats.changed > 0) {
+      changed++;
+      first ??= frame;
+    } else if (first === null) {
+      rmSync(out, { force: true });
+    }
+  }
+
+  return { changed, count: Math.max(before.length, after.length), first };
+}
+
+function readMeta(dir, view) {
+  const file = path.join(dir, `${view}.json`);
+
+  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+}
+
+function compareSignals(before, after) {
+  const pair = (key) => [before[key] ?? null, after[key] ?? null];
+  const audioPeak = pair("audioPeak");
+  const cursor = pair("cursor");
+  const canvas = pair("canvas");
+  const errors = [before.errors ?? [], after.errors ?? []].map((list) =>
+    [...new Set(list)].sort(),
+  );
+  const [peakBefore, peakAfter] = audioPeak.map((value) => value ?? 0);
+  const audioChanged =
+    Math.abs(peakBefore - peakAfter) >
+    AUDIO_PEAK_RATIO * Math.max(peakBefore, peakAfter);
+
+  return {
+    audioPeak,
+    audioChanged,
+    cursor,
+    canvas,
+    errors: errors.map((list) => list.length),
+    changed:
+      audioChanged ||
+      cursor[0] !== cursor[1] ||
+      canvas[0] !== canvas[1] ||
+      JSON.stringify(errors[0]) !== JSON.stringify(errors[1]),
+  };
+}
+
+function formatRow({ view, missing, still, clip, signals }) {
+  if (missing) {
+    return `| ${view} | missing in before | | | | | |`;
+  }
+
+  const cell = ([before, after], format = String) =>
+    before === after ? format(before) : `${format(before)} → ${format(after)}`;
+  const peak = (value) => (value ?? 0).toFixed(3);
+  const frames = clip
+    ? `${clip.changed}/${clip.count}${clip.first ? ` (from ${clip.first.slice(0, -4)})` : ""}`
+    : "";
+
+  return `| ${view} | ${still.changed} (${still.percent.toFixed(3)}%) | ${still.maxDelta} | ${frames} | ${signals.audioChanged ? cell(signals.audioPeak, peak) : peak(signals.audioPeak[0])} | ${cell(signals.cursor)} | ${cell(signals.errors)} |`;
 }
 
 function diffImages(fileA, fileB, outFile) {
@@ -854,7 +1084,7 @@ async function publish({ positional, flags }) {
 
   if (!beforeDir || !afterDir || !flags.pr) {
     throw new Error(
-      "usage: publish <before-dir> <after-dir> --pr <number> [--views a,b]",
+      "usage: publish <before-dir> <after-dir> --pr <number> [--views a,b] [--slow N] [--dry-run]",
     );
   }
 
@@ -864,23 +1094,18 @@ async function publish({ positional, flags }) {
     : readdirSync(afterDir)
         .filter((file) => file.endsWith(".png"))
         .map((file) => file.slice(0, -4));
-  const panels = [];
+  const { rows } = compareDirs(
+    beforeDir,
+    afterDir,
+    path.join(path.dirname(afterDir), "diff"),
+  );
+  const shown = rows.filter(
+    (row) => !row.missing && (picked ? views.includes(row.view) : row.changed),
+  );
+  const slow = Number(flags.slow ?? 1);
+  const assets = [];
 
-  for (const view of views) {
-    const before = decodePng(readFileSync(path.join(beforeDir, `${view}.png`)));
-    const after = decodePng(readFileSync(path.join(afterDir, `${view}.png`)));
-    const { stats, image } = diffDecoded(before, after);
-
-    if (picked || stats.changed > 0) {
-      panels.push({
-        view,
-        stats,
-        png: encodePng(sideBySide([before, after, image])),
-      });
-    }
-  }
-
-  if (panels.length === 0) {
+  if (shown.length === 0) {
     console.log(
       "no view changed; nothing to publish. Put the zero-change table from report.md in the PR body instead.",
     );
@@ -888,30 +1113,67 @@ async function publish({ positional, flags }) {
     return;
   }
 
+  for (const { view, still, clip } of shown) {
+    if (picked || still.changed > 0) {
+      const before = decodePng(
+        readFileSync(path.join(beforeDir, `${view}.png`)),
+      );
+      const after = decodePng(readFileSync(path.join(afterDir, `${view}.png`)));
+
+      assets.push({
+        view,
+        file: `${view}.png`,
+        alt: `${view}: before, after, diff`,
+        content: encodePng(
+          sideBySide([before, after, diffDecoded(before, after).image]),
+        ),
+      });
+    }
+
+    if (clip && (picked || clip.changed > 0)) {
+      assets.push({
+        view,
+        file: `${view}-frames.png`,
+        alt: `${view}: before, after (animated)`,
+        content: clipApng(
+          path.join(beforeDir, view),
+          path.join(afterDir, view),
+          slow,
+        ),
+      });
+    }
+  }
+
   if (flags["dry-run"]) {
     const preview = path.join(path.dirname(afterDir), "publish-preview");
 
     mkdirSync(preview, { recursive: true });
 
-    for (const panel of panels) {
-      writeFileSync(path.join(preview, `${panel.view}.png`), panel.png);
+    for (const asset of assets) {
+      writeFileSync(path.join(preview, asset.file), asset.content);
+      console.log(
+        `  ${asset.file}: ${(asset.content.length / 1024).toFixed(0)} KiB`,
+      );
     }
 
     console.log(
-      `dry run: ${panels.length} image(s) in ${preview}; nothing uploaded`,
+      `dry run: ${assets.length} image(s) in ${preview}; nothing uploaded`,
     );
 
     return;
   }
 
   const folder = `pr-${flags.pr}/${stamp()}`;
-  const commit = uploadAssets(
-    panels.map((panel) => ({
-      path: `${folder}/${panel.view}.png`,
-      content: panel.png,
-    })),
-    `pr #${flags.pr}: before/after screenshots`,
-  );
+  const commit =
+    assets.length > 0
+      ? uploadAssets(
+          assets.map((asset) => ({
+            path: `${folder}/${asset.file}`,
+            content: asset.content,
+          })),
+          `pr #${flags.pr}: before/after screenshots`,
+        )
+      : null;
   const repo = gh([
     "repo",
     "view",
@@ -921,31 +1183,45 @@ async function publish({ positional, flags }) {
     ".nameWithOwner",
   ]);
   const commitOf = (dir) => {
-    const meta = path.join(dir, `${panels[0].view}.json`);
+    const meta = readMeta(dir, shown[0].view);
 
-    return existsSync(meta)
-      ? JSON.parse(readFileSync(meta, "utf8")).commit.slice(0, 7)
-      : "?";
+    return meta.commit ? meta.commit.slice(0, 7) : "?";
   };
   const lines = [
-    `before \`${commitOf(beforeDir)}\` → after \`${commitOf(afterDir)}\`. 이미지는 왼쪽부터 before, after, 바뀐 픽셀(빨간색)입니다.`,
+    `before \`${commitOf(beforeDir)}\` → after \`${commitOf(afterDir)}\`. 정지 이미지는 왼쪽부터 before, after, 바뀐 픽셀(빨간색)이고, 움직이는 이미지(\`-frames\`)는 왼쪽이 before, 오른쪽이 after 이며 ${slow === 1 ? "실제 속도로" : `${slow}배 느리게`} 재생됩니다.`,
     "",
-    "| 시점 | 바뀐 픽셀 | 최대 채널 차이 |",
-    "| ---- | --------- | -------------- |",
-    ...panels.map(
-      ({ view, stats }) =>
-        `| ${view} | ${stats.changed} (${stats.percent.toFixed(3)}%) | ${stats.maxDelta} |`,
+    "| 시점 | 바뀐 픽셀 | 바뀐 프레임 | 효과음 최대 진폭 | 커서 |",
+    "| ---- | --------- | ----------- | ---------------- | ---- |",
+    ...shown.map(
+      ({ view, still, clip, signals }) =>
+        `| ${view} | ${still.changed} (${still.percent.toFixed(3)}%) | ${clip ? `${clip.changed}/${clip.count}` : ""} | ${signals.audioPeak.map((value) => (value ?? 0).toFixed(3)).join(" → ")} | ${signals.cursor.join(" → ")} |`,
     ),
     "",
-    ...panels.flatMap(({ view }) => [
-      `**${view}**`,
+    ...assets.flatMap(({ view, file, alt }) => [
+      `**${file === `${view}.png` ? view : `${view} (움직임)`}**`,
       "",
-      `![${view}: before, after, diff](https://raw.githubusercontent.com/${repo}/${commit}/${folder}/${view}.png)`,
+      `![${alt}](https://raw.githubusercontent.com/${repo}/${commit}/${folder}/${file})`,
       "",
     ]),
   ];
 
   console.log(lines.join("\n"));
+}
+
+function clipApng(beforeDir, afterDir, slow) {
+  const frames = readdirSync(afterDir)
+    .filter((file) => file.endsWith(".png"))
+    .filter((file) => existsSync(path.join(beforeDir, file)))
+    .sort()
+    .map((file) =>
+      sideBySide(
+        [beforeDir, afterDir].map((dir) =>
+          decodePng(readFileSync(path.join(dir, file))),
+        ),
+      ),
+    );
+
+  return encodeApng(frames, slow);
 }
 
 function sideBySide(images) {
@@ -1215,6 +1491,216 @@ function encodePng({ width, height, pixels }) {
   ]);
 }
 
+// 256색 팔레트 APNG 입니다. 앞 프레임과 같은 픽셀은 투명색으로 두고 겹쳐 그려서(blend OVER),
+// 화면 떨림으로 매 프레임 화면 전체가 바뀌어도 1초에 1MB 안팎이 됩니다(손실 없는 APNG 는 20MB).
+function encodeApng(frames, slow) {
+  const { width, height } = frames[0];
+  const palette = medianCut(frames, 255);
+  const lookup = nearestColors(palette);
+  const transparent = palette.length;
+  const indexed = frames.map(({ pixels }) => {
+    const out = new Uint8Array(width * height);
+
+    for (let p = 0; p < out.length; p++) {
+      out[p] = lookup[colorKey(pixels, p * 4)];
+    }
+
+    return out;
+  });
+  const header = Buffer.alloc(13);
+
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 3, 0, 0, 0], 8);
+
+  const chunks = [
+    chunk("IHDR", header),
+    chunk("PLTE", Buffer.from([...palette.flat(), 0, 0, 0])),
+    chunk("tRNS", Buffer.from([...palette.map(() => 255), 0])),
+    chunk("acTL", uint32s(frames.length, 0)),
+  ];
+  let sequence = 0;
+
+  indexed.forEach((image, i) => {
+    const previous = indexed[i - 1];
+    const [x0, y0, x1, y1] = previous
+      ? changedBox(previous, image, width, height)
+      : [0, 0, width, height];
+    const stride = x1 - x0 + 1;
+    const raw = Buffer.alloc(stride * (y1 - y0));
+
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const p = y * width + x;
+
+        raw[(y - y0) * stride + 1 + x - x0] =
+          previous && previous[p] === image[p] ? transparent : image[p];
+      }
+    }
+
+    const control = Buffer.alloc(26);
+
+    control.writeUInt32BE(sequence++, 0);
+    control.writeUInt32BE(x1 - x0, 4);
+    control.writeUInt32BE(y1 - y0, 8);
+    control.writeUInt32BE(x0, 12);
+    control.writeUInt32BE(y0, 16);
+    control.writeUInt16BE(slow, 20);
+    control.writeUInt16BE(60, 22);
+    control[25] = previous ? 1 : 0;
+    chunks.push(chunk("fcTL", control));
+
+    const data = zlib.deflateSync(raw, { level: 9 });
+
+    chunks.push(
+      previous
+        ? chunk("fdAT", Buffer.concat([uint32s(sequence++), data]))
+        : chunk("IDAT", data),
+    );
+  });
+
+  chunks.push(chunk("IEND", Buffer.alloc(0)));
+
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    ...chunks,
+  ]);
+}
+
+function colorKey(pixels, i) {
+  return (
+    ((pixels[i] >> 3) << 10) |
+    ((pixels[i + 1] >> 3) << 5) |
+    (pixels[i + 2] >> 3)
+  );
+}
+
+function medianCut(frames, size) {
+  const counts = new Float64Array(32768);
+  const sums = new Float64Array(32768 * 3);
+
+  for (const { pixels } of frames) {
+    for (let i = 0; i < pixels.length; i += 4) {
+      const key = colorKey(pixels, i);
+
+      counts[key]++;
+      sums[key * 3] += pixels[i];
+      sums[key * 3 + 1] += pixels[i + 1];
+      sums[key * 3 + 2] += pixels[i + 2];
+    }
+  }
+
+  const bins = [];
+
+  for (let key = 0; key < 32768; key++) {
+    if (counts[key] > 0) {
+      bins.push({
+        count: counts[key],
+        color: [0, 1, 2].map((c) => sums[key * 3 + c] / counts[key]),
+      });
+    }
+  }
+
+  const boxes = [bins];
+  const total = (box) => box.reduce((sum, bin) => sum + bin.count, 0);
+
+  while (boxes.length < size) {
+    let best = null;
+
+    boxes.forEach((box, index) => {
+      if (box.length < 2) {
+        return;
+      }
+
+      for (let axis = 0; axis < 3; axis++) {
+        const values = box.map((bin) => bin.color[axis]);
+        const score =
+          (Math.max(...values) - Math.min(...values)) * Math.sqrt(total(box));
+
+        if (!best || score > best.score) {
+          best = { index, axis, score };
+        }
+      }
+    });
+
+    if (!best) {
+      break;
+    }
+
+    const box = boxes[best.index].sort(
+      (a, b) => a.color[best.axis] - b.color[best.axis],
+    );
+    const half = total(box) / 2;
+    let cut = 1;
+
+    for (let seen = box[0].count; cut < box.length - 1 && seen < half; cut++) {
+      seen += box[cut].count;
+    }
+
+    boxes.splice(best.index, 1, box.slice(0, cut), box.slice(cut));
+  }
+
+  return boxes.map((box) =>
+    [0, 1, 2].map((c) =>
+      Math.round(
+        box.reduce((sum, bin) => sum + bin.color[c] * bin.count, 0) /
+          total(box),
+      ),
+    ),
+  );
+}
+
+function nearestColors(palette) {
+  const lookup = new Uint8Array(32768);
+
+  for (let key = 0; key < 32768; key++) {
+    const color = [(key >> 10) << 3, ((key >> 5) & 31) << 3, (key & 31) << 3];
+    let best = 0;
+    let bestDistance = Infinity;
+
+    palette.forEach((entry, index) => {
+      const distance =
+        (entry[0] - color[0] - 4) ** 2 +
+        (entry[1] - color[1] - 4) ** 2 +
+        (entry[2] - color[2] - 4) ** 2;
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = index;
+      }
+    });
+
+    lookup[key] = best;
+  }
+
+  return lookup;
+}
+
+function changedBox(previous, image, width, height) {
+  let [x0, y0, x1, y1] = [width, height, -1, -1];
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (previous[y * width + x] !== image[y * width + x]) {
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+      }
+    }
+  }
+
+  return x1 < 0 ? [0, 0, 1, 1] : [x0, y0, x1 + 1, y1 + 1];
+}
+
+function uint32s(...values) {
+  const buffer = Buffer.alloc(values.length * 4);
+
+  values.forEach((value, i) => buffer.writeUInt32BE(value, i * 4));
+
+  return buffer;
+}
+
 function chunk(type, body) {
   const length = Buffer.alloc(4);
   const typed = Buffer.concat([Buffer.from(type, "ascii"), body]);
@@ -1230,7 +1716,7 @@ async function run({ flags }) {
   const before = flags.before ?? "origin/main";
   const after = flags.after ?? "WORKTREE";
   const views = parseViews(flags.views);
-  const motion = flags.motion === true;
+  const motion = flags["reduced-motion"] !== true;
   const webgl = flags["no-webgl"] !== true;
   const out = path.join(EVIDENCE, stamp());
 
@@ -1255,7 +1741,7 @@ async function run({ flags }) {
       path.join(out, "before"),
       path.join(out, "after"),
       path.join(out, "diff"),
-    ),
+    ).report,
   );
   console.log(`\nevidence: ${out}`);
 }
