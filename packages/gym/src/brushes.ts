@@ -51,11 +51,13 @@ export interface Blotches {
   readonly colors: readonly RgbaColor[];
   readonly maxRadius: number;
   readonly seed: number;
+  /** 그림이 반복해서 깔리면 true 입니다. 가장자리를 넘는 얼룩을 반대쪽에도 그립니다. */
+  readonly tiles: boolean;
 }
 
 export function addBlotches(
   context: BlotchCanvas,
-  { count, colors, maxRadius, seed }: Blotches,
+  { count, colors, maxRadius, seed, tiles }: Blotches,
 ): void {
   const { width, height } = context.canvas;
   const random = seededRandom(seed);
@@ -70,11 +72,44 @@ export function addBlotches(
       continue;
     }
 
-    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    const centers = tiles
+      ? wrappedCenters({ x, y, radius }, context.canvas)
+      : [{ x, y }];
 
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, clearOf(color));
-    context.fillStyle = gradient;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    for (const center of centers) {
+      fillBlotch(context, { ...center, radius, color });
+    }
   }
+}
+
+interface Disk {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+}
+
+function wrappedCenters(
+  { x, y, radius }: Disk,
+  { width, height }: BlotchCanvas["canvas"],
+): { x: number; y: number }[] {
+  const xs = [x, x - width, x + width].filter(
+    (cx) => cx + radius > 0 && cx - radius < width,
+  );
+  const ys = [y, y - height, y + height].filter(
+    (cy) => cy + radius > 0 && cy - radius < height,
+  );
+
+  return xs.flatMap((cx) => ys.map((cy) => ({ x: cx, y: cy })));
+}
+
+function fillBlotch(
+  context: BlotchCanvas,
+  { x, y, radius, color }: Disk & { readonly color: RgbaColor },
+): void {
+  const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, clearOf(color));
+  context.fillStyle = gradient;
+  context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }

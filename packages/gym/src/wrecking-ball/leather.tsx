@@ -105,6 +105,7 @@ const LEATHER: Painting = {
       ],
       maxRadius: 70,
       seed: 3,
+      tiles: true,
     });
     eachPanel((center) => {
       wornMiddle(context, center, { color: LOOK.wear, reach: 0.55 });
