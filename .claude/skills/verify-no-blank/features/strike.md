@@ -34,23 +34,24 @@ Preconditions:
 
 - 증명할 빌드가 준비되어 있고 `doctor` 가 통과합니다.
 
-- **잽.** 레킹볼을 누릅니다. `node $V shoot <이름> --views home,struck --out <폴더>` 를 실행합니다. `struck.json` 의 `audioPeak` 가 0.2 이상이고, `home.json` 의 `audioPeak` 는 0 입니다. 효과음은 타격마다 음량이 ±1.5 dB 바뀌고 타격 세기를 따르므로 같은 시점도 찍을 때마다 진폭이 조금씩 다릅니다.
-- **옆을 친 흔들림.** 공의 오른쪽 가장자리를 칩니다. `node $V shoot <이름> --motion --views home,struck-side-0.2s,struck-side-0.6s,struck-side-1.5s --out <폴더>` 를 실행합니다. 세 장에서 공이 왼쪽 뒤로 10 cm 남짓 밀렸다가 돌아오는 중이고, 마개가 사슬 쪽으로 기울어 있습니다. 실제로 찍히는 시각은 기다린 시간보다 10프레임쯤 늦습니다.
-- **휘두르기.** 레킹볼 왼쪽 배경에서 가운데까지 빠르게 끕니다. `node $V shoot <이름> --views home,swipe --out <폴더>` 에서 `swipe.json` 의 `audioPeak` 가 0.2 이상입니다. 시점마다 페이지를 새로 열므로, 이것은 페이지에서 처음 나는 소리가 휘두르기일 때도 소리가 난다는 증거입니다. `--motion --views swipe-0.3s` 에서는 공이 오른쪽으로 조금 밀리고 세로 조각이 조금 돌아가 있습니다(2026-11-23 확인).
-- **어퍼컷.** `node $V shoot <이름> --motion --views home,uppercut-0.15s --out <폴더>` 에서 공이 `home` 과 거의 같은 높이에 있습니다. 이 시점의 휘두르기는 CDP 로 넣어 느리고 레킹볼은 무거워서, 몇 mm 만 들립니다(2026-11-22 확인). 들리는 높이와 덜컹은 `swing.test.ts` 가 확인합니다.
-- **느린 휘두르기.** `node $V shoot <이름> --views home,swipe-slow --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개이고 `audioPeak` 는 0 입니다.
-- **레킹볼에서 시작한 드래그.** `node $V shoot <이름> --views home,ball-drag --out <폴더>` 다음에 `node $V diff <폴더>/home.png <폴더>/ball-drag.png` 를 실행합니다. 바뀐 픽셀이 0 개이고, `ball-drag.json` 의 `audioPeak` 는 0.2 이상입니다. 잽의 소리가 났고 공도 밀렸지만, 카메라는 돌지 않았고 공은 2초 안에 제자리로 돌아왔다는 뜻입니다. 동작 줄이기를 켠 기본 설정에서만 0 개입니다.
-- **배경에서 시작한 왼쪽 드래그.** `node $V shoot <이름> --views home,left-background-drag --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개이고 `audioPeak` 는 0 입니다.
-- **히트스톱, 패임, 출렁임.** 모두 0.12초 남짓으로 짧아서 이 스크립트의 스틸(10프레임쯤 늦게 찍힘)로는 잡히지 않습니다. `impact.ts` 의 `HIT_STOP` 을 `{ shortest: 3, longest: 3 }` 으로 바꾼 빌드를 따로 준비해(`prepare slowed WORKTREE` 뒤 원래대로 되돌림, 커밋하지 않음) `--motion --views near,near-struck-side` 로 찍습니다. 공이 맞은 자리에 멈춰 있고, 맞은 자리 둘레에 그늘진 패임과 먼지 알이 보입니다(2026-11-23 확인). 잽의 출렁임(약 3%)은 스틸에서 거의 보이지 않습니다. 규칙 자체는 `impact.test.ts`, `squash.test.ts`, `wrecking-ball.test.tsx` 가 확인합니다.
-- **타격 먼지.** `--motion --views swipe-0.3s` 에서 맞은 자리 둘레에 밝은 먼지 알이 보입니다. 동작 줄이기를 켠 기본 설정에서는 `ball-drag` 가 `home` 과 0 개 다릅니다.
-- **덜컹과 기우뚱.** 레킹볼이 무거워서 덜컹은 센 어퍼컷에서만 나고, 되튀는 높이는 몇 mm, 잽의 기우뚱은 1° 안팎이라 스틸로는 잡히지 않습니다. 이 스크립트의 `uppercut-0.15s` 는 CDP 로 넣어 느린 휘두르기라 덜컹하지 않으므로, 그 `audioPeak` 에는 타격 소리만 들어 있습니다. 규칙은 `swing.test.ts`(덜컹), `lean.test.ts`(기우뚱), `wrecking-ball.test.tsx`(덜컹 알림, 기운 각)가 확인하고, 철컥 소리는 사용자가 개발 서버에서 센 어퍼컷으로 들어 보고 판단합니다.
-- **화면 떨림.** 스틸로는 확인할 수 없습니다. 규칙은 `screen-shake.test.ts` 가 확인하고, 느낌은 사용자가 개발 서버에서 판단합니다.
-- **되밀림.** 실제 값(최대 4 cm, 0.05초)은 스틸이 찍힐 때 이미 몇 mm 로 줄어 보이지 않습니다. `recoil.ts` 의 `FARTHEST` 를 0.5, `PEAK_SECONDS` 를 0.3 으로 바꾼 빌드를 따로 준비해(`prepare slowrecoil WORKTREE` 뒤 원래대로 되돌림, 커밋하지 않음) `--motion --views home,struck,ball-drag` 로 찍습니다. `struck` 은 카메라가 뒤로 밀려 레킹볼이 작게 보이고, `home` 과 `ball-drag` 의 `diff` 는 레킹볼과 떠다니는 먼지만 다릅니다. 카메라가 제자리로 돌아오고 밀림이 쌓이지 않는다는 뜻입니다(2026-11-23 확인). 규칙은 `recoil.test.ts` 가 확인합니다.
-- **커서.** `node $V shoot <이름> --views home,hover-ball,orbiting --out <폴더>` 에서 JSON 의 `cursor` 가 차례로 `default`, `pointer`, `grabbing` 입니다.
+- **잽.** 레킹볼을 누릅니다. `node $V shoot <이름> --views home,struck --out <폴더>` 를 실행합니다. `struck.json` 의 `audioPeak` 가 0.2 이상이고, `home.json` 의 `audioPeak` 는 0 입니다. 효과음의 무작위 음량(±1.5 dB)은 스크립트가 `Math.random` 을 고정하므로, 같은 빌드는 찍을 때마다 같은 진폭이 나옵니다(2026-11-24 main 0.321).
+- **옆을 친 흔들림.** 공의 오른쪽 가장자리를 칩니다. `node $V shoot <이름> --views home,struck-side-0.2s,struck-side-0.6s,struck-side-1.5s --out <폴더>` 를 실행합니다. 세 장에서 공이 왼쪽 뒤로 10 cm 남짓 밀렸다가 돌아오는 중이고, 마개가 사슬 쪽으로 기울어 있습니다. 찍히는 시각은 기다린 시간보다 정확히 10프레임 늦습니다. 맞은 순간부터의 움직임 전체는 `jab-side-clip` 의 프레임으로 봅니다.
+- **휘두르기.** 레킹볼 왼쪽 배경에서 가운데까지 빠르게 끕니다. `node $V shoot <이름> --views home,swipe --out <폴더>` 에서 `swipe.json` 의 `audioPeak` 가 0.2 이상입니다. 시점마다 페이지를 새로 열므로, 이것은 페이지에서 처음 나는 소리가 휘두르기일 때도 소리가 난다는 증거입니다. `--views swipe-0.3s` 에서는 공이 오른쪽으로 조금 밀리고 세로 조각이 조금 돌아가 있습니다(2026-11-23 확인).
+- **어퍼컷.** `node $V shoot <이름> --views home,uppercut-clip --out <폴더>` 를 실행합니다. 휘두르기는 스크립트가 쥔 시계로 정해진 0.15초에 정확히 들어가지만, 레킹볼이 무거워서 공은 밀려 사슬이 기울었다가(`uppercut-clip/f004.png`) 0.7초 안에 곧게 매달립니다(`f040.png`, 2026-11-24 확인). 들리는 높이와 덜컹은 `swing.test.ts` 가 확인합니다.
+- **느린 휘두르기.** `node $V shoot <이름> --views home,swipe-slow --reduced-motion --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개이고 `audioPeak` 는 0 입니다. 동작을 켜면 그사이 먼지가 움직여 0 개가 아닙니다.
+- **레킹볼에서 시작한 드래그.** `node $V shoot <이름> --views home,ball-drag --reduced-motion --out <폴더>` 다음에 `node $V diff <폴더>/home.png <폴더>/ball-drag.png` 를 실행합니다. 바뀐 픽셀이 0 개이고, `ball-drag.json` 의 `audioPeak` 는 0.2 이상입니다. 잽의 소리가 났고 공도 밀렸지만, 카메라는 돌지 않았고 공은 2초 안에 제자리로 돌아왔다는 뜻입니다. `--reduced-motion` 에서만 0 개입니다.
+- **배경에서 시작한 왼쪽 드래그.** `node $V shoot <이름> --views home,left-background-drag --reduced-motion --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개이고 `audioPeak` 는 0 입니다.
+- **히트스톱, 패임, 출렁임.** 모두 0.12초 남짓으로 짧아서 마지막 화면(10프레임 뒤)에는 남지 않으므로 `jab-side-clip` 으로 봅니다. `node $V shoot <이름> --views jab-side-clip --out <폴더>` 의 `jab-side-clip/f000.png` 부터 1/60초마다 한 장씩 남습니다. 값을 바꾼 변경은 전후 비교에서 클립의 바뀐 프레임으로 드러납니다(2026-11-24, a3a49c1 에 `HIT_STOP` 을 0 으로 바꾸면 90프레임 모두, 패임 깊이를 0 으로 바꾸면 처음 18프레임이 바뀜). 사람이 눈으로 보려면 `publish --slow 4` 로 느리게 올립니다. 잽의 출렁임(약 3%)은 프레임에서도 작게 보입니다. 규칙 자체는 `impact.test.ts`, `squash.test.ts`, `wrecking-ball.test.tsx` 가 확인합니다.
+- **타격 먼지.** `--views swipe-0.3s` 에서 맞은 자리 둘레에 밝은 먼지 알이 보입니다. `--reduced-motion` 에서는 `ball-drag` 가 `home` 과 0 개 다릅니다.
+- **덜컹과 기우뚱.** 레킹볼이 무거워서 덜컹은 센 어퍼컷에서만 나고, 되튀는 높이는 몇 mm, 잽의 기우뚱은 1° 안팎이라 스틸로는 잡히지 않습니다. 이 스크립트의 어퍼컷(`uppercut-0.15s`, `uppercut-clip`)은 덜컹할 만큼 세지 않으므로, 그 `audioPeak` 에는 타격 소리만 들어 있습니다. 화면에서는 `jab-side-clip` 과 `hook-clip` 의 프레임으로 기우뚱을 봅니다. 규칙은 `swing.test.ts`(덜컹), `lean.test.ts`(기우뚱), `wrecking-ball.test.tsx`(덜컹 알림, 기운 각)가 확인하고, 철컥 소리는 사용자가 개발 서버에서 센 어퍼컷으로 들어 보고 판단합니다.
+- **화면 떨림.** 0.4초 안에 끝나서 마지막 화면에는 남지 않고, 동작을 켠 클립의 처음 프레임들에 들어 있습니다. 규칙은 `screen-shake.test.ts` 가 확인하고, 느낌은 사용자가 PR 의 움직이는 클립이나 개발 서버에서 판단합니다.
+- **되밀림.** 실제 값(최대 4 cm, 0.05초)은 마지막 화면이 찍힐 때 이미 몇 mm 로 줄어 보이지 않고, `jab-side-clip` 의 처음 프레임들에 들어 있습니다. 밀림이 쌓이지 않는지 크게 보려면 `recoil.ts` 의 `FARTHEST` 를 0.5, `PEAK_SECONDS` 를 0.3 으로 바꾼 빌드를 따로 준비해(`prepare slowrecoil WORKTREE` 뒤 원래대로 되돌림, 커밋하지 않음) `--views home,struck,ball-drag` 로 찍습니다. `struck` 은 카메라가 뒤로 밀려 레킹볼이 작게 보이고, `home` 과 `ball-drag` 의 `diff` 는 레킹볼과 떠다니는 먼지만 다릅니다. 카메라가 제자리로 돌아오고 밀림이 쌓이지 않는다는 뜻입니다(2026-11-23 확인). 규칙은 `recoil.test.ts` 가 확인합니다.
+- **커서.** `node $V shoot <이름> --views home,hover-ball,orbiting --out <폴더>` 에서 JSON 의 `cursor` 가 차례로 `default`, `pointer`, `grabbing` 입니다. 커서가 바뀌면 비교표의 cursor 열에 `pointer → grabbing` 처럼 나옵니다.
 
 ## Gotchas
 
 - `audioPeak` 는 페이지가 만든 AudioContext 의 출력에 분석기를 덧붙여 잰 값입니다. 스피커로 실제 소리가 나는지는 사용자만 확인할 수 있습니다.
 - 소리의 모양(음색, 길이)은 사용자가 귀로 판단합니다. 진폭이 같다고 같은 소리라고 보고하지 않습니다.
-- 휘두르기의 빠르기는 드래그의 `seconds` 와 CDP 이벤트 사이의 실제 시간으로 정해집니다. 컴퓨터가 바쁘면 실제로 더 느려지므로, `swipe-slow` 처럼 문턱 근처를 재는 시점은 문턱에서 충분히 떨어지게 둡니다.
+- 휘두르기의 빠르기는 드래그의 `seconds` 로 정해집니다. 이벤트 시각도 스크립트가 쥔 시계를 따르므로 컴퓨터가 바빠도 같습니다. 다만 사람 손보다 고르게 끌기 때문에, 같은 거리라도 사람이 끈 휘두르기와 세기가 다를 수 있습니다.
+- 효과음은 실제 오디오 시계로 재생되므로, 같은 입력에서도 `audioPeak` 가 가끔 3% 안쪽으로 흔들립니다(2026-11-23, 26개 시점 5회 중 한 번). 비교표는 큰 쪽의 5% 넘게 다를 때만 바뀐 것으로 봅니다.
 - headless 스크린샷에는 커서가 그려지지 않습니다. 커서는 JSON 의 `cursor` 로만 확인합니다.
