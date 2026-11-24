@@ -1,190 +1,134 @@
-import type { Sound } from "./play-sound";
+import type { Sound, SoundOutput } from "./play-sound";
+import { loadedRecordings } from "./recordings";
 
-// TODO(you): Claude 가 쓴 초안입니다. 귀로 들으며 고치거나, 직접 만든 소리로 바꿔 주세요.
-//  - 세 층으로 나눴습니다. 가죽을 때리는 순간음(slap), 무게감을 주는 몸통(thump), 뒤따르는 사슬 소리(rattle)입니다.
-//    체육관 울림은 play-sound.ts 가 모든 효과음에 함께 입힙니다.
-//  - strength(타격 세기, 0~1)가 클수록 크고, 순간음은 밝고, 몸통은 깊습니다. 세기가 0 이어도 작게 납니다.
-//  - 타격마다 음높이와 음량을 조금씩 바꿔 같은 소리가 되풀이되지 않게 합니다.
+/** 찌그러뜨린 타격음 녹음의 최대 크기입니다. 사슬 녹음도 이 크기를 기준으로 줄입니다. */
+const STRIKE_PEAK = 10 ** (-9 / 20);
+// 타격음 녹음을 일부러 강하게 찌그러뜨립니다. 최대값보다 40 dB 작은 꼬리가 11 dB 작은 정도까지 올라와, 깨끗한 녹음보다 두껍고 묵직하게 들립니다.
+// 사용자가 찌그러뜨리지 않은 녹음과 여러 세기를 견주어 듣고 고른 값입니다(docs/research/strike-sound.md).
+const DRIVE = 28.4;
+/** 녹음 아래에 깔아 무게를 더하는 낮은 합성음의 크기입니다. */
+const THUMP_LEVEL = 0.7;
+
+let previousTake: number | undefined;
+let driveCurve: Float32Array<ArrayBuffer> | undefined;
+
+/** 타격음입니다. 녹음을 아직 불러오지 못했으면 소리를 내지 않습니다. */
 export function strikeSound(strength: number): Sound {
   return (output) => {
-    const hit: Hit = {
-      ...output,
-      strength,
-      level: (0.3 + 0.5 * strength) * decibels(spread(1.5)),
-      pitch: 1 + spread(0.04),
-    };
+    const recordings = loadedRecordings();
 
-    slap(hit);
-    thump(hit);
-    rattle(hit);
+    if (!recordings) {
+      return;
+    }
+
+    const take = takeFor(strength, recordings.strikes.length);
+    const recording = recordings.strikes[take];
+
+    if (!recording) {
+      return;
+    }
+
+    previousTake = take;
+    strike(output, recording, strength);
+    thump(output, strength);
+    play(
+      { ...output, startAt: output.startAt + 0.05 + Math.random() * 0.2 },
+      recordings.chain,
+      (0.15 + 0.35 * strength) * STRIKE_PEAK,
+    );
   };
 }
 
-// TODO(you): Claude 가 쓴 초안입니다. 귀로 들으며 고치거나, 직접 만든 소리로 바꿔 주세요.
-//  - 덜컹(느슨했던 사슬이 팽팽해지는 순간)의 "철컥" 소리입니다. 고리들이 한꺼번에 당겨지는 둔한 쇳소리(clank)에 짤랑거림(clink)이 뒤따릅니다.
-//  - strength(덜컹의 세기, 0~1)가 클수록 크고 짤랑거림이 많습니다.
+/** 덜컹할 때 사슬이 내는 철컥 소리입니다. 녹음을 아직 불러오지 못했으면 소리를 내지 않습니다. */
 export function chainSound(strength: number): Sound {
   return (output) => {
-    const hit: Hit = {
-      ...output,
-      strength,
-      level: (0.25 + 0.45 * strength) * decibels(spread(1.5)),
-      pitch: 1 + spread(0.06),
-    };
-    const clinks = 1 + Math.round(3 * strength);
+    const recordings = loadedRecordings();
 
-    clank(hit);
-
-    for (let i = 0; i < clinks; i++) {
-      clink(hit, 0.02 + Math.random() * 0.12);
+    if (!recordings) {
+      return;
     }
+
+    play(output, recordings.chain, (0.3 + 0.7 * strength) * STRIKE_PEAK);
   };
 }
 
-interface Hit {
-  readonly context: BaseAudioContext;
-  readonly destination: AudioNode;
-  readonly startAt: number;
-  readonly strength: number;
-  /** 이 타격의 음량 배율입니다. */
-  readonly level: number;
-  /** 이 타격의 음높이 배율입니다. */
-  readonly pitch: number;
+/** 타격 세기를 사이에 둔 두 녹음 가운데 더 가까운 것을 고르되, 바로 앞에 낸 녹음이면 다른 하나를 고릅니다. */
+function takeFor(strength: number, count: number): number {
+  const position = strength * (count - 1);
+  const lower = Math.max(0, Math.min(Math.floor(position), count - 2));
+  const nearer = position - lower <= 0.5 ? lower : lower + 1;
+  const other = nearer === lower ? lower + 1 : lower;
+
+  return nearer === previousTake ? other : nearer;
 }
 
-const noiseByContext = new WeakMap<BaseAudioContext, AudioBuffer>();
-
-/** 가죽을 때리는 짧고 날카로운 소리입니다. 걸러 낸 잡음을 15 ms 동안 냅니다. */
-function slap({ context, destination, startAt, strength, level, pitch }: Hit) {
-  const duration = 0.015;
-  const source = new AudioBufferSourceNode(context, {
-    buffer: noiseOf(context),
-  });
+/** 약하게 칠수록 작고 어둡게 냅니다. */
+function strike(
+  { context, destination, startAt }: SoundOutput,
+  recording: AudioBuffer,
+  strength: number,
+) {
+  const source = new AudioBufferSourceNode(context, { buffer: recording });
   const tone = new BiquadFilterNode(context, {
-    type: "bandpass",
-    frequency: (1200 + 1800 * strength) * pitch,
-    Q: 0.8,
+    type: "lowpass",
+    frequency: 1500 + 16000 * strength ** 1.5,
+    Q: 0.7,
   });
-  const envelope = new GainNode(context, { gain: 0 });
+  const drive = new WaveShaperNode(context, {
+    curve: (driveCurve ??= curveOfDrive()),
+    oversample: "4x",
+  });
+  const level = new GainNode(context, { gain: 0.35 + 0.65 * strength });
 
-  envelope.gain.setValueAtTime(0, startAt);
-  envelope.gain.linearRampToValueAtTime(0.32 * level, startAt + 0.001);
-  envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  source.connect(tone).connect(envelope).connect(destination);
+  source.connect(tone).connect(drive).connect(level).connect(destination);
   source.start(startAt);
-  source.stop(startAt + duration);
+  source.stop(startAt + recording.duration);
 }
 
-/** 무게감을 주는 낮은 소리입니다. 음높이가 내려가며 0.32초 동안 납니다. */
-function thump({ context, destination, startAt, strength, level, pitch }: Hit) {
+/** 무게감을 더하는 낮은 소리입니다. 음높이가 내려가며 0.32초 동안 납니다. */
+function thump(
+  { context, destination, startAt }: SoundOutput,
+  strength: number,
+) {
   const duration = 0.32;
   const body = new OscillatorNode(context, { type: "sine" });
   const envelope = new GainNode(context, { gain: 0 });
-  const from = (110 - 45 * strength) * pitch;
+  const from = 110 - 45 * strength;
 
   body.frequency.setValueAtTime(from, startAt);
   body.frequency.exponentialRampToValueAtTime(from * 0.4, startAt + duration);
   envelope.gain.setValueAtTime(0, startAt);
-  envelope.gain.linearRampToValueAtTime(0.65 * level, startAt + 0.004);
+  envelope.gain.linearRampToValueAtTime(
+    0.65 * THUMP_LEVEL * (0.3 + 0.7 * strength),
+    startAt + 0.004,
+  );
   envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
   body.connect(envelope).connect(destination);
   body.start(startAt);
   body.stop(startAt + duration);
 }
 
-/** 고리들이 한꺼번에 당겨지며 부딪치는 둔한 쇳소리입니다. 걸러 낸 잡음에 짧은 금속 울림을 겹칩니다. */
-function clank({ context, destination, startAt, level, pitch }: Hit) {
-  const duration = 0.07;
-  const source = new AudioBufferSourceNode(context, {
-    buffer: noiseOf(context),
-  });
-  const tone = new BiquadFilterNode(context, {
-    type: "bandpass",
-    frequency: 700 * pitch,
-    Q: 2.5,
-  });
-  const ring = new OscillatorNode(context, {
-    type: "triangle",
-    frequency: 480 * pitch,
-  });
-  const envelope = new GainNode(context, { gain: 0 });
-  const ringEnvelope = new GainNode(context, { gain: 0 });
-
-  envelope.gain.setValueAtTime(0, startAt);
-  envelope.gain.linearRampToValueAtTime(0.5 * level, startAt + 0.002);
-  envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  ringEnvelope.gain.setValueAtTime(0, startAt);
-  ringEnvelope.gain.linearRampToValueAtTime(0.12 * level, startAt + 0.002);
-  ringEnvelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-  source.connect(tone).connect(envelope).connect(destination);
-  ring.connect(ringEnvelope).connect(destination);
-  source.start(startAt);
-  source.stop(startAt + duration);
-  ring.start(startAt);
-  ring.stop(startAt + duration);
-}
-
-/** 타격 뒤 0.05~0.25초 사이에 사슬 고리가 부딪치는 짤랑거림입니다. 센 타격일수록 많이 부딪칩니다. */
-function rattle(hit: Hit) {
-  const clinks = 2 + Math.round(4 * hit.strength);
-
-  for (let i = 0; i < clinks; i++) {
-    clink(hit, 0.05 + Math.random() * 0.2);
-  }
-}
-
-function clink(
-  { context, destination, startAt, level, pitch }: Hit,
-  after: number,
+function play(
+  { context, destination, startAt }: SoundOutput,
+  recording: AudioBuffer,
+  gain: number,
 ) {
-  const at = startAt + after;
-  const duration = 0.035;
-  const source = new AudioBufferSourceNode(context, {
-    buffer: noiseOf(context),
-  });
-  const ring = new BiquadFilterNode(context, {
-    type: "bandpass",
-    frequency: (2200 + Math.random() * 1800) * pitch,
-    Q: 9,
-  });
-  const envelope = new GainNode(context, { gain: 0 });
+  const source = new AudioBufferSourceNode(context, { buffer: recording });
 
-  envelope.gain.setValueAtTime(0, at);
-  envelope.gain.linearRampToValueAtTime(0.35 * level, at + 0.001);
-  envelope.gain.exponentialRampToValueAtTime(0.0001, at + duration);
-  source.connect(ring).connect(envelope).connect(destination);
-  source.start(at, Math.random() * 0.05);
-  source.stop(at + duration);
+  source.connect(new GainNode(context, { gain })).connect(destination);
+  source.start(startAt);
+  source.stop(startAt + recording.duration);
 }
 
-/** 순간음과 사슬 소리가 함께 쓰는 0.1초짜리 흰 잡음입니다. AudioContext 마다 한 번만 만듭니다. */
-function noiseOf(context: BaseAudioContext): AudioBuffer {
-  const cached = noiseByContext.get(context);
+/** 최대값이 1 인 녹음을 받아, 최대값은 STRIKE_PEAK 로 두고 작은 값일수록 크게 끌어올립니다. */
+function curveOfDrive(): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(2049);
 
-  if (cached) {
-    return cached;
+  for (let i = 0; i < curve.length; i++) {
+    const x = (i / (curve.length - 1)) * 2 - 1;
+
+    curve[i] = (STRIKE_PEAK * Math.tanh(DRIVE * x)) / Math.tanh(DRIVE);
   }
 
-  const noise = new AudioBuffer({
-    length: Math.round(0.1 * context.sampleRate),
-    sampleRate: context.sampleRate,
-  });
-  const samples = noise.getChannelData(0);
-
-  for (let i = 0; i < samples.length; i++) {
-    samples[i] = Math.random() * 2 - 1;
-  }
-
-  noiseByContext.set(context, noise);
-
-  return noise;
-}
-
-/** -width 에서 width 사이의 고른 난수입니다. */
-function spread(width: number): number {
-  return (Math.random() * 2 - 1) * width;
-}
-
-function decibels(db: number): number {
-  return 10 ** (db / 20);
+  return curve;
 }

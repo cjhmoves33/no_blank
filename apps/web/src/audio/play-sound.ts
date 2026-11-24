@@ -16,7 +16,7 @@ interface Speakers {
 /** 체육관 울림의 길이(초)입니다. 이만큼 지나면 소리가 60 dB 줄어듭니다. */
 const ECHO_SECONDS = 1.1;
 /** 울림의 크기입니다. 소리 자체(1)보다 작게 두어 조용한 체육관처럼 들리게 합니다. */
-const ECHO_LEVEL = 0.18;
+const ECHO_LEVEL = 0.31;
 // 새로 만든 AudioContext 는 첫 재생 직후 시계가 20 ms 쯤 앞으로 건너뛰어, 지금 시각에 예약한 소리의 앞부분이 잘립니다(2026-11-21 측정).
 const FIRST_PLAY_DELAY = 0.03;
 

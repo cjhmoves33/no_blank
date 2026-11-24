@@ -2,9 +2,10 @@
 
 import { Gym, LATE_AFTERNOON } from "@no-blank/gym";
 import { catchError } from "next/error";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
+import { loadRecordings } from "@/audio/recordings";
 import { chainSound, strikeSound } from "@/audio/sounds";
 
 const HideOnError = catchError(() => null);
@@ -15,6 +16,10 @@ const PAGE = { background: LATE_AFTERNOON.background };
 
 export function HomeScene() {
   const reducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    void loadRecordings();
+  }, []);
 
   return (
     <div className="h-dvh w-full" style={PAGE}>
