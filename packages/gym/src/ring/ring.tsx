@@ -1,5 +1,12 @@
-import { extend } from "@react-three/fiber";
+import {
+  BoxGeometry,
+  type BufferGeometry,
+  CylinderGeometry,
+  Matrix4,
+  TubeGeometry,
+} from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 import type { Box } from "../building/slabs";
 import { GYM } from "../measurements";
@@ -8,14 +15,19 @@ import { LOOK } from "./look";
 import {
   MAT,
   MAT_RELIEF,
+  PAD_GRIME,
   PAD_SEAMS,
-  PAD_WEAR,
-  ROPE_COVER,
+  ROPE_GRIME,
   ROPE_RELIEF,
 } from "./paintings";
-import { CORNERS, PAD, ROPES, type Tie, TIE_HEIGHT, TIES } from "./rigging";
-
-const RoundedBox = extend(RoundedBoxGeometry);
+import {
+  CORNERS,
+  PAD,
+  ROPE_CURVES,
+  type Tie,
+  TIE_HEIGHT,
+  TIES,
+} from "./rigging";
 
 const { ropes, mat } = GYM;
 const HIGHEST_ROPE = ropes.heights[3];
@@ -23,16 +35,60 @@ const PLATFORM_HEIGHT = mat.y;
 const POST_HEIGHT = HIGHEST_ROPE + 0.175;
 const STEP_COUNT = 4;
 const STEP_DEPTH = 0.275;
-// 매트 천은 플랫폼 가장자리를 덮고 옆면으로 조금 접혀 내려갑니다.
-const CANVAS_FOLD = { depth: 0.06, overhang: 0.004 };
+const MAT_FOLD = { depth: 0.06, overhang: 0.004 };
 const TIE_STRAP = { width: 0.04, thickness: 0.004 };
 const TIE_WRAP_RADIUS = ropes.radius + TIE_STRAP.thickness;
+const RING_HALF = mat.half + MAT_FOLD.overhang;
 
 /** 링은 원점에 놓이고, 이 상자가 매트와 코너 기둥, 계단을 덮습니다. */
 export const RING_SIZE: Box = {
-  min: [-mat.half, 0, -mat.half],
-  max: [mat.half, mat.y + POST_HEIGHT, mat.half + STEP_DEPTH * STEP_COUNT],
+  min: [-RING_HALF, 0, -RING_HALF],
+  max: [RING_HALF, mat.y + POST_HEIGHT, mat.half + STEP_DEPTH * STEP_COUNT],
 };
+
+const ROPE_GEOMETRY = mergeGeometries(
+  ROPE_CURVES.map((curve) => new TubeGeometry(curve, 64, ropes.radius, 16)),
+);
+
+function tieParts(tie: Tie): BufferGeometry[] {
+  const place = new Matrix4().makeRotationY(tie.turn).setPosition(tie.position);
+  const strapOffset = ropes.radius + TIE_STRAP.thickness / 2;
+  const straps = [-strapOffset, strapOffset].map((x) =>
+    new BoxGeometry(TIE_STRAP.thickness, TIE_HEIGHT, TIE_STRAP.width)
+      .translate(x, 0, 0)
+      .applyMatrix4(place),
+  );
+  const wraps = tie.wrapOffsets.map((offset) =>
+    new CylinderGeometry(TIE_WRAP_RADIUS, TIE_WRAP_RADIUS, TIE_STRAP.width, 16)
+      .rotateX(Math.PI / 2)
+      .translate(offset.x, offset.y, offset.z)
+      .applyMatrix4(place),
+  );
+
+  return [...straps, ...wraps];
+}
+
+const TIE_GEOMETRY = mergeGeometries(TIES.flatMap(tieParts));
+
+const PAD_FACE = { side: 0, end: 1 } as const;
+
+// BoxGeometry 의 면 순서는 +x, -x, +y, -y, +z, -z 입니다. 윗면과 아랫면에는 로프 자국과 박음질이 없습니다.
+const PAD_GEOMETRY = (() => {
+  const geometry = new RoundedBoxGeometry(
+    PAD.width,
+    PAD.top - PAD.bottom,
+    PAD.depth,
+    PAD.segments,
+    PAD.radius,
+  );
+
+  geometry.groups.forEach((group, face) => {
+    group.materialIndex =
+      face === 2 || face === 3 ? PAD_FACE.end : PAD_FACE.side;
+  });
+
+  return geometry;
+})();
 
 export function Ring() {
   return (
@@ -42,32 +98,27 @@ export function Ring() {
       {CORNERS.map((corner) => (
         <Corner key={`${corner.x}:${corner.z}`} {...corner} />
       ))}
-      {ROPES.map((rope) => (
-        <mesh key={rope.key} castShadow receiveShadow>
-          <tubeGeometry args={[rope.curve, 64, ropes.radius, 16]} />
-          <meshPhysicalMaterial
-            color={LOOK.ropes[rope.level]}
-            roughness={0.55}
-            clearcoat={0.15}
-            clearcoatRoughness={0.5}
-            bumpScale={0.4}
-          >
-            <PaintedTexture attach="map" painting={ROPE_COVER} />
-            <PaintedTexture attach="bumpMap" painting={ROPE_RELIEF} />
-          </meshPhysicalMaterial>
-        </mesh>
-      ))}
-      {TIES.map((tie) => (
-        <RopeTie key={tie.key} tie={tie} />
-      ))}
+      <mesh castShadow receiveShadow geometry={ROPE_GEOMETRY}>
+        <meshPhysicalMaterial
+          color={LOOK.rope}
+          roughness={0.55}
+          clearcoat={0.15}
+          clearcoatRoughness={0.5}
+          bumpScale={0.4}
+        >
+          <PaintedTexture attach="map" painting={ROPE_GRIME} />
+          <PaintedTexture attach="bumpMap" painting={ROPE_RELIEF} />
+        </meshPhysicalMaterial>
+      </mesh>
+      <mesh castShadow receiveShadow geometry={TIE_GEOMETRY}>
+        <meshStandardMaterial color={LOOK.ties} roughness={0.85} />
+      </mesh>
       <Steps />
     </group>
   );
 }
 
 function Platform() {
-  const foldHalf = mat.half + CANVAS_FOLD.overhang;
-
   return (
     <>
       <mesh castShadow receiveShadow position-y={mat.y / 2 - 0.0025}>
@@ -76,9 +127,9 @@ function Platform() {
         />
         <meshStandardMaterial color="#1c1a18" roughness={0.85} />
       </mesh>
-      <mesh receiveShadow position-y={mat.y - 0.001 - CANVAS_FOLD.depth / 2}>
-        <boxGeometry args={[foldHalf * 2, CANVAS_FOLD.depth, foldHalf * 2]} />
-        <meshStandardMaterial color={LOOK.canvas} roughness={0.93} />
+      <mesh receiveShadow position-y={mat.y - 0.001 - MAT_FOLD.depth / 2}>
+        <boxGeometry args={[RING_HALF * 2, MAT_FOLD.depth, RING_HALF * 2]} />
+        <meshStandardMaterial color={LOOK.mat} roughness={0.93} />
       </mesh>
     </>
   );
@@ -93,42 +144,6 @@ function Mat() {
         <PaintedTexture attach="bumpMap" painting={MAT_RELIEF} />
       </meshStandardMaterial>
     </mesh>
-  );
-}
-
-interface RopeTieProps {
-  readonly tie: Tie;
-}
-
-/** 로프 네 줄의 안쪽과 바깥쪽을 세로로 지나며, 로프마다 한 바퀴씩 감기는 끈입니다. */
-function RopeTie({ tie }: RopeTieProps) {
-  const strapOffset = ropes.radius + TIE_STRAP.thickness / 2;
-
-  return (
-    <group position={tie.position} rotation-y={tie.turn}>
-      {[-strapOffset, strapOffset].map((x) => (
-        <mesh key={x} castShadow receiveShadow position-x={x}>
-          <boxGeometry
-            args={[TIE_STRAP.thickness, TIE_HEIGHT, TIE_STRAP.width]}
-          />
-          <meshStandardMaterial color={LOOK.ties} roughness={0.85} />
-        </mesh>
-      ))}
-      {tie.wraps.map((wrap) => (
-        <mesh
-          key={wrap.y}
-          castShadow
-          receiveShadow
-          position={wrap}
-          rotation-x={Math.PI / 2}
-        >
-          <cylinderGeometry
-            args={[TIE_WRAP_RADIUS, TIE_WRAP_RADIUS, TIE_STRAP.width, 16]}
-          />
-          <meshStandardMaterial color={LOOK.ties} roughness={0.85} />
-        </mesh>
-      ))}
-    </group>
   );
 }
 
@@ -158,6 +173,7 @@ function Corner({ x, z, pad }: CornerProps) {
       <mesh
         castShadow
         receiveShadow
+        geometry={PAD_GEOMETRY}
         position={[
           x * ropes.half,
           mat.y + (PAD.top + PAD.bottom) / 2,
@@ -165,17 +181,24 @@ function Corner({ x, z, pad }: CornerProps) {
         ]}
         rotation-y={Math.atan2(x, z)}
       >
-        <RoundedBox args={[0.31, PAD.top - PAD.bottom, 0.17, 6, 0.075]} />
         <meshPhysicalMaterial
+          attach={`material-${PAD_FACE.side}`}
           color={pad}
           roughness={0.55}
           clearcoat={0.12}
           clearcoatRoughness={0.4}
           bumpScale={0.6}
         >
-          <PaintedTexture attach="map" painting={PAD_WEAR} />
+          <PaintedTexture attach="map" painting={PAD_GRIME} />
           <PaintedTexture attach="bumpMap" painting={PAD_SEAMS} />
         </meshPhysicalMaterial>
+        <meshPhysicalMaterial
+          attach={`material-${PAD_FACE.end}`}
+          color={pad}
+          roughness={0.55}
+          clearcoat={0.12}
+          clearcoatRoughness={0.4}
+        />
       </mesh>
     </>
   );

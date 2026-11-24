@@ -2,7 +2,7 @@ import { addBlotches, addGrain, seededRandom } from "../brushes";
 import { GYM } from "../measurements";
 import type { Painting } from "../painted-texture";
 import { LOOK } from "./look";
-import { matPixel, PAD } from "./rigging";
+import { matPixel, padTextureV } from "./rigging";
 
 const { mat, ropes, posts } = GYM;
 
@@ -18,60 +18,72 @@ interface Scuff {
   readonly bend: number;
   readonly width: number;
   readonly alpha: number;
-  /** 고무 밑창이 남긴 가늘고 진한 자국이면 true, 쓸려서 번진 자국이면 false 입니다. */
-  readonly rubber: boolean;
+  readonly mark: "sole" | "smear";
 }
 
-/** 발이 많이 닿는 가운데일수록 촘촘한, 신발에 쓸린 자국들입니다. 색과 요철이 같은 자리에 그려지도록 한 번만 정합니다. */
 const SCUFFS: readonly Scuff[] = (() => {
   const random = seededRandom(51);
-  const spread = () =>
+  const centerWeighted = () =>
     ((random() + random() + random()) / 1.5 - 1) * ropes.half;
 
   return Array.from({ length: Math.round(420 * LOOK.wear) }, () => {
-    const [x, y] = matPixel(spread(), spread(), MAT_PIXELS);
-    const rubber = random() < 0.15;
+    const [x, y] = matPixel(centerWeighted(), centerWeighted(), MAT_PIXELS);
+    const sole = random() < 0.15;
 
     return {
       x,
       y,
       angle: random() * Math.PI * 2,
       length:
-        (rubber ? 0.03 + random() * 0.08 : 0.1 + random() * 0.3) *
+        (sole ? 0.03 + random() * 0.08 : 0.1 + random() * 0.3) *
         PIXELS_PER_METER,
       bend: (random() - 0.5) * 0.5,
-      width: rubber ? 1.5 + random() * 2 : 8 + random() * 16,
-      alpha: rubber ? 0.08 + random() * 0.1 : 0.025 + random() * 0.04,
-      rubber,
+      width: sole ? 1.5 + random() * 2 : 8 + random() * 16,
+      alpha: sole ? 0.08 + random() * 0.1 : 0.025 + random() * 0.04,
+      mark: sole ? "sole" : "smear",
     };
   });
 })();
 
+// 번진 자국은 굵기를 줄여 가며 겹쳐 그려 가장자리를 흐립니다. 캔버스의 filter 는 브라우저마다 지원이 달라 쓰지 않습니다.
+const SMEAR_LAYERS = [
+  { width: 1.6, alpha: 0.35 },
+  { width: 1, alpha: 0.35 },
+  { width: 0.5, alpha: 0.3 },
+] as const;
+
+const SOLE_LAYERS = [{ width: 1, alpha: 1 }] as const;
+
 function strokeScuffs(
   context: CanvasRenderingContext2D,
-  color: (scuff: Scuff) => string,
+  color: (alpha: number) => string,
 ): void {
   context.lineCap = "round";
 
   for (const scuff of SCUFFS) {
-    context.filter = scuff.rubber ? "none" : "blur(4px)";
-    const dx = Math.cos(scuff.angle) * scuff.length;
-    const dy = Math.sin(scuff.angle) * scuff.length;
+    const layers = scuff.mark === "sole" ? SOLE_LAYERS : SMEAR_LAYERS;
 
-    context.strokeStyle = color(scuff);
-    context.lineWidth = scuff.width;
-    context.beginPath();
-    context.moveTo(scuff.x, scuff.y);
-    context.quadraticCurveTo(
-      scuff.x + dx / 2 - dy * scuff.bend,
-      scuff.y + dy / 2 + dx * scuff.bend,
-      scuff.x + dx,
-      scuff.y + dy,
-    );
-    context.stroke();
+    for (const layer of layers) {
+      context.strokeStyle = color(scuff.alpha * layer.alpha);
+      context.lineWidth = scuff.width * layer.width;
+      strokeScuff(context, scuff);
+    }
   }
+}
 
-  context.filter = "none";
+function strokeScuff(context: CanvasRenderingContext2D, scuff: Scuff): void {
+  const dx = Math.cos(scuff.angle) * scuff.length;
+  const dy = Math.sin(scuff.angle) * scuff.length;
+
+  context.beginPath();
+  context.moveTo(scuff.x, scuff.y);
+  context.quadraticCurveTo(
+    scuff.x + dx / 2 - dy * scuff.bend,
+    scuff.y + dy / 2 + dx * scuff.bend,
+    scuff.x + dx,
+    scuff.y + dy,
+  );
+  context.stroke();
 }
 
 function shade(
@@ -162,7 +174,7 @@ function paintWear(context: CanvasRenderingContext2D): void {
     seed: 53,
   });
   paintMarkings(context);
-  strokeScuffs(context, ({ alpha }) => `rgba(55, 45, 38, ${alpha})`);
+  strokeScuffs(context, (alpha) => `rgba(55, 45, 38, ${alpha})`);
 
   for (const x of [-1, 1]) {
     for (const z of [-1, 1]) {
@@ -174,7 +186,6 @@ function paintWear(context: CanvasRenderingContext2D): void {
   }
 }
 
-/** 코너 기둥이 매트에 닿는 자리의 그늘입니다. 기둥은 움직이지 않으므로 그림에 구워 둡니다. */
 function paintPostShadows(context: CanvasRenderingContext2D): void {
   for (const x of [-1, 1]) {
     for (const z of [-1, 1]) {
@@ -192,7 +203,7 @@ export const MAT: Painting = {
   paint: (context) => {
     const { width, height } = context.canvas;
 
-    context.fillStyle = LOOK.canvas;
+    context.fillStyle = LOOK.mat;
     context.fillRect(0, 0, width, height);
     paintWeave(context);
     addGrain(context, 20, 7);
@@ -221,7 +232,7 @@ export const MAT_RELIEF: Painting = {
     context.fillStyle = "#808080";
     context.fillRect(0, 0, width, height);
     addGrain(context, 40, 57);
-    strokeScuffs(context, ({ alpha }) => `rgba(0, 0, 0, ${alpha * 2.5})`);
+    strokeScuffs(context, (alpha) => `rgba(0, 0, 0, ${alpha * 2.5})`);
   },
 };
 
@@ -233,7 +244,6 @@ interface Crease {
   readonly alpha: number;
 }
 
-/** 비닐 덮개가 로프를 따라 접힌 주름입니다. */
 const CREASES: readonly Crease[] = (() => {
   const random = seededRandom(61);
 
@@ -254,8 +264,7 @@ function paintCreases(
   }
 }
 
-/** 로프의 색에 곱하는 밝기입니다. 손이 자주 닿는 코너 쪽 끝이 더 어둡습니다. */
-export const ROPE_COVER: Painting = {
+export const ROPE_GRIME: Painting = {
   ...ROPE_PIXELS,
   tiles: false,
   paint: (context) => {
@@ -292,13 +301,11 @@ export const ROPE_RELIEF: Painting = {
 const PAD_PIXELS = { width: 256, height: 1024 };
 const SEAM_INSET = 22;
 
-/** 패드 그림의 위쪽(0)에서 잰, 높이 height 인 로프가 패드에 닿는 줄입니다. */
 function padRow(height: number): number {
-  return ((PAD.top - height) / (PAD.top - PAD.bottom)) * PAD_PIXELS.height;
+  return (1 - padTextureV(height)) * PAD_PIXELS.height;
 }
 
-/** 패드의 색에 곱하는 밝기입니다. 로프가 눌리는 줄과 손이 닿는 가장자리가 어둡습니다. */
-export const PAD_WEAR: Painting = {
+export const PAD_GRIME: Painting = {
   ...PAD_PIXELS,
   tiles: false,
   paint: (context) => {
@@ -321,7 +328,7 @@ export const PAD_WEAR: Painting = {
 
     addBlotches(context, {
       count: 24,
-      colors: [`rgba(40, 30, 24, ${dark / 2})`, "rgba(255, 255, 255, 0.06)"],
+      colors: [`rgba(40, 30, 24, ${dark / 2})`],
       maxRadius: 60,
       seed: 71,
     });
@@ -329,7 +336,6 @@ export const PAD_WEAR: Painting = {
   },
 };
 
-/** 패드 앞면의 박음질 선과 비닐 주름입니다. */
 export const PAD_SEAMS: Painting = {
   ...PAD_PIXELS,
   tiles: false,
@@ -340,11 +346,14 @@ export const PAD_SEAMS: Painting = {
     context.fillRect(0, 0, width, height);
     context.fillStyle = "#3a3a3a";
 
-    for (const x of [SEAM_INSET, width - SEAM_INSET]) {
+    for (const [x, inward] of [
+      [SEAM_INSET, 1],
+      [width - SEAM_INSET, -1],
+    ] as const) {
       context.fillRect(x - 1.5, 0, 3, height);
 
       for (let y = 6; y < height; y += 14) {
-        context.fillRect(x + 6, y, 2, 7);
+        context.fillRect(x + inward * 7 - 1, y, 2, 7);
       }
     }
 
