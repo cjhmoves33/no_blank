@@ -46,18 +46,19 @@ export type BlotchCanvas = Pick<
   "createRadialGradient" | "fillRect" | "fillStyle"
 > & { readonly canvas: { readonly width: number; readonly height: number } };
 
+type BlotchWrap = "none" | "horizontal" | "both";
+
 export interface Blotches {
   readonly count: number;
   readonly colors: readonly RgbaColor[];
   readonly maxRadius: number;
   readonly seed: number;
-  /** 그림이 반복해서 깔리면 true 입니다. 가장자리를 넘는 얼룩을 반대쪽에도 그립니다. */
-  readonly tiles: boolean;
+  readonly wrap: BlotchWrap;
 }
 
 export function addBlotches(
   context: BlotchCanvas,
-  { count, colors, maxRadius, seed, tiles }: Blotches,
+  { count, colors, maxRadius, seed, wrap }: Blotches,
 ): void {
   const { width, height } = context.canvas;
   const random = seededRandom(seed);
@@ -72,11 +73,11 @@ export function addBlotches(
       continue;
     }
 
-    const centers = tiles
-      ? wrappedCenters({ x, y, radius }, context.canvas)
-      : [{ x, y }];
-
-    for (const center of centers) {
+    for (const center of wrappedCenters(
+      { x, y, radius },
+      context.canvas,
+      wrap,
+    )) {
       fillBlotch(context, { ...center, radius, color });
     }
   }
@@ -91,15 +92,21 @@ interface Disk {
 function wrappedCenters(
   { x, y, radius }: Disk,
   { width, height }: BlotchCanvas["canvas"],
+  wrap: BlotchWrap,
 ): { x: number; y: number }[] {
-  const xs = [x, x - width, x + width].filter(
-    (cx) => cx + radius > 0 && cx - radius < width,
-  );
-  const ys = [y, y - height, y + height].filter(
-    (cy) => cy + radius > 0 && cy - radius < height,
-  );
+  const xs = wrap === "none" ? [x] : copiesAlong(x, radius, width);
+  const ys = wrap === "both" ? copiesAlong(y, radius, height) : [y];
 
   return xs.flatMap((cx) => ys.map((cy) => ({ x: cx, y: cy })));
+}
+
+function copiesAlong(at: number, radius: number, size: number): number[] {
+  const reach = Math.ceil(radius / size);
+
+  return Array.from(
+    { length: reach * 2 + 1 },
+    (_, step) => at + (step - reach) * size,
+  ).filter((center) => center + radius > 0 && center - radius < size);
 }
 
 function fillBlotch(
