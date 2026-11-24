@@ -34,10 +34,10 @@ export function addGrain(
   context.putImageData(image, 0, 0);
 }
 
-type RgbaColor = `rgba(${number}, ${number}, ${number}, ${number})`;
+export type RgbaColor = `rgba(${number}, ${number}, ${number}, ${number})`;
 
-// 캔버스 그라데이션은 알파를 곱하지 않은 채 색을 섞습니다. "transparent"(투명한 검정)로 흐리면 밝은 얼룩의 가장자리가 회색이 되므로, 같은 색을 알파 0 으로 흐립니다.
-function clearOf(color: RgbaColor): string {
+// 캔버스 그라데이션은 알파를 곱하지 않은 채 색을 섞습니다. "transparent"(투명한 검정)로 흐리면 가장자리가 검은 쪽으로 물들어 밝은 색에는 회색 테두리가 생기므로, 같은 색을 알파 0 으로 흐립니다.
+export function clearOf(color: RgbaColor): string {
   return `${color.slice(0, color.lastIndexOf(","))}, 0)`;
 }
 
