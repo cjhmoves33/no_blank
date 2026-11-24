@@ -19,11 +19,11 @@ Preconditions:
 - 증명할 빌드가 준비되어 있고 `doctor` 가 통과합니다.
 - 운영체제 설정은 바꾸지 않습니다. 스크립트가 Chrome 의 미디어 에뮬레이션으로 설정을 대신합니다.
 
-- **켠 상태.** 페이지를 열고 2초 기다립니다. `node $V shoot <이름> --views home,home-later --out <폴더>` 다음에 `node $V diff <폴더>/home.png <폴더>/home-later.png` 를 실행합니다. 바뀐 픽셀이 0 개입니다.
-- **켠 상태의 타격.** `node $V shoot <이름> --views home,struck,ball-drag --out <폴더>` 다음에 `home` 과 두 장을 `diff` 합니다. `struck` 은 친 직후라 공 둘레만 조금 바뀌고(2026-11-22 측정 0.21%), 2초 뒤인 `ball-drag` 는 0 개입니다.
-- **끈 상태.** 같은 절차를 `--motion` 으로 실행합니다. `node $V shoot <이름> --views home,home-later --motion --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개보다 많고(2026-11-22 측정 0.069%), diff 이미지의 빨간 점이 먼지에 있습니다.
+- **켠 상태.** 페이지를 열고 2초 기다립니다. `node $V shoot <이름> --views home,home-later --reduced-motion --out <폴더>` 다음에 `node $V diff <폴더>/home.png <폴더>/home-later.png` 를 실행합니다. 바뀐 픽셀이 0 개입니다(2026-11-24 확인).
+- **켠 상태의 타격.** `node $V shoot <이름> --views home,struck,ball-drag --reduced-motion --out <폴더>` 다음에 `home` 과 두 장을 `diff` 합니다. `struck` 은 친 직후라 공 둘레만 조금 바뀌고(2026-11-24 측정 0.561%), 2초 뒤인 `ball-drag` 는 0 개입니다.
+- **끈 상태.** 같은 절차를 `--reduced-motion` 없이 실행합니다. `node $V shoot <이름> --views home,home-later --out <폴더>` 다음에 `diff` 를 실행합니다. 바뀐 픽셀이 0 개보다 많고(2026-11-24 측정 0.069%), diff 이미지의 빨간 점이 먼지에 있습니다.
 
 ## Gotchas
 
 - 켠 상태의 0 개는 "움직이는 것이 하나도 없다"는 증거입니다. 새 애니메이션을 더하는 변경은 이 절차로 동작 줄이기를 지키는지 확인합니다.
-- 끈 상태에서는 찍는 시각에 따라 프레임이 달라지므로, 끈 상태의 스크린샷끼리 전후 비교하지 않습니다.
+- 끈 상태도 시계를 스크립트가 쥐므로, 같은 시점끼리는 전후 비교할 수 있습니다(같은 빌드를 다섯 번 찍어 25개 시점 모두 0 개, 2026-11-23). 서로 다른 시점끼리 `diff` 하면 흐른 시간만큼 먼지가 달라집니다.
