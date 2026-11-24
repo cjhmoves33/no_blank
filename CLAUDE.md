@@ -64,5 +64,5 @@ await expect(getGreeting()).resolves.toEqual({ message: "Hello World" });
 - HTTP 요청과 응답, 환경 변수, 외부 JSON처럼 밖에서 들어오는 데이터는 경계에서 타입이 정해진 값으로 바꿉니다. 숫자, JSON처럼 형식 검사가 필요한 값은 파서를 씁니다. API 데이터의 파서는 `packages/shared`에 둡니다.
 - 코드 주석과 문서는 한국어로 씁니다. 주석은 코드만 봐서는 알 수 없는 이유가 있을 때만 씁니다.
 - 이름을 짓거나 주석과 문서를 쓰기 전에 [`docs/GLOSSARY.md`](docs/GLOSSARY.md)를 읽고, 거기 정의된 용어를 씁니다.
-- Next.js 코드를 쓰기 전에 `apps/web/AGENTS.md`를 읽습니다. 이 저장소의 Next.js는 학습 데이터와 다를 수 있습니다.
+- Next.js 코드를 쓰기 전에 그 앱의 `AGENTS.md`(`apps/web`, `apps/workbench`)를 읽습니다. 이 저장소의 Next.js는 학습 데이터와 다를 수 있습니다.
 - `apps/server/src/routes/health.ts`의 `TODO(you)`는 사용자가 직접 작성합니다. 요청받기 전에는 구현하지 않습니다.

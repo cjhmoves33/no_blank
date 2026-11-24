@@ -7,3 +7,5 @@ apps/server/drizzle/
 # next dev 가 다시 생성하는 파일
 apps/web/AGENTS.md
 apps/web/next-env.d.ts
+apps/workbench/AGENTS.md
+apps/workbench/next-env.d.ts
