@@ -37,6 +37,9 @@ const SCENE = { environmentIntensity: LATE_AFTERNOON.environmentIntensity };
 
 const DEPTH_RANGE = 10_000;
 
+// web 의 Tailwind 는 apps/web 안에서만 클래스를 찾으므로, 이 패키지에서는 클래스 대신 style 로 크기를 줍니다.
+const FILL = { width: "100%", height: "100%" };
+
 const CAMERA = {
   fov: RING_VIEW.fov,
   position: RING_VIEW.home,
@@ -65,7 +68,7 @@ export function Gym({ reducedMotion, onStrike, onJolt }: GymProps) {
   const [ball, setBall] = useState<WreckingBallHandle | null>(null);
 
   return (
-    <div ref={setSurface} className="h-full w-full">
+    <div ref={setSurface} style={FILL}>
       <Canvas
         dpr={[1, 2]}
         shadows="percentage"

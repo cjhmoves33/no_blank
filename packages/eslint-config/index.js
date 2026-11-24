@@ -6,6 +6,8 @@ import stylistic from "@stylistic/eslint-plugin";
 import prettier from "eslint-config-prettier/flat";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import { importX } from "eslint-plugin-import-x";
+import reactPlugin from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
@@ -126,7 +128,25 @@ export const readability = defineConfig(
 );
 
 /**
- * React/JSX 규칙입니다. eslint-plugin-react 를 등록하는 설정(eslint-config-next 등) 뒤에 둡니다.
+ * eslint-config-next 없이 React 를 쓰는 패키지(gym)에 eslint-plugin-react 와 react-hooks 를 등록합니다.
+ * 켜고 끄는 규칙은 eslint-config-next 와 같아서, web 에서 옮겨 온 코드가 같은 규칙으로 검사됩니다.
+ */
+export const reactRecommended = defineConfig({
+  files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
+  plugins: { react: reactPlugin, "react-hooks": reactHooks },
+  settings: { react: { version: "detect" } },
+  rules: {
+    ...reactPlugin.configs.recommended.rules,
+    ...reactHooks.configs.recommended.rules,
+    // R3F 는 args, attach 처럼 DOM 에 없는 속성을 JSX 에 씁니다.
+    "react/no-unknown-property": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+  },
+});
+
+/**
+ * React/JSX 규칙입니다. eslint-plugin-react 를 등록하는 설정(eslint-config-next, reactRecommended) 뒤에 둡니다.
  */
 export const react = defineConfig({
   files: ["**/*.{jsx,tsx}"],

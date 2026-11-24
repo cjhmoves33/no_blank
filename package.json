@@ -35,6 +35,9 @@
         "entry": [
           ".claude/skills/*/scripts/*.mjs"
         ]
+      },
+      "packages/gym": {
+        "includeEntryExports": true
       }
     }
   }
