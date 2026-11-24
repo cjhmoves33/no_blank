@@ -6,6 +6,8 @@ import stylistic from "@stylistic/eslint-plugin";
 import prettier from "eslint-config-prettier/flat";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import { importX } from "eslint-plugin-import-x";
+import reactPlugin from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
@@ -14,7 +16,7 @@ const TS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
 const TS_FILES = [`**/*{${TS_EXTENSIONS.join(",")}}`];
 
 /**
- * 프레임워크 설정이 없는 패키지(server, shared)의 기본 규칙입니다.
+ * 프레임워크 설정이 없는 패키지(server, shared, gym)의 기본 규칙입니다.
  * web 은 eslint-config-next 가 이 역할을 합니다.
  */
 export const base = defineConfig(
@@ -125,9 +127,22 @@ export const readability = defineConfig(
   },
 );
 
-/**
- * React/JSX 규칙입니다. eslint-plugin-react 를 등록하는 설정(eslint-config-next 등) 뒤에 둡니다.
- */
+export const reactRecommended = defineConfig({
+  files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
+  extends: [
+    reactPlugin.configs.flat.recommended,
+    reactPlugin.configs.flat["jsx-runtime"],
+  ],
+  plugins: { "react-hooks": reactHooks },
+  settings: { react: { version: "detect" } },
+  rules: {
+    ...reactHooks.configs.recommended.rules,
+    // R3F 는 args, attach 처럼 DOM 에 없는 속성을 JSX 에 씁니다.
+    "react/no-unknown-property": "off",
+    "react/prop-types": "off",
+  },
+});
+
 export const react = defineConfig({
   files: ["**/*.{jsx,tsx}"],
   rules: {

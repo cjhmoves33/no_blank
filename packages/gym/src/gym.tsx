@@ -37,6 +37,8 @@ const SCENE = { environmentIntensity: LATE_AFTERNOON.environmentIntensity };
 
 const DEPTH_RANGE = 10_000;
 
+const FILL = { width: "100%", height: "100%" };
+
 const CAMERA = {
   fov: RING_VIEW.fov,
   position: RING_VIEW.home,
@@ -65,7 +67,7 @@ export function Gym({ reducedMotion, onStrike, onJolt }: GymProps) {
   const [ball, setBall] = useState<WreckingBallHandle | null>(null);
 
   return (
-    <div ref={setSurface} className="h-full w-full">
+    <div ref={setSurface} style={FILL}>
       <Canvas
         dpr={[1, 2]}
         shadows="percentage"

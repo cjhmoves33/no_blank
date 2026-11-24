@@ -1,13 +1,11 @@
 "use client";
 
+import { Gym, LATE_AFTERNOON } from "@no-blank/gym";
 import { catchError } from "next/error";
 import { useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
 import { chainSound, strikeSound } from "@/audio/sounds";
-
-import { Gym } from "./gym/gym";
-import { LATE_AFTERNOON } from "./gym/light/late-afternoon";
 
 const HideOnError = catchError(() => null);
 

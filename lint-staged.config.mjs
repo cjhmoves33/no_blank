@@ -12,5 +12,6 @@ export default {
   "apps/web/**/*.{js,mjs,cjs,ts,tsx}": eslintIn("@no-blank/web"),
   "apps/server/**/*.{js,mjs,cjs,ts}": eslintIn("@no-blank/server"),
   "packages/shared/**/*.{js,mjs,cjs,ts}": eslintIn("@no-blank/shared"),
+  "packages/gym/**/*.{js,mjs,cjs,ts,tsx}": eslintIn("@no-blank/gym"),
   "*": "prettier --write --ignore-unknown",
 };

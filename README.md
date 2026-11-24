@@ -10,6 +10,7 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`           | Next.js 16 (App Router, SSR). 지금은 실행 중에 API를 호출하지 않습니다. API를 호출하는 예시는 `src/lib/api.ts`입니다. |
 | `apps/server`        | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.                                                                  |
+| `packages/gym`       | web이 그리는 체육관의 3D 장면입니다. 빌드하지 않고 TS 소스를 그대로 내보내며, 가져다 쓰는 앱이 컴파일합니다.          |
 | `packages/shared`    | web과 server가 함께 사용하는 API 응답 타입입니다.                                                                     |
 | `docker-compose.yml` | db, migrate, server, web 컨테이너 구성입니다.                                                                         |
 
