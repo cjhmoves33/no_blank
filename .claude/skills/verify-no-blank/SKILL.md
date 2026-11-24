@@ -88,7 +88,7 @@ node $V run --before <ref> --after <ref> --reduced-motion     # 동작 줄이기
 
 ## Evidence
 
-- 위치: `%TEMP%/no-blank-verify/evidence/<시각>/` 아래 `before/`, `after/`, `diff/`, `report.md`. `shoot` 만 쓰면 `<시각>-<이름>/` 입니다. Git Bash 에서는 `$TEMP/no-blank-verify/evidence` 입니다.
+- 위치: `%TEMP%/no-blank-verify/evidence/<시각>/` 아래 `before/`, `after/`, `diff/`, `report.md`. `shoot` 만 쓰면 `<시각>-<이름>/` 입니다. Git Bash 에서는 `$TEMP/no-blank-verify/evidence` 입니다. 클립 프레임은 한 장에 1.3 MB 쯤이라, 기본 시점으로 한 번 찍으면 380 MB, `run` 한 번이면 760 MB 쯤 쌓입니다. `cleanup` 은 증거를 지우지 않으므로, PR 에 올린 뒤에는 그 증거 폴더를 직접 지웁니다.
 - 시점마다 PNG(마지막 화면)와 JSON 이 남고, 클립은 `<시점>/f000.png` 부터 프레임마다 PNG 가 남습니다. JSON 에는 빌드 커밋, 동작 켬 여부(`motion`), 장면이 마운트되었는지(`scene`), 찍는 순간 캔버스가 있었는지(`canvas`), 녹화한 프레임 수(`frames`), 효과음 최대 진폭(`audioPeak`), 찍은 뒤 캔버스의 커서 모양(`cursor`), 콘솔 경고와 오류(`errors`)가 들어 있습니다.
 - 비교표는 시점마다 바뀐 픽셀, 최대 채널 차이, 클립의 바뀐 프레임 수(처음 바뀐 프레임), 효과음 최대 진폭, 커서, 오류 수를 보여 주고, 마지막 줄 `changed:` 에 바뀐 시점을 모읍니다. 효과음 최대 진폭은 큰 쪽의 5% 넘게 다를 때, 커서·캔버스·오류는 값이 다를 때 바뀐 것으로 봅니다. 클립은 처음 바뀐 프레임의 diff 이미지만 `diff/<시점>-fNNN.png` 로 남깁니다.
 - 바뀐 픽셀은 한 채널이라도 8 넘게 달라진 픽셀입니다. 기준선은 이렇습니다.
