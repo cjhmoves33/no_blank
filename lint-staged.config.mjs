@@ -10,6 +10,7 @@ const eslintIn = (pkg) => (files) => {
 
 export default {
   "apps/web/**/*.{js,mjs,cjs,ts,tsx}": eslintIn("@no-blank/web"),
+  "apps/workbench/**/*.{js,mjs,cjs,ts,tsx}": eslintIn("@no-blank/workbench"),
   "apps/server/**/*.{js,mjs,cjs,ts}": eslintIn("@no-blank/server"),
   "packages/shared/**/*.{js,mjs,cjs,ts}": eslintIn("@no-blank/shared"),
   "packages/gym/**/*.{js,mjs,cjs,ts,tsx}": eslintIn("@no-blank/gym"),
