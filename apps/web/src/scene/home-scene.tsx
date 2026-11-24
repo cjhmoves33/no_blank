@@ -2,10 +2,11 @@
 
 import { Gym, LATE_AFTERNOON } from "@no-blank/gym";
 import { catchError } from "next/error";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
-import { chainSound, strikeSound } from "@/audio/sounds";
+import { loadRecordings } from "@/audio/recordings";
+import { joltSound, strikeSound } from "@/audio/sounds";
 
 const HideOnError = catchError(() => null);
 
@@ -16,6 +17,10 @@ const PAGE = { background: LATE_AFTERNOON.background };
 export function HomeScene() {
   const reducedMotion = usePrefersReducedMotion();
 
+  useEffect(() => {
+    void loadRecordings();
+  }, []);
+
   return (
     <div className="h-dvh w-full" style={PAGE}>
       <HideOnError>
@@ -25,7 +30,7 @@ export function HomeScene() {
             playSound(strikeSound(strike.strength));
           }}
           onJolt={(jolt) => {
-            playSound(chainSound(jolt.strength));
+            playSound(joltSound(jolt.strength));
           }}
         />
       </HideOnError>
