@@ -15,6 +15,15 @@ export default defineConfig(
   react,
   {
     rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name='addColorStop'] > Literal[value='transparent']",
+          message:
+            '"transparent" 는 투명한 검정이라 흐리는 가장자리가 검게 물듭니다. brushes.ts 의 clearOf(색) 으로 같은 색의 알파 0 을 쓰세요.',
+        },
+      ],
       "react/forbid-dom-props": [
         "error",
         {
