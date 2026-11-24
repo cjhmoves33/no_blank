@@ -1,6 +1,8 @@
 import {
   BoxGeometry,
+  BufferAttribute,
   type BufferGeometry,
+  Color,
   CylinderGeometry,
   Matrix4,
   TubeGeometry,
@@ -23,7 +25,8 @@ import {
 import {
   CORNERS,
   PAD,
-  ROPE_CURVES,
+  ROPE_LINES,
+  type RopeLine,
   type Tie,
   TIE_HEIGHT,
   TIES,
@@ -46,9 +49,22 @@ export const RING_SIZE: Box = {
   max: [RING_HALF, mat.y + POST_HEIGHT, mat.half + STEP_DEPTH * STEP_COUNT],
 };
 
-const ROPE_GEOMETRY = mergeGeometries(
-  ROPE_CURVES.map((curve) => new TubeGeometry(curve, 64, ropes.radius, 16)),
-);
+// 로프를 한 메시로 합치므로, 로프마다의 색은 꼭짓점 색으로 줍니다.
+function coloredRope({ level, curve }: RopeLine): TubeGeometry {
+  const tube = new TubeGeometry(curve, 64, ropes.radius, 16);
+  const color = new Color(LOOK.ropesFromBottom[level]);
+  const colors = new Float32Array(tube.getAttribute("position").count * 3);
+
+  for (let i = 0; i < colors.length; i += 3) {
+    color.toArray(colors, i);
+  }
+
+  tube.setAttribute("color", new BufferAttribute(colors, 3));
+
+  return tube;
+}
+
+const ROPE_GEOMETRY = mergeGeometries(ROPE_LINES.map(coloredRope));
 
 function tieParts(tie: Tie): BufferGeometry[] {
   const place = new Matrix4().makeRotationY(tie.turn).setPosition(tie.position);
@@ -100,7 +116,7 @@ export function Ring() {
       ))}
       <mesh castShadow receiveShadow geometry={ROPE_GEOMETRY}>
         <meshPhysicalMaterial
-          color={LOOK.rope}
+          vertexColors
           roughness={0.55}
           clearcoat={0.15}
           clearcoatRoughness={0.5}

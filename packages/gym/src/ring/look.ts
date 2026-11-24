@@ -3,7 +3,7 @@ export interface RingLook {
   readonly wear: number;
   readonly apronLine: string;
   readonly emblem: string;
-  readonly rope: string;
+  readonly ropesFromBottom: readonly [string, string, string, string];
   readonly ties: string;
 }
 
@@ -12,6 +12,6 @@ export const LOOK: RingLook = {
   wear: 0.6,
   apronLine: "#7d3a30",
   emblem: "#2c3d5c",
-  rope: "#8a2f27",
+  ropesFromBottom: ["#9a2b25", "#2c4672", "#e3ded2", "#9a2b25"],
   ties: "#d6cab2",
 };

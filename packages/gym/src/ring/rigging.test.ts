@@ -6,6 +6,7 @@ import {
   matPixel,
   PAD,
   padTextureV,
+  ROPE_LINES,
   ropePointAt,
   SIDES,
   TIES,
@@ -47,6 +48,16 @@ describe("ropePointAt", () => {
     expect(ropePointAt(side, 0.5, height).y).toBeCloseTo(
       mat.y + height - ropes.sag,
     );
+  });
+});
+
+describe("ROPE_LINES", () => {
+  it("변마다 로프 네 줄이 아래에서 위로 놓입니다", () => {
+    expect(ROPE_LINES).toHaveLength(SIDES.length * ropes.heights.length);
+
+    for (const { level, curve } of ROPE_LINES) {
+      expect(curve.getPoint(0).y).toBeCloseTo(mat.y + ropes.heights[level]);
+    }
   });
 });
 

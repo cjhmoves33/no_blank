@@ -40,13 +40,24 @@ export function ropePointAt(
     .setY(mat.y + height - sagAt(along));
 }
 
-export const ROPE_CURVES = SIDES.flatMap((side) =>
-  ropes.heights.map(
-    (height) =>
-      new CatmullRomCurve3(
-        Array.from({ length: 9 }, (_, i) => ropePointAt(side, i / 8, height)),
+const LEVELS = [0, 1, 2, 3] as const;
+
+type RopeLevel = (typeof LEVELS)[number];
+
+export interface RopeLine {
+  readonly level: RopeLevel;
+  readonly curve: CatmullRomCurve3;
+}
+
+export const ROPE_LINES: readonly RopeLine[] = SIDES.flatMap((side) =>
+  LEVELS.map((level) => ({
+    level,
+    curve: new CatmullRomCurve3(
+      Array.from({ length: 9 }, (_, i) =>
+        ropePointAt(side, i / 8, ropes.heights[level]),
       ),
-  ),
+    ),
+  })),
 );
 
 const LOWEST_ROPE = ropes.heights[0];
