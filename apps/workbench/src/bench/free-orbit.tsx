@@ -1,16 +1,24 @@
+import { ORBIT_BUTTONS } from "@no-blank/gym";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Box3, MOUSE, type Object3D, type Vector3Tuple } from "three";
+import {
+  Box3,
+  MOUSE,
+  type Object3D,
+  type Vector3,
+  type Vector3Tuple,
+} from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// 카메라의 near(0.05 m)보다 가까워지면 보려던 곳이 잘려 나갑니다.
+const CLOSEST = 0.15;
 
 export interface FreeOrbitProps {
   readonly around: Object3D;
-  /** 처음 바라볼 곳입니다. 없으면 around 의 한가운데를 봅니다. */
-  readonly focus: Vector3Tuple | undefined;
+  readonly lookAt: Vector3Tuple | undefined;
 }
 
-/** around 를 거리와 각도 제한 없이 돌아봅니다. 버튼은 web 처럼 오른쪽이 회전이고, 왼쪽은 이동입니다. */
-export function FreeOrbit({ around, focus }: FreeOrbitProps) {
+export function FreeOrbit({ around, lookAt }: FreeOrbitProps) {
   const camera = useThree((state) => state.camera);
   const surface = useThree((state) => state.gl.domElement);
   const controls = useRef<OrbitControls>(null);
@@ -18,18 +26,15 @@ export function FreeOrbit({ around, focus }: FreeOrbitProps) {
   useEffect(() => {
     const orbit = new OrbitControls(camera, surface);
 
-    if (focus) {
-      orbit.target.set(...focus);
+    if (lookAt) {
+      orbit.target.set(...lookAt);
     } else {
-      new Box3().setFromObject(around).getCenter(orbit.target);
+      centerOf(around, orbit.target);
     }
 
-    orbit.mouseButtons = {
-      LEFT: MOUSE.PAN,
-      MIDDLE: MOUSE.DOLLY,
-      RIGHT: MOUSE.ROTATE,
-    };
+    orbit.mouseButtons = { ...ORBIT_BUTTONS, LEFT: MOUSE.PAN };
     orbit.zoomToCursor = true;
+    orbit.minDistance = CLOSEST;
     orbit.enableDamping = true;
     orbit.update();
     controls.current = orbit;
@@ -38,11 +43,15 @@ export function FreeOrbit({ around, focus }: FreeOrbitProps) {
       orbit.dispose();
       controls.current = null;
     };
-  }, [camera, surface, around, focus]);
+  }, [camera, surface, around, lookAt]);
 
   useFrame(() => {
     controls.current?.update();
   });
 
   return null;
+}
+
+function centerOf(object: Object3D, target: Vector3): void {
+  new Box3().setFromObject(object).getCenter(target);
 }

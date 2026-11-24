@@ -27,6 +27,13 @@ export interface RingControlsProps {
 
 type Cursor = "default" | "pointer" | "grabbing";
 
+/** 왼쪽 버튼은 타격에 쓰므로 비워 둡니다(ADR 0001). */
+export const ORBIT_BUTTONS = {
+  LEFT: null,
+  MIDDLE: MOUSE.DOLLY,
+  RIGHT: MOUSE.ROTATE,
+};
+
 const PRIMARY_BUTTON = 0;
 const PRIMARY_HELD = 1;
 const SECONDARY_HELD = 2;
@@ -55,11 +62,7 @@ export function RingControls({
     orbit.maxDistance = limits.distance.max;
     orbit.minPolarAngle = limits.polar.min;
     orbit.maxPolarAngle = limits.polar.max;
-    orbit.mouseButtons = {
-      LEFT: null,
-      MIDDLE: MOUSE.DOLLY,
-      RIGHT: MOUSE.ROTATE,
-    };
+    orbit.mouseButtons = ORBIT_BUTTONS;
     orbit.enableDamping = !reducedMotion;
     orbit.update();
     controls.current = orbit;

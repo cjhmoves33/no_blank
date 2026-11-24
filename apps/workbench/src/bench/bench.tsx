@@ -26,8 +26,7 @@ const BACK: CSSProperties = {
   color: "#222",
 };
 
-// 레킹볼은 천장까지 이어진 막대와 사슬 때문에 한가운데가 공보다 한참 위라서, 공을 바라봅니다.
-const FOCUS: Partial<Record<Subject, Vector3Tuple>> = {
+const LOOK_AT_REST: Partial<Record<Subject, Vector3Tuple>> = {
   "wrecking-ball": [...GYM.wreckingBall.restCenter],
 };
 
@@ -35,7 +34,6 @@ export interface BenchProps {
   readonly subject: Subject;
 }
 
-/** 고른 부분 하나만 체육관의 제자리에 두고, 건물과 빛 속에서 자유롭게 돌려 봅니다. */
 export function Bench({ subject }: BenchProps) {
   const [shown, setShown] = useState<Group | null>(null);
 
@@ -45,7 +43,9 @@ export function Bench({ subject }: BenchProps) {
         <group ref={setShown}>
           <SubjectInPlace subject={subject} />
         </group>
-        {shown ? <FreeOrbit around={shown} focus={FOCUS[subject]} /> : null}
+        {shown ? (
+          <FreeOrbit around={shown} lookAt={LOOK_AT_REST[subject]} />
+        ) : null}
       </GymCanvas>
       <Link href="/" style={BACK}>
         목록
