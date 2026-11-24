@@ -6,7 +6,7 @@ import { useEffect, useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
 import { loadRecordings } from "@/audio/recordings";
-import { chainSound, strikeSound } from "@/audio/sounds";
+import { joltSound, strikeSound } from "@/audio/sounds";
 
 const HideOnError = catchError(() => null);
 
@@ -30,7 +30,7 @@ export function HomeScene() {
             playSound(strikeSound(strike.strength));
           }}
           onJolt={(jolt) => {
-            playSound(chainSound(jolt.strength));
+            playSound(joltSound(jolt.strength));
           }}
         />
       </HideOnError>

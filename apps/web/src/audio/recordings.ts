@@ -1,11 +1,10 @@
-/** 효과음에 쓰는 녹음입니다. 출처와 자른 지점은 docs/research/strike-sound.md 에 있습니다. */
+/** 녹음의 출처와 라이선스(CC0)는 docs/research/strike-sound.md 에 있습니다. */
 export interface Recordings {
-  /** 타격음 녹음입니다. 조용한 것부터 큰 것 순서입니다. */
-  readonly strikes: readonly AudioBuffer[];
+  readonly strikesQuietToLoud: readonly AudioBuffer[];
   readonly chain: AudioBuffer;
 }
 
-const STRIKE_FILES = [
+const STRIKE_FILES_QUIET_TO_LOUD = [
   "/sounds/strike-1.flac",
   "/sounds/strike-2.flac",
   "/sounds/strike-3.flac",
@@ -18,32 +17,34 @@ const FILE_SAMPLE_RATE = 48000;
 let loading: Promise<void> | undefined;
 let loaded: Recordings | undefined;
 
-/** 페이지를 열 때 한 번 부릅니다. 받지 못하면 효과음 없이 지나갑니다. */
 export function loadRecordings(): Promise<void> {
   loading ??= decodeAll().then(
     (recordings) => {
       loaded = recordings;
     },
-    () => {},
+    (error: unknown) => {
+      console.error("효과음 녹음을 불러오지 못했습니다.", error);
+    },
   );
 
   return loading;
 }
 
-/** 아직 다 불러오지 못했으면 undefined 입니다. */
 export function loadedRecordings(): Recordings | undefined {
   return loaded;
 }
 
 async function decodeAll(): Promise<Recordings> {
-  // 첫 타격부터 소리가 나려면 사용자 입력 전에 디코딩해야 합니다. AudioContext 는 입력 전에 만들면 멈춘 채로 열리므로, 디코딩만 하는 OfflineAudioContext 를 씁니다.
+  // 사용자 입력 전에는 AudioContext 를 만들지 않으므로(play-sound.ts), 소리를 내지 않는 OfflineAudioContext 로 미리 디코딩합니다.
   const decoder = new OfflineAudioContext(1, 1, FILE_SAMPLE_RATE);
-  const [strikes, chain] = await Promise.all([
-    Promise.all(STRIKE_FILES.map((file) => decode(decoder, file))),
+  const [strikesQuietToLoud, chain] = await Promise.all([
+    Promise.all(
+      STRIKE_FILES_QUIET_TO_LOUD.map((file) => decode(decoder, file)),
+    ),
     decode(decoder, CHAIN_FILE),
   ]);
 
-  return { strikes, chain };
+  return { strikesQuietToLoud, chain };
 }
 
 async function decode(
