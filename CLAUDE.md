@@ -6,7 +6,7 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 
 - `pnpm check`는 CI `Code checks` 작업과 같은 검사를 실행합니다. push 직전에 pre-push hook이 이 명령을 실행합니다.
 - 검사가 실패하면 코드를 고칩니다. 규칙을 꺼야 한다고 판단하면, 끄기 전에 이유를 설명하고 사용자에게 묻습니다.
-- `apps/web`을 고친 PR은 `verify-no-blank` 스킬로 전후 화면을 비교합니다. 바뀐 화면이 있으면 그 이미지를 PR 본문에 붙이고, 없으면 비교표를 붙입니다.
+- `apps/web`이나 `packages/gym`을 고친 PR은 `verify-no-blank` 스킬로 전후 화면을 비교합니다. 바뀐 화면이 있으면 그 이미지를 PR 본문에 붙이고, 없으면 비교표를 붙입니다.
 
 ## 따라 할 예시
 
@@ -21,12 +21,12 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 | web에서 API 호출         | `apps/web/src/lib/api.ts`                                      |
 | web 테스트               | `apps/web/src/lib/api.test.ts`                                 |
 | DB 스키마와 마이그레이션 | `apps/server/src/db/schema.ts`, README의 "DB 스키마 변경 방법" |
-| 3D 장면                  | `apps/web/src/scene/gym/gym.tsx`                               |
-| 3D 오브젝트              | `apps/web/src/scene/gym/wrecking-ball/wrecking-ball.tsx`       |
-| 체육관 소품              | `apps/web/src/scene/gym/props/heavy-bags.tsx`                  |
-| 그림 텍스처가 있는 소품  | `apps/web/src/scene/gym/props/wall-clock.tsx`                  |
-| 소품의 자리와 크기 검사  | `apps/web/src/scene/gym/props/plan.ts`, `plan.test.ts`         |
-| 3D 오브젝트 테스트       | `apps/web/src/scene/gym/wrecking-ball/wrecking-ball.test.tsx`  |
+| 3D 장면                  | `packages/gym/src/gym.tsx`                                     |
+| 3D 오브젝트              | `packages/gym/src/wrecking-ball/wrecking-ball.tsx`             |
+| 체육관 소품              | `packages/gym/src/props/heavy-bags.tsx`                        |
+| 그림 텍스처가 있는 소품  | `packages/gym/src/props/wall-clock.tsx`                        |
+| 소품의 자리와 크기 검사  | `packages/gym/src/props/plan.ts`, `plan.test.ts`               |
+| 3D 오브젝트 테스트       | `packages/gym/src/wrecking-ball/wrecking-ball.test.tsx`        |
 | 효과음                   | `apps/web/src/audio/sounds.ts`                                 |
 | 효과음 재생 테스트       | `apps/web/src/audio/play-sound.test.ts`                        |
 
