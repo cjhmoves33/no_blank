@@ -129,21 +129,22 @@ export const readability = defineConfig(
 
 export const reactRecommended = defineConfig({
   files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
-  plugins: { react: reactPlugin, "react-hooks": reactHooks },
+  extends: [
+    reactPlugin.configs.flat.recommended,
+    reactPlugin.configs.flat["jsx-runtime"],
+  ],
+  plugins: { "react-hooks": reactHooks },
   settings: { react: { version: "detect" } },
   rules: {
-    ...reactPlugin.configs.recommended.rules,
     ...reactHooks.configs.recommended.rules,
     // R3F 는 args, attach 처럼 DOM 에 없는 속성을 JSX 에 씁니다.
     "react/no-unknown-property": "off",
-    "react/react-in-jsx-scope": "off",
     "react/prop-types": "off",
   },
 });
 
 export const react = defineConfig({
   files: ["**/*.{jsx,tsx}"],
-  plugins: { react: reactPlugin },
   rules: {
     "react/self-closing-comp": ["error", { component: true, html: true }],
     "react/jsx-curly-brace-presence": [
