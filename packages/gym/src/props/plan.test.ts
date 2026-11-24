@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Box } from "../building/slabs";
 import { GYM } from "../measurements";
-import { RING_SIZE } from "../ring";
+import { RING_SIZE } from "../ring/ring";
 import { WRECKING_BALL_SIZE } from "../wrecking-ball/wrecking-ball";
 import { HEAVY_BAGS_SIZE } from "./heavy-bags";
 import {

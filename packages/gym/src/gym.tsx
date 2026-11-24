@@ -5,7 +5,7 @@ import { GYM, RING_VIEW } from "./measurements";
 import { HeavyBags } from "./props/heavy-bags";
 import { ceilingMount, PLAN, wallMount } from "./props/plan";
 import { WallClock } from "./props/wall-clock";
-import { Ring } from "./ring";
+import { Ring } from "./ring/ring";
 import { RingControls } from "./ring-controls";
 import type { Jolt, Strike } from "./wrecking-ball/swing";
 import {
