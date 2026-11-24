@@ -16,7 +16,7 @@ const TS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
 const TS_FILES = [`**/*{${TS_EXTENSIONS.join(",")}}`];
 
 /**
- * 프레임워크 설정이 없는 패키지(server, shared)의 기본 규칙입니다.
+ * 프레임워크 설정이 없는 패키지(server, shared, gym)의 기본 규칙입니다.
  * web 은 eslint-config-next 가 이 역할을 합니다.
  */
 export const base = defineConfig(
@@ -127,10 +127,6 @@ export const readability = defineConfig(
   },
 );
 
-/**
- * eslint-config-next 없이 React 를 쓰는 패키지(gym)에 eslint-plugin-react 와 react-hooks 를 등록합니다.
- * 켜고 끄는 규칙은 eslint-config-next 와 같아서, web 에서 옮겨 온 코드가 같은 규칙으로 검사됩니다.
- */
 export const reactRecommended = defineConfig({
   files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
   plugins: { react: reactPlugin, "react-hooks": reactHooks },
@@ -145,11 +141,9 @@ export const reactRecommended = defineConfig({
   },
 });
 
-/**
- * React/JSX 규칙입니다. eslint-plugin-react 를 등록하는 설정(eslint-config-next, reactRecommended) 뒤에 둡니다.
- */
 export const react = defineConfig({
   files: ["**/*.{jsx,tsx}"],
+  plugins: { react: reactPlugin },
   rules: {
     "react/self-closing-comp": ["error", { component: true, html: true }],
     "react/jsx-curly-brace-presence": [

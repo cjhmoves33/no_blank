@@ -37,7 +37,6 @@ const SCENE = { environmentIntensity: LATE_AFTERNOON.environmentIntensity };
 
 const DEPTH_RANGE = 10_000;
 
-// web 의 Tailwind 는 apps/web 안에서만 클래스를 찾으므로, 이 패키지에서는 클래스 대신 style 로 크기를 줍니다.
 const FILL = { width: "100%", height: "100%" };
 
 const CAMERA = {
