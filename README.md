@@ -67,7 +67,7 @@ pnpm dev
 | ------ | ------------------------------------------------------ |
 | web    | http://localhost:3000                                  |
 | server | http://localhost:4000/api/greeting                     |
-| 작업대 | http://localhost:3001                                  |
+| 작업대 | http://localhost:3200                                  |
 | db     | `postgres://no_blank:no_blank@localhost:5432/no_blank` |
 
 ## 커밋 검사와 CI

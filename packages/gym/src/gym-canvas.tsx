@@ -46,7 +46,6 @@ function facing(
   return [rotation.x, rotation.y, rotation.z];
 }
 
-/** 체육관의 건물과 빛 속에 children 을 그립니다. 카메라는 링 시점의 처음 자리에서 시작합니다. */
 export function GymCanvas({ reducedMotion, children }: GymCanvasProps) {
   return (
     <Canvas

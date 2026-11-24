@@ -1,4 +1,3 @@
-/** 작업대에 하나씩 꺼내 볼 수 있는 체육관의 부분입니다. */
 export const SUBJECTS = [
   { slug: "ring", name: "링" },
   { slug: "wrecking-ball", name: "레킹볼" },
