@@ -1,5 +1,5 @@
 import type { Sound, SoundOutput } from "./play-sound";
-import { loadedRecordings } from "./recordings";
+import { loadedRecordings, loadRecordings } from "./recordings";
 
 const STRIKE_PEAK = 10 ** (-9 / 20);
 // 일부러 강하게 찌그러뜨립니다. 사용자가 깨끗한 녹음과 견주어 듣고 고른 값입니다(docs/research/strike-sound.md).
@@ -14,6 +14,9 @@ export function strikeSound(strength: number): Sound {
     const recordings = loadedRecordings();
 
     if (!recordings) {
+      // 앞서 받지 못했으면 이 타격을 계기로 다시 받습니다. 받는 중이면 그 요청을 그대로 씁니다.
+      void loadRecordings();
+
       return;
     }
 
@@ -44,6 +47,9 @@ export function joltSound(strength: number): Sound {
     const recordings = loadedRecordings();
 
     if (!recordings) {
+      // 앞서 받지 못했으면 이 타격을 계기로 다시 받습니다. 받는 중이면 그 요청을 그대로 씁니다.
+      void loadRecordings();
+
       return;
     }
 

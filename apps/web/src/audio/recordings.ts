@@ -24,6 +24,7 @@ export function loadRecordings(): Promise<void> {
     },
     (error: unknown) => {
       console.error("효과음 녹음을 불러오지 못했습니다.", error);
+      loading = undefined;
     },
   );
 

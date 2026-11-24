@@ -5,7 +5,10 @@ interface PlayedRecording {
   readonly at: number;
 }
 
-function installFakeAudio({ files }: { files: "available" | "missing" }) {
+type Files = "available" | "missing";
+
+function installFakeAudio({ files: initialFiles }: { files: Files }) {
+  let files = initialFiles;
   const recordings: PlayedRecording[] = [];
   const synthesized: number[] = [];
   const requested: string[] = [];
@@ -104,7 +107,20 @@ function installFakeAudio({ files }: { files: "available" | "missing" }) {
     );
   });
 
-  return { recordings, synthesized, requested };
+  return {
+    recordings,
+    synthesized,
+    requested,
+    serve: (next: Files) => {
+      files = next;
+    },
+  };
+}
+
+function flushPromises(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
 }
 
 async function importFreshAudio() {
@@ -230,7 +246,7 @@ describe("타격음과 덜컹 소리", () => {
     ]);
   });
 
-  it("소리 파일을 받지 못하면 콘솔에 오류를 한 번 남기고, 처리되지 않은 오류 없이 타격은 소리 없이 지나간다", async () => {
+  it("소리 파일을 받지 못하면 콘솔에 오류를 남기고, 처리되지 않은 오류 없이 타격은 소리 없이 지나간다", async () => {
     const { recordings, synthesized } = installFakeAudio({ files: "missing" });
     const audio = await importFreshAudio();
     const reported = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -242,14 +258,32 @@ describe("타격음과 덜컹 소리", () => {
     process.on("unhandledRejection", recordUnhandled);
     await audio.loadRecordings();
     audio.playSound(audio.strikeSound(0.4));
-    await new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
+    await flushPromises();
     process.off("unhandledRejection", recordUnhandled);
 
     expect(recordings).toEqual([]);
     expect(synthesized).toEqual([]);
-    expect(reported).toHaveBeenCalledOnce();
+    expect(reported).toHaveBeenCalled();
     expect(unhandled).toEqual([]);
+  });
+
+  it("받지 못한 뒤에 치면 소리 파일을 다시 받고, 받은 뒤의 타격부터 소리가 난다", async () => {
+    const { recordings, requested, serve } = installFakeAudio({
+      files: "missing",
+    });
+    const audio = await importFreshAudio();
+
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await audio.loadRecordings();
+    serve("available");
+    audio.playSound(audio.strikeSound(0.4));
+    await flushPromises();
+
+    expect(requested).toHaveLength(12);
+    expect(recordings).toEqual([]);
+
+    audio.playSound(audio.strikeSound(0.4));
+
+    expect(strikesIn(recordings)).toHaveLength(1);
   });
 });
