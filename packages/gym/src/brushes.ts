@@ -34,6 +34,17 @@ export function addGrain(
   context.putImageData(image, 0, 0);
 }
 
+const RGBA = /^rgba\((\s*[\d.]+\s*,){3}\s*[\d.]+\s*\)$/;
+
+// 캔버스 그라데이션은 알파를 곱하지 않은 채 색을 섞습니다. "transparent"(투명한 검정)로 흐리면 밝은 얼룩의 가장자리가 회색이 되므로, 같은 색을 알파 0 으로 흐립니다.
+export function clearOf(color: string): string {
+  if (!RGBA.test(color)) {
+    throw new Error(`blotch colors must be rgba(): ${color}`);
+  }
+
+  return color.replace(/[\d.]+\s*\)$/, "0)");
+}
+
 export interface Blotches {
   readonly count: number;
   readonly colors: readonly string[];
@@ -54,11 +65,14 @@ export function addBlotches(
     const radius = maxRadius * (0.2 + random() * 0.8);
     const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
 
-    gradient.addColorStop(
-      0,
-      colors[Math.floor(random() * colors.length)] ?? "transparent",
-    );
-    gradient.addColorStop(1, "transparent");
+    const color = colors[Math.floor(random() * colors.length)];
+
+    if (!color) {
+      continue;
+    }
+
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, clearOf(color));
     context.fillStyle = gradient;
     context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
   }
