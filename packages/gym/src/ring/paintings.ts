@@ -1,4 +1,10 @@
-import { addBlotches, addGrain, seededRandom } from "../brushes";
+import {
+  addBlotches,
+  addGrain,
+  clearOf,
+  type RgbaColor,
+  seededRandom,
+} from "../brushes";
 import { GYM } from "../measurements";
 import type { Painting } from "../painted-texture";
 import { LOOK } from "./look";
@@ -89,12 +95,12 @@ function strokeScuff(context: CanvasRenderingContext2D, scuff: Scuff): void {
 function shade(
   context: CanvasRenderingContext2D,
   [x, y]: readonly [number, number],
-  { radius, color }: { readonly radius: number; readonly color: string },
+  { radius, color }: { readonly radius: number; readonly color: RgbaColor },
 ): void {
   const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
 
   gradient.addColorStop(0, color);
-  gradient.addColorStop(1, "transparent");
+  gradient.addColorStop(1, clearOf(color));
   context.fillStyle = gradient;
   context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
@@ -172,6 +178,7 @@ function paintWear(context: CanvasRenderingContext2D): void {
     colors: ["rgba(110, 90, 62, 0.07)", "rgba(80, 68, 52, 0.06)"],
     maxRadius: 110,
     seed: 53,
+    wrap: "none",
   });
   paintMarkings(context);
   strokeScuffs(context, (alpha) => `rgba(55, 45, 38, ${alpha})`);
@@ -217,6 +224,7 @@ export const MAT: Painting = {
       ],
       maxRadius: 230,
       seed: 11,
+      wrap: "none",
     });
     paintWear(context);
     paintPostShadows(context);
@@ -270,13 +278,13 @@ export const ROPE_GRIME: Painting = {
   paint: (context) => {
     const { width, height } = context.canvas;
     const grime = context.createLinearGradient(0, 0, width, 0);
-    const dark = `rgba(35, 28, 22, ${0.4 * LOOK.wear})`;
+    const dark: RgbaColor = `rgba(35, 28, 22, ${0.4 * LOOK.wear})`;
 
     context.fillStyle = "#f2f2f2";
     context.fillRect(0, 0, width, height);
     grime.addColorStop(0, dark);
-    grime.addColorStop(0.1, "transparent");
-    grime.addColorStop(0.9, "transparent");
+    grime.addColorStop(0.1, clearOf(dark));
+    grime.addColorStop(0.9, clearOf(dark));
     grime.addColorStop(1, dark);
     context.fillStyle = grime;
     context.fillRect(0, 0, width, height);
@@ -319,9 +327,11 @@ export const PAD_GRIME: Painting = {
       const row = padRow(rope);
       const band = context.createLinearGradient(0, row - 40, 0, row + 40);
 
-      band.addColorStop(0, "transparent");
-      band.addColorStop(0.5, `rgba(40, 30, 24, ${dark})`);
-      band.addColorStop(1, "transparent");
+      const pressed: RgbaColor = `rgba(40, 30, 24, ${dark})`;
+
+      band.addColorStop(0, clearOf(pressed));
+      band.addColorStop(0.5, pressed);
+      band.addColorStop(1, clearOf(pressed));
       context.fillStyle = band;
       context.fillRect(0, row - 40, width, 80);
     }
@@ -331,6 +341,7 @@ export const PAD_GRIME: Painting = {
       colors: [`rgba(40, 30, 24, ${dark / 2})`],
       maxRadius: 60,
       seed: 71,
+      wrap: "none",
     });
     addGrain(context, 12, 73);
   },

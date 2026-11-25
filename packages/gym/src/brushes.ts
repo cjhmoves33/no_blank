@@ -34,10 +34,10 @@ export function addGrain(
   context.putImageData(image, 0, 0);
 }
 
-type RgbaColor = `rgba(${number}, ${number}, ${number}, ${number})`;
+export type RgbaColor = `rgba(${number}, ${number}, ${number}, ${number})`;
 
-// 캔버스 그라데이션은 알파를 곱하지 않은 채 색을 섞습니다. "transparent"(투명한 검정)로 흐리면 밝은 얼룩의 가장자리가 회색이 되므로, 같은 색을 알파 0 으로 흐립니다.
-function clearOf(color: RgbaColor): string {
+// 캔버스 그라데이션은 알파를 곱하지 않은 채 색을 섞습니다. "transparent"(투명한 검정)로 흐리면 가장자리가 검은 쪽으로 물들어 밝은 색에는 회색 테두리가 생기므로, 같은 색을 알파 0 으로 흐립니다.
+export function clearOf(color: RgbaColor): string {
   return `${color.slice(0, color.lastIndexOf(","))}, 0)`;
 }
 
@@ -46,16 +46,19 @@ export type BlotchCanvas = Pick<
   "createRadialGradient" | "fillRect" | "fillStyle"
 > & { readonly canvas: { readonly width: number; readonly height: number } };
 
+type BlotchWrap = "none" | "horizontal" | "both";
+
 export interface Blotches {
   readonly count: number;
   readonly colors: readonly RgbaColor[];
   readonly maxRadius: number;
   readonly seed: number;
+  readonly wrap: BlotchWrap;
 }
 
 export function addBlotches(
   context: BlotchCanvas,
-  { count, colors, maxRadius, seed }: Blotches,
+  { count, colors, maxRadius, seed, wrap }: Blotches,
 ): void {
   const { width, height } = context.canvas;
   const random = seededRandom(seed);
@@ -70,11 +73,50 @@ export function addBlotches(
       continue;
     }
 
-    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
-
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, clearOf(color));
-    context.fillStyle = gradient;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    for (const center of wrappedCenters(
+      { x, y, radius },
+      context.canvas,
+      wrap,
+    )) {
+      fillBlotch(context, { ...center, radius, color });
+    }
   }
+}
+
+interface Disk {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+}
+
+function wrappedCenters(
+  { x, y, radius }: Disk,
+  { width, height }: BlotchCanvas["canvas"],
+  wrap: BlotchWrap,
+): { x: number; y: number }[] {
+  const xs = wrap === "none" ? [x] : copiesAlong(x, radius, width);
+  const ys = wrap === "both" ? copiesAlong(y, radius, height) : [y];
+
+  return xs.flatMap((cx) => ys.map((cy) => ({ x: cx, y: cy })));
+}
+
+function copiesAlong(at: number, radius: number, size: number): number[] {
+  const reach = Math.ceil(radius / size);
+
+  return Array.from(
+    { length: reach * 2 + 1 },
+    (_, step) => at + (step - reach) * size,
+  ).filter((center) => center + radius > 0 && center - radius < size);
+}
+
+function fillBlotch(
+  context: BlotchCanvas,
+  { x, y, radius, color }: Disk & { readonly color: RgbaColor },
+): void {
+  const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, clearOf(color));
+  context.fillStyle = gradient;
+  context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }

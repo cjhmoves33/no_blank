@@ -10,7 +10,13 @@ import {
   Vector3,
 } from "three";
 
-import { addBlotches, addGrain, seededRandom } from "../brushes";
+import {
+  addBlotches,
+  addGrain,
+  clearOf,
+  type RgbaColor,
+  seededRandom,
+} from "../brushes";
 import { GYM, RING_VIEW } from "../measurements";
 import { PaintedTexture, type Painting } from "../painted-texture";
 import { dentedNormal, sinking } from "./impact";
@@ -99,6 +105,7 @@ const LEATHER: Painting = {
       ],
       maxRadius: 70,
       seed: 3,
+      wrap: "horizontal",
     });
     eachPanel((center) => {
       wornMiddle(context, center, { color: LOOK.wear, reach: 0.55 });
@@ -112,7 +119,7 @@ const LEATHER: Painting = {
     const rim = context.createLinearGradient(0, CAP_ROW, 0, CAP_ROW + 40);
 
     rim.addColorStop(0, LOOK.grime);
-    rim.addColorStop(1, "transparent");
+    rim.addColorStop(1, clearOf(LOOK.grime));
     context.fillStyle = rim;
     context.fillRect(0, CAP_ROW, TEXTURE.width, 40);
     addGrain(context, 14, 14);
@@ -364,7 +371,7 @@ function eachPanel(draw: (center: number) => void): void {
 function wornMiddle(
   context: CanvasRenderingContext2D,
   center: number,
-  { color, reach }: { readonly color: string; readonly reach: number },
+  { color, reach }: { readonly color: RgbaColor; readonly reach: number },
 ): void {
   const middle = TEXTURE.height * 0.52;
   const wear = context.createRadialGradient(
@@ -377,7 +384,7 @@ function wornMiddle(
   );
 
   wear.addColorStop(0, color);
-  wear.addColorStop(1, "transparent");
+  wear.addColorStop(1, clearOf(color));
   context.save();
   context.translate(center, middle);
   context.scale(1, 1.6);
@@ -396,9 +403,9 @@ function seamGrime(context: CanvasRenderingContext2D, seam: number): void {
     0,
   );
 
-  grime.addColorStop(0, "transparent");
+  grime.addColorStop(0, clearOf(LOOK.grime));
   grime.addColorStop(0.5, LOOK.grime);
-  grime.addColorStop(1, "transparent");
+  grime.addColorStop(1, clearOf(LOOK.grime));
   context.fillStyle = grime;
   context.fillRect(seam - spread, 0, spread * 2, TEXTURE.height);
 }
