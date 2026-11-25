@@ -178,6 +178,7 @@ function paintWear(context: CanvasRenderingContext2D): void {
     colors: ["rgba(110, 90, 62, 0.07)", "rgba(80, 68, 52, 0.06)"],
     maxRadius: 110,
     seed: 53,
+    wrap: "none",
   });
   paintMarkings(context);
   strokeScuffs(context, (alpha) => `rgba(55, 45, 38, ${alpha})`);
@@ -223,6 +224,7 @@ export const MAT: Painting = {
       ],
       maxRadius: 230,
       seed: 11,
+      wrap: "none",
     });
     paintWear(context);
     paintPostShadows(context);
@@ -339,6 +341,7 @@ export const PAD_GRIME: Painting = {
       colors: [`rgba(40, 30, 24, ${dark / 2})`],
       maxRadius: 60,
       seed: 71,
+      wrap: "none",
     });
     addGrain(context, 12, 73);
   },

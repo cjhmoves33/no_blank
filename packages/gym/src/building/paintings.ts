@@ -71,6 +71,7 @@ const BRICK_COLOR: BrickLayer = {
       ],
       maxRadius: 110,
       seed: 33,
+      wrap: "both",
     });
     addGrain(context, 16, 36);
   },
@@ -140,6 +141,7 @@ export const PLANKS: Painting = {
       colors: ["rgba(255, 236, 210, 0.08)", "rgba(20, 10, 0, 0.1)"],
       maxRadius: 220,
       seed: 43,
+      wrap: "both",
     });
     addGrain(context, 14, 44);
   },

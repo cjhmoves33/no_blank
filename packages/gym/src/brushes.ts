@@ -46,16 +46,19 @@ export type BlotchCanvas = Pick<
   "createRadialGradient" | "fillRect" | "fillStyle"
 > & { readonly canvas: { readonly width: number; readonly height: number } };
 
+type BlotchWrap = "none" | "horizontal" | "both";
+
 export interface Blotches {
   readonly count: number;
   readonly colors: readonly RgbaColor[];
   readonly maxRadius: number;
   readonly seed: number;
+  readonly wrap: BlotchWrap;
 }
 
 export function addBlotches(
   context: BlotchCanvas,
-  { count, colors, maxRadius, seed }: Blotches,
+  { count, colors, maxRadius, seed, wrap }: Blotches,
 ): void {
   const { width, height } = context.canvas;
   const random = seededRandom(seed);
@@ -70,11 +73,50 @@ export function addBlotches(
       continue;
     }
 
-    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
-
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, clearOf(color));
-    context.fillStyle = gradient;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    for (const center of wrappedCenters(
+      { x, y, radius },
+      context.canvas,
+      wrap,
+    )) {
+      fillBlotch(context, { ...center, radius, color });
+    }
   }
+}
+
+interface Disk {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+}
+
+function wrappedCenters(
+  { x, y, radius }: Disk,
+  { width, height }: BlotchCanvas["canvas"],
+  wrap: BlotchWrap,
+): { x: number; y: number }[] {
+  const xs = wrap === "none" ? [x] : copiesAlong(x, radius, width);
+  const ys = wrap === "both" ? copiesAlong(y, radius, height) : [y];
+
+  return xs.flatMap((cx) => ys.map((cy) => ({ x: cx, y: cy })));
+}
+
+function copiesAlong(at: number, radius: number, size: number): number[] {
+  const reach = Math.ceil(radius / size);
+
+  return Array.from(
+    { length: reach * 2 + 1 },
+    (_, step) => at + (step - reach) * size,
+  ).filter((center) => center + radius > 0 && center - radius < size);
+}
+
+function fillBlotch(
+  context: BlotchCanvas,
+  { x, y, radius, color }: Disk & { readonly color: RgbaColor },
+): void {
+  const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, clearOf(color));
+  context.fillStyle = gradient;
+  context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
