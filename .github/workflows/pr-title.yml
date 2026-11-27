@@ -1,0 +1,23 @@
+name: PR title
+
+# squash merge하면 PR 제목이 main의 커밋 subject가 되므로, commitlint와 같은 기준으로 검사합니다.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  korean:
+    name: PR title in Korean
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check that the PR title has Hangul
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if python3 -c 'import os, re, sys; sys.exit(0 if re.search("[가-힣]", os.environ["TITLE"]) else 1)'; then
+            echo "PR title: $TITLE"
+          else
+            echo "::error::PR 제목은 한국어 문장으로 씁니다. 예: feat(gym): 샌드백에 가죽과 체인 추가"
+            exit 1
+          fi
