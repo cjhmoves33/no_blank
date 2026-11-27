@@ -20,6 +20,7 @@ V=.claude/skills/verify-no-blank/scripts/verify.mjs
 1. 원격 ref 를 쓸 때는 먼저 `git fetch` 합니다. 스크립트는 ref 를 받은 그대로 씁니다.
 2. 비교할 두 상태를 빌드합니다. `node $V prepare <이름> <git ref | WORKTREE>`
    - `%TEMP%/no-blank-verify/builds/<이름>` 에 git worktree 를 만들고, `pnpm install --frozen-lockfile --prefer-offline`(HUSKY=0)과 `pnpm --filter @no-blank/web build` 를 실행합니다. 한 번에 25초쯤 걸립니다.
+   - 같은 이름의 빌드가 이미 같은 파일 트리(git tree 해시)로 빌드되어 있으면 다시 빌드하지 않고 `(reused)` 를 출력합니다. 그래서 main 을 한 번 빌드해 두면 다음 비교부터는 after 만 빌드합니다. `cleanup` 은 빌드를 지우므로, 재사용하려면 비교 사이에 `cleanup` 하지 않습니다.
    - `WORKTREE` 는 커밋하지 않은 변경과 추적하지 않는 파일까지 담은 작업 트리를 커밋 하나로 찍어 빌드합니다. 실제 index 와 작업 트리는 건드리지 않습니다.
    - 준비됨: 명령이 `prepare <이름>: <ref> @ <커밋>` 를 출력하고 0 으로 끝나며, `doctor` 가 그 빌드를 `built` 로 보여 줍니다.
 3. 서버는 `shoot` 과 `run` 이 직접 띄우고 내립니다. 빌드 폴더의 `next start -p <포트>` 를 띄우고, `GET /` 의 HTML 에 `<canvas` 가 들어 있어야 준비된 것으로 봅니다. 포트는 before 3101, after 3102 이고, 3000 은 거부합니다.
@@ -30,7 +31,7 @@ V=.claude/skills/verify-no-blank/scripts/verify.mjs
 
 `node $V doctor` 는 읽기만 합니다. 무언가 이상하면 가장 먼저 실행합니다.
 
-- `ok`/`FAIL`: Node 24 이상, Chrome 경로(`CHROME_PATH` 로 바꿀 수 있음), 포트 3101·3102 가 비었는지
+- `ok`/`FAIL`: Node 24 이상, Chrome 경로(macOS 와 Windows 의 기본 설치 경로, `CHROME_PATH` 로 바꿀 수 있음), 포트 3101·3102 가 비었는지
 - `info port 3000`: 사용자의 dev 서버입니다. 켜져 있어도 정상이고, 건드리지 않습니다.
 - `info started ...`: 이 스크립트가 띄운 뒤 남은 서버와 Chrome 의 PID 입니다. `alive` 가 있으면 `cleanup` 합니다.
 - `info build ...`: 준비된 빌드와 그 ref, 커밋입니다.
@@ -40,15 +41,16 @@ V=.claude/skills/verify-no-blank/scripts/verify.mjs
 전후 비교가 기본 작업입니다.
 
 ```sh
-node $V run --before origin/main --after WORKTREE            # 기본 시점 11개(정지 8개, 클립 3개)
+node $V run --before origin/main --after WORKTREE            # 기본 시점 3개(정지 화면)
+node $V run --before origin/main --after WORKTREE --all      # 전체 시점 11개(정지 8개, 클립 3개)
 node $V run --before <ref> --after <ref> --views home,near    # 시점 고르기
 node $V run --before <ref> --after <ref> --views home --no-webgl  # WebGL 없이
 node $V run --before <ref> --after <ref> --reduced-motion     # 동작 줄이기를 켠 사용자로
 ```
 
-`run` 은 두 빌드를 준비하고, 같은 입력으로 찍고, 비교표와 증거 폴더 경로를 출력합니다. 클립 300프레임을 찍고 비교하느라 8분쯤 걸립니다. 부분만 필요하면 아래 명령을 씁니다.
+`run` 은 두 빌드를 준비하고, 같은 입력으로 찍고, 비교표와 증거 폴더 경로를 출력합니다. 기본 시점은 정지 화면 세 장이라 빌드를 빼면 금방 끝납니다. `--all` 은 클립 300프레임을 빌드마다 찍고 비교하느라 8분쯤 걸리고, headless Chrome 이 WebGL 을 CPU 로 그려서 그동안 컴퓨터가 무거워집니다. 클립은 타격 반응처럼 0.1초 안에 끝나는 변화를 증명할 때만 씁니다. 부분만 필요하면 아래 명령을 씁니다.
 
-- `node $V shoot <이름> [--port 3101] [--views a,b] [--reduced-motion] [--no-webgl] [--out <폴더>]`: 준비된 빌드 하나를 찍습니다.
+- `node $V shoot <이름> [--port 3101] [--views a,b | --all] [--reduced-motion] [--no-webgl] [--out <폴더>]`: 준비된 빌드 하나를 찍습니다.
 - `node $V compare <before 폴더> <after 폴더> [--out <폴더>]`: 같은 이름의 시점끼리 마지막 화면, 클립의 프레임, JSON 의 효과음 크기·커서·캔버스·오류를 비교합니다.
 - `node $V diff <a.png> <b.png> [out.png]`: 두 장을 비교합니다. 같은 빌드 안에서 두 시점을 견줄 때 씁니다.
 
@@ -84,16 +86,16 @@ node $V run --before <ref> --after <ref> --reduced-motion     # 동작 줄이기
 | `uppercut-clip`        | `uppercut-0.15s` 와 같은 어퍼컷 뒤 120프레임(2초) 녹화                | 들렸다 떨어지는 공과 덜컹               |
 | `hook-clip`            | `swipe` 와 같은 휘두르기 뒤 90프레임(1.5초) 녹화                      | 옆으로 밀리며 비틀리고 기우는 공        |
 
-기본 시점은 링 시점 7개(`home` 부터 `far` 까지), `hover-ball`, 클립 3개입니다. 기능별 절차는 [`features/README.md`](features/README.md)에 있습니다. 어떤 기능을 증명하든 그 지도의 절차를 따릅니다.
+기본 시점은 `home`, `turned-right`, `low` 세 장입니다. 링, 레킹볼, 샌드백, 벽시계가 모두 보입니다. `--all` 은 링 시점 7개(`home` 부터 `far` 까지), `hover-ball`, 클립 3개입니다. 기능별 절차는 [`features/README.md`](features/README.md)에 있습니다. 어떤 기능을 증명하든 그 지도의 절차를 따릅니다.
 
 ## Evidence
 
-- 위치: `%TEMP%/no-blank-verify/evidence/<시각>/` 아래 `before/`, `after/`, `diff/`, `report.md`. `shoot` 만 쓰면 `<시각>-<이름>/` 입니다. Git Bash 에서는 `$TEMP/no-blank-verify/evidence` 입니다. 클립 프레임은 한 장에 1.3 MB 쯤이라, 기본 시점으로 한 번 찍으면 380 MB, `run` 한 번이면 760 MB 쯤 쌓입니다. `cleanup` 은 증거를 지우지 않으므로, PR 에 올린 뒤에는 그 증거 폴더를 직접 지웁니다.
+- 위치: `%TEMP%/no-blank-verify/evidence/<시각>/` 아래 `before/`, `after/`, `diff/`, `report.md`. `shoot` 만 쓰면 `<시각>-<이름>/` 입니다. Git Bash 에서는 `$TEMP/no-blank-verify/evidence` 입니다. 클립 프레임은 한 장에 1.3 MB 쯤이라, `--all` 로 한 번 찍으면 380 MB, `run --all` 한 번이면 760 MB 쯤 쌓입니다. 기본 시점은 몇 MB 입니다. `cleanup` 은 증거를 지우지 않으므로, PR 에 올린 뒤에는 그 증거 폴더를 직접 지웁니다.
 - 시점마다 PNG(마지막 화면)와 JSON 이 남고, 클립은 `<시점>/f000.png` 부터 프레임마다 PNG 가 남습니다. JSON 에는 빌드 커밋, 동작 켬 여부(`motion`), 장면이 마운트되었는지(`scene`), 찍는 순간 캔버스가 있었는지(`canvas`), 녹화한 프레임 수(`frames`), 효과음 최대 진폭(`audioPeak`), 찍은 뒤 캔버스의 커서 모양(`cursor`), 콘솔 경고와 오류(`errors`)가 들어 있습니다.
 - 비교표는 시점마다 바뀐 픽셀, 최대 채널 차이, 클립의 바뀐 프레임 수(처음 바뀐 프레임), 효과음 최대 진폭, 커서, 오류 수를 보여 주고, 마지막 줄 `changed:` 에 바뀐 시점을 모읍니다. 효과음 최대 진폭은 큰 쪽의 5% 넘게 다를 때, 커서·캔버스·오류는 값이 다를 때 바뀐 것으로 봅니다. 클립은 처음 바뀐 프레임의 diff 이미지만 `diff/<시점>-fNNN.png` 로 남깁니다.
 - 바뀐 픽셀은 한 채널이라도 8 넘게 달라진 픽셀입니다. 기준선은 이렇습니다.
   - 같은 빌드를 다섯 번 찍으면 25개 시점이 모두 0 개입니다(클립의 모든 프레임 포함, 최대 차이 0, 동작 켬과 줄임 모두). 효과음 최대 진폭은 소리가 나는 시점 26개 가운데 24개가 다섯 번 모두 같았고, 가장 크게 흔들린 것이 2.8% 였습니다(2026-11-23). 새 main(8f53d3d)에서도 두 번 찍어 모두 같았습니다(2026-11-24).
-  - 회귀를 일부러 심은 빌드 6개(히트스톱 0, 패임 0, 효과음 절반, 샌드백 0.5 m 이동, 레킹볼 위 커서 `grabbing`, 그림자 맵 절반)는 기본 시점의 비교표에서 모두 바뀐 것으로 나왔습니다(2026-11-24, a3a49c1 기준). 이 시계를 넣기 전의 기본 시점은 그중 2개만 잡았습니다.
+  - 회귀를 일부러 심은 빌드 6개(히트스톱 0, 패임 0, 효과음 절반, 샌드백 0.5 m 이동, 레킹볼 위 커서 `grabbing`, 그림자 맵 절반)는 그때의 기본 시점(지금의 `--all`)의 비교표에서 모두 바뀐 것으로 나왔습니다(2026-11-24, a3a49c1 기준). 이 시계를 넣기 전의 기본 시점은 그중 2개만 잡았습니다. 지금의 기본 시점 세 장은 정지 화면이라 히트스톱, 패임, 효과음 회귀를 잡지 못하므로, 타격 반응을 바꾼 변경은 `--all` 이나 클립 시점으로 비교합니다.
   - 이름만 바꾼 리팩터링(PR #18)은 모든 시점에서 0 개였습니다.
   - 단위 변환처럼 계산 순서만 바뀌는 변경은 그림자 가장자리에 흩어진 점이 생길 수 있습니다. `diff/<시점>.png` 를 열어, 빨간 점이 한 물체에 몰려 있으면 실제 변화로 판단합니다.
 - 증명 기준: 앱 코드에 시험용 갈고리를 넣지 않고, 사용자 입력으로만 조작합니다. 시계와 난수, 효과음 분석기(AudioContext 출력에 덧붙인 `AnalyserNode`)는 페이지에 넣은 스크립트가 바꾸거나 관찰합니다. 보고할 때는 두 커밋 해시와 비교표, 바뀐 시점의 diff 이미지 경로를 함께 적습니다.

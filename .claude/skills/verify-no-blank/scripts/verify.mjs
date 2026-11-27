@@ -27,7 +27,9 @@ const LOGS = path.join(HOME, "logs");
 const STATE = path.join(HOME, "state.json");
 const CHROME =
   process.env.CHROME_PATH ??
-  "C:/Program Files/Google/Chrome/Application/chrome.exe";
+  (process.platform === "darwin"
+    ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    : "C:/Program Files/Google/Chrome/Application/chrome.exe");
 const USER_DEV_PORT = 3000;
 const ASSET_BRANCH = "pr-assets";
 const GH =
@@ -131,7 +133,9 @@ const VIEWS = {
     { record: 90 },
   ],
 };
-const DEFAULT_VIEWS = [
+// 기본 실행은 링, 레킹볼, 샌드백, 벽시계가 모두 보이는 정지 화면 세 장만 찍습니다. 클립은 CPU 로 수백 프레임을 그려 무거우므로 --all 이나 --views 로 고를 때만 찍습니다.
+const DEFAULT_VIEWS = ["home", "turned-right", "low"];
+const ALL_VIEWS = [
   "home",
   "turned-left",
   "turned-right",
@@ -332,18 +336,32 @@ function prepareBuild(name, ref) {
       ? snapshotWorkingTree()
       : git(["rev-parse", "--verify", `${ref}^{commit}`]);
   const dir = path.join(BUILDS, name);
+  const tree = git(["rev-parse", `${commit}^{tree}`]);
+  const existing = listBuilds().find((build) => build.name === name);
 
-  removeBuild(name);
-  mkdirSync(BUILDS, { recursive: true });
-  git(["worktree", "add", "--detach", dir, commit]);
-  console.log(`prepare ${name}: ${ref} @ ${commit.slice(0, 7)} -> ${dir}`);
-  exec("pnpm", ["install", "--frozen-lockfile", "--prefer-offline"], dir, {
-    HUSKY: "0",
-  });
-  exec("pnpm", ["--filter", "@no-blank/web", "build"], dir);
+  // WORKTREE 스냅샷은 찍을 때마다 커밋 해시가 달라지므로, 같은 파일인지는 트리 해시로 봅니다.
+  if (existing?.built && existing.tree === tree) {
+    console.log(`prepare ${name}: ${ref} @ ${commit.slice(0, 7)} (reused)`);
+  } else {
+    removeBuild(name);
+    mkdirSync(BUILDS, { recursive: true });
+    git(["worktree", "add", "--detach", dir, commit]);
+    console.log(`prepare ${name}: ${ref} @ ${commit.slice(0, 7)} -> ${dir}`);
+    exec("pnpm", ["install", "--frozen-lockfile", "--prefer-offline"], dir, {
+      HUSKY: "0",
+    });
+    exec("pnpm", ["--filter", "@no-blank/web", "build"], dir);
+  }
+
   writeFileSync(
     path.join(dir, ".verify-build.json"),
-    JSON.stringify({ name, ref, commit, builtAt: new Date().toISOString() }),
+    JSON.stringify({
+      name,
+      ref,
+      commit,
+      tree,
+      builtAt: new Date().toISOString(),
+    }),
   );
 
   return dir;
@@ -415,7 +433,7 @@ async function shoot({ positional, flags }) {
 
   if (!name) {
     throw new Error(
-      "usage: shoot <name> [--port 3101] [--views a,b] [--reduced-motion] [--no-webgl] [--out dir]",
+      "usage: shoot <name> [--port 3101] [--views a,b | --all] [--reduced-motion] [--no-webgl] [--out dir]",
     );
   }
 
@@ -423,7 +441,7 @@ async function shoot({ positional, flags }) {
 
   await shootBuild(name, {
     port: Number(flags.port ?? 3101),
-    views: parseViews(flags.views),
+    views: parseViews(flags.views, flags.all === true),
     motion: flags["reduced-motion"] !== true,
     webgl: flags["no-webgl"] !== true,
     out,
@@ -431,8 +449,9 @@ async function shoot({ positional, flags }) {
   console.log(`shoot ${name}: ${out}`);
 }
 
-function parseViews(value) {
-  const names = typeof value === "string" ? value.split(",") : DEFAULT_VIEWS;
+function parseViews(value, all = false) {
+  const fallback = all ? ALL_VIEWS : DEFAULT_VIEWS;
+  const names = typeof value === "string" ? value.split(",") : fallback;
 
   for (const name of names) {
     if (!(name in VIEWS)) {
@@ -1715,7 +1734,7 @@ function chunk(type, body) {
 async function run({ flags }) {
   const before = flags.before ?? "origin/main";
   const after = flags.after ?? "WORKTREE";
-  const views = parseViews(flags.views);
+  const views = parseViews(flags.views, flags.all === true);
   const motion = flags["reduced-motion"] !== true;
   const webgl = flags["no-webgl"] !== true;
   const out = path.join(EVIDENCE, stamp());
