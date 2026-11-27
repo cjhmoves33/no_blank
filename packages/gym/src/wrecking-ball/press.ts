@@ -1,6 +1,5 @@
+import type { Blow } from "@no-blank/ball-motion";
 import { Plane, Ray, type Sphere, Vector3 } from "three";
-
-import type { Blow } from "./swing";
 
 export interface PointerSample {
   readonly ray: Ray;

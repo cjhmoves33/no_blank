@@ -1,19 +1,17 @@
-import { Vector3 } from "three";
+import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GYM } from "../measurements";
 import {
   type Lean,
   LEAN_FEEL,
   leanBy,
   leanByJolt,
   type LeanFeel,
-  leanTurn,
   settleLean,
   UPRIGHT,
 } from "./lean";
 
-const { radius } = GYM.wreckingBall;
+const radius = 0.3;
 const RIGHT = new Vector3(radius, 0, 0);
 const UNDER = new Vector3(0, -radius, 0);
 const TO_THE_LEFT = new Vector3(-1, 0, 0);
@@ -23,7 +21,16 @@ const FRAME = 1 / 60;
 const { normal, reduced } = LEAN_FEEL;
 
 function bottomOf(lean: Lean): Vector3 {
-  return DOWN.clone().applyQuaternion(leanTurn(lean));
+  const turn = new Quaternion()
+    .setFromAxisAngle(new Vector3(1, 0, 0), lean.aboutX.angle)
+    .multiply(
+      new Quaternion().setFromAxisAngle(
+        new Vector3(0, 0, 1),
+        lean.aboutZ.angle,
+      ),
+    );
+
+  return DOWN.clone().applyQuaternion(turn);
 }
 
 function tilts(lean: Lean, seconds: number, feel: LeanFeel = normal): number[] {

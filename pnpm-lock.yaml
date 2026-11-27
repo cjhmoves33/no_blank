@@ -231,6 +231,30 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/ball-motion:
+    devDependencies:
+      '@no-blank/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@types/three':
+        specifier: 'catalog:'
+        version: 0.187.0
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
+      three:
+        specifier: 'catalog:'
+        version: 0.187.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/eslint-config:
     dependencies:
       '@eslint-community/eslint-plugin-eslint-comments':
@@ -272,6 +296,10 @@ importers:
         version: 5.9.3
 
   packages/gym:
+    dependencies:
+      '@no-blank/ball-motion':
+        specifier: workspace:*
+        version: link:../ball-motion
     devDependencies:
       '@no-blank/eslint-config':
         specifier: workspace:*

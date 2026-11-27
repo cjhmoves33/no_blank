@@ -1,3 +1,4 @@
+import { HANGING_HEIGHT } from "@no-blank/ball-motion";
 import { type Ref, useImperativeHandle, useRef } from "react";
 import { Matrix4, type Mesh, Vector3 } from "three";
 
@@ -6,9 +7,6 @@ import { ChainLinks, type ChainLinksHandle } from "../chain/chain-links";
 import { SWIVEL, Swivel } from "../chain/swivel";
 import { STEEL } from "../finishes";
 import { STRAP_TOPS } from "./leather";
-
-/** 레킹볼 중심에서 회전 고리의 위쪽 고리까지의 높이입니다. 위쪽 사슬 한 가닥이 여기에 걸립니다. */
-export const HANGING_HEIGHT = 0.75;
 
 const D_RING = { radius: 0.02, tube: 0.0045, above: 0.012 } as const;
 const SWIVEL_RING_BELOW = 0.075;

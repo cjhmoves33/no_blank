@@ -1,3 +1,4 @@
+import type { Jolt } from "@no-blank/ball-motion";
 import { useState } from "react";
 
 import { GymCanvas } from "./gym-canvas";
@@ -7,8 +8,8 @@ import { ceilingMount, PLAN, wallMount } from "./props/plan";
 import { WallClock } from "./props/wall-clock";
 import { Ring } from "./ring/ring";
 import { RingControls } from "./ring-controls";
-import type { Jolt, Strike } from "./wrecking-ball/swing";
 import {
+  type Strike,
   WreckingBall,
   type WreckingBallHandle,
   type WreckingBallProps,

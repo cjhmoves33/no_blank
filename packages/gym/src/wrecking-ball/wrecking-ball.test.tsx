@@ -1,3 +1,4 @@
+import { type Blow, CHAIN_REACH, type Jolt } from "@no-blank/ball-motion";
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
 import {
@@ -15,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LINK_PITCH } from "../chain/chain";
 import { GYM } from "../measurements";
-import { type Blow, CHAIN_REACH, type Jolt } from "./swing";
 import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
 // 테스트는 캔버스가 없는 node 환경에서 돌므로, 가죽 그림만 빼고 그립니다.

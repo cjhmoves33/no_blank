@@ -1,4 +1,16 @@
 // @refresh reset
+import {
+  advanceBall,
+  type BallFeel,
+  type BallMotion,
+  type Blow,
+  CHAIN_REACH,
+  farthestReach,
+  HANGING_HEIGHT,
+  type Jolt,
+  restingBall,
+  strikeBall,
+} from "@no-blank/ball-motion";
 import { useFrame } from "@react-three/fiber";
 import { type Ref, useImperativeHandle, useRef } from "react";
 import {
@@ -21,35 +33,16 @@ import { ChainLinks, type ChainLinksHandle } from "../chain/chain-links";
 import { SWIVEL_EYE, SwivelEye } from "../chain/swivel";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
-import { Hanging, HANGING_HEIGHT, type HangingHandle } from "./hanging";
+import { Hanging, type HangingHandle } from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
-import {
-  type Lean,
-  LEAN_FEEL,
-  leanBy,
-  leanByJolt,
-  leanTurn,
-  settleLean,
-  UPRIGHT,
-} from "./lean";
 import { Leather, type LeatherHandle } from "./leather";
 import type { BallShape } from "./press";
-import { RESTING_SPRING } from "./spring";
 import { flattening, SQUASH_FEEL, squashMatrix } from "./squash";
 import { StrikeDust, type StrikeDustHandle } from "./strike-dust";
-import {
-  advance,
-  type Blow,
-  CHAIN_REACH,
-  farthestReach,
-  type Jolt,
-  joltOf,
-  restingSwing,
-  type Strike,
-  strike,
-  SWING_FEEL,
-} from "./swing";
-import { spinDown, TWIST_FEEL, twistBy } from "./twist";
+
+export interface Strike {
+  readonly strength: number;
+}
 
 export interface WreckingBallHandle {
   readonly worldShape: () => BallShape | null;
@@ -71,6 +64,8 @@ const LINKS = linkCount(CHAIN_LENGTH);
 // 탭이 가려졌다 돌아오면 delta 가 몇 초가 되므로, 그동안의 흔들림은 건너뜁니다.
 const LONGEST_FRAME = 0.1;
 const UP = new Vector3(0, 1, 0);
+const X = new Vector3(1, 0, 0);
+const Z = new Vector3(0, 0, 1);
 const SWEEP = farthestReach() + radius;
 
 export const WRECKING_BALL_SIZE: Box = {
@@ -78,7 +73,7 @@ export const WRECKING_BALL_SIZE: Box = {
   max: [SWEEP, CHAIN_REACH, SWEEP],
 };
 
-const RESTING_CHAIN = upperChain(restingSwing().fromPivot);
+const RESTING_CHAIN = upperChain(restingBall().swing.fromPivot);
 
 export function WreckingBall({
   reducedMotion,
@@ -92,9 +87,7 @@ export function WreckingBall({
   const dust = useRef<StrikeDustHandle>(null);
   const chain = useRef<ChainLinksHandle>(null);
   const eye = useRef<Mesh>(null);
-  const swing = useRef(restingSwing());
-  const twist = useRef(RESTING_SPRING);
-  const lean = useRef<Lean>(UPRIGHT);
+  const motion = useRef(restingBall());
   const impact = useRef<Impact | null>(null);
   const feel = reducedMotion ? "reduced" : "normal";
 
@@ -103,8 +96,8 @@ export function WreckingBall({
     () => ({
       worldShape: () => (ball.current ? shapeOf(ball.current) : null),
       take: (blow) => {
-        const struck = strike(swing.current, blow, SWING_FEEL[feel]);
-        const { strength } = struck.strike;
+        const struck = strikeBall(motion.current, blow, feel);
+        const { strength } = struck;
         const toLeather = ball.current?.quaternion.clone().invert();
         const dent = toLeather
           ? impactOf(
@@ -114,17 +107,7 @@ export function WreckingBall({
           : null;
         const center = ball.current?.getWorldPosition(new Vector3());
 
-        swing.current = struck.swing;
-        twist.current = twistBy(
-          twist.current,
-          { blow, strength },
-          TWIST_FEEL[feel],
-        );
-        lean.current = leanBy(
-          lean.current,
-          { hitFromCenter: blow.hitFromCenter, push: struck.push, strength },
-          LEAN_FEEL[feel],
-        );
+        motion.current = struck.motion;
         impact.current = dent ?? impact.current;
 
         if (center) {
@@ -135,7 +118,7 @@ export function WreckingBall({
           );
         }
 
-        return struck.strike;
+        return { strength };
       },
     }),
     [feel],
@@ -143,36 +126,15 @@ export function WreckingBall({
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
-    const aged = impact.current
-      ? age(impact.current, seconds)
-      : { impact: null, movingSeconds: seconds };
+    const movingSeconds =
+      seconds - Math.min(motion.current.hitStopLeft, seconds);
+    const advanced = advanceBall(motion.current, seconds, feel);
 
-    impact.current = aged.impact;
-    swing.current = advance(
-      swing.current,
-      aged.movingSeconds,
-      SWING_FEEL[feel],
-    );
-    twist.current = spinDown(
-      twist.current,
-      aged.movingSeconds,
-      TWIST_FEEL[feel],
-    );
-    lean.current = settleLean(
-      lean.current,
-      aged.movingSeconds,
-      LEAN_FEEL[feel],
-    );
+    motion.current = advanced.motion;
+    impact.current = impact.current ? age(impact.current, movingSeconds) : null;
 
-    const jolt = joltOf(swing.current);
-
-    if (jolt) {
-      lean.current = leanByJolt(
-        lean.current,
-        swing.current.velocity,
-        LEAN_FEEL[feel],
-      );
-      onJolt(jolt);
+    if (advanced.jolt) {
+      onJolt(advanced.jolt);
     }
 
     showImpact(impact.current, {
@@ -182,8 +144,9 @@ export function WreckingBall({
       feel,
     });
 
-    const { fromPivot } = swing.current;
-    const pose = hangingPose(fromPivot, lean.current, twist.current.angle);
+    const { swing, lean, twist } = motion.current;
+    const { fromPivot } = swing;
+    const pose = hangingPose(fromPivot, lean, twist.angle);
 
     ball.current?.position.copy(pose.position);
     ball.current?.quaternion.copy(pose.quaternion);
@@ -233,7 +196,7 @@ function showImpact(
     readonly leather: LeatherHandle | null;
     readonly squashed: Group | null;
     readonly hanging: HangingHandle | null;
-    readonly feel: keyof typeof SWING_FEEL;
+    readonly feel: BallFeel;
   },
 ): void {
   leather?.dent(
@@ -275,7 +238,7 @@ function shapeOf(ball: Group): BallShape {
 
 function hangingPose(
   fromPivot: Vector3,
-  lean: Lean,
+  lean: BallMotion["lean"],
   twist: number,
 ): { readonly position: Vector3; readonly quaternion: Quaternion } {
   const tilt = leanTurn(lean);
@@ -292,6 +255,12 @@ function hangingPose(
       .multiply(facingPivot(fromPivot))
       .multiply(aroundCap(twist)),
   };
+}
+
+function leanTurn(lean: BallMotion["lean"]): Quaternion {
+  return new Quaternion()
+    .setFromAxisAngle(X, lean.aboutX.angle)
+    .multiply(new Quaternion().setFromAxisAngle(Z, lean.aboutZ.angle));
 }
 
 function facingPivot(fromPivot: Vector3): Quaternion {

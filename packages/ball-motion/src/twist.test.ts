@@ -1,7 +1,6 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GYM } from "../measurements";
 import { RESTING_SPRING } from "./spring";
 import type { Blow } from "./swing";
 import {
@@ -12,7 +11,7 @@ import {
   type TwistFeel,
 } from "./twist";
 
-const { radius } = GYM.wreckingBall;
+const radius = 0.3;
 const INTO_SCREEN = new Vector3(0, 0, -1);
 const FRONT = new Vector3(0, 0, radius);
 const RIGHT = new Vector3(radius, 0, 0);

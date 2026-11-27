@@ -1,11 +1,10 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GYM } from "../measurements";
+import { CHAIN_REACH } from "./measurements";
 import {
   advance,
   type Blow,
-  CHAIN_REACH,
   farthestReach,
   joltOf,
   restingSwing,
@@ -15,7 +14,7 @@ import {
   type SwingFeel,
 } from "./swing";
 
-const { radius } = GYM.wreckingBall;
+const radius = 0.3;
 const REST = new Vector3(0, -CHAIN_REACH, 0);
 const FRONT = new Vector3(0, 0, radius);
 const RIGHT = new Vector3(radius, 0, 0);

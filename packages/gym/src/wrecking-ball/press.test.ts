@@ -1,3 +1,4 @@
+import type { Blow } from "@no-blank/ball-motion";
 import { Plane, Ray, Sphere, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,6 @@ import {
   type PressStep,
   touches,
 } from "./press";
-import type { Blow } from "./swing";
 
 const { radius, lidHeight } = GYM.wreckingBall;
 const EYE = new Vector3(0, 0, 5);
