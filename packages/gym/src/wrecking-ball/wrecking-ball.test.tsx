@@ -13,8 +13,8 @@ import {
 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LINK_PITCH } from "../chain/chain";
 import { GYM } from "../measurements";
-import { LINK_PITCH } from "./chain";
 import { type Blow, CHAIN_REACH, type Jolt } from "./swing";
 import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
