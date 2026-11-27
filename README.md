@@ -72,7 +72,8 @@ pnpm dev
 
 ## 커밋 검사와 CI
 
-- **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다.
+- **commit-msg:** 메시지는 `<type>(<scope>): <subject>` 형식으로 씁니다. 예: `feat(web): 로그인 페이지 추가`. type은 `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` 중 하나이고, subject는 마침표로 끝나지 않아야 합니다. subject는 한국어 문장으로 쓰며, 한글이 하나도 없으면 거부됩니다.
+- **PR 제목:** CI의 `PR title` 작업이 커밋 subject와 같은 기준으로 PR 제목에 한글이 있는지 검사합니다.
 - **CI:** 로컬 훅은 `--no-verify` 옵션으로 건너뛸 수 있으므로, 최종 검증은 CI가 담당합니다.
 
 ## 테스트
