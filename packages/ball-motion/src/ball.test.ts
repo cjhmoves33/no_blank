@@ -21,7 +21,7 @@ function stillFor(motion: BallMotion): number {
   let current = motion;
   let still = 0;
 
-  while (current.swing.fromPivot.equals(start)) {
+  while (current.swing.fromPivot.equals(start) && still < 1) {
     current = advanceBall(current, 0.001, "normal").motion;
     still += 0.001;
   }
