@@ -11,17 +11,17 @@ import {
 } from "three";
 
 import type { Box } from "../building/slabs";
+import {
+  linkCount,
+  type LinkPose,
+  linksAlong,
+  turnedRing,
+} from "../chain/chain";
+import { ChainLinks, type ChainLinksHandle } from "../chain/chain-links";
+import { SWIVEL_EYE, SwivelEye } from "../chain/swivel";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
-import { linkCount, type LinkPose, linksAlong, turnedRing } from "./chain";
-import { ChainLinks, type ChainLinksHandle } from "./chain-links";
-import {
-  Hanging,
-  HANGING_HEIGHT,
-  type HangingHandle,
-  SWIVEL_EYE,
-  SwivelEye,
-} from "./hanging";
+import { Hanging, HANGING_HEIGHT, type HangingHandle } from "./hanging";
 import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
 import {
   type Lean,
