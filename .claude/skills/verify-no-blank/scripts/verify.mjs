@@ -42,6 +42,8 @@ const FRAME_MS = 1000 / 60;
 const SETTLE_FRAMES = 30;
 const TAIL_FRAMES = 10;
 const SCENE_TIMEOUT_MS = 10_000;
+// Chrome 이 이만큼 답하지 않으면 멈춘 것으로 봅니다. 클립의 긴 기다림도 WebGL 을 CPU 로 그리며 몇 초 안에 끝납니다.
+const CDP_TIMEOUT_MS = 60_000;
 const SCENE_HOLDS = 30;
 const CHANGED_DELTA = 8;
 // 효과음은 실제 오디오 시계로 재생되어 같은 입력에서도 최대 진폭이 가끔 3% 안쪽으로 흔들립니다(2026-11-23, 26개 시점 5회).
@@ -482,13 +484,16 @@ async function shootBuild(name, { port, views, motion, webgl, out }) {
 
     try {
       for (const view of views) {
-        const meta = await shootView(chrome.cdp, {
-          url: `http://localhost:${port}/`,
-          view,
-          motion,
-          webgl,
-          out,
-        });
+        const meta = await Promise.race([
+          shootView(chrome.cdp, {
+            url: `http://localhost:${port}/`,
+            view,
+            motion,
+            webgl,
+            out,
+          }),
+          server.exited,
+        ]);
 
         writeFileSync(
           path.join(out, `${view}.json`),
@@ -537,6 +542,19 @@ async function startServer(buildDir, port) {
   closeSync(log);
   remember("servers", { pid: child.pid, port });
 
+  // 서버가 찍는 도중에 꺼지면 페이지가 영영 뜨지 않으므로, 꺼지는 순간 실패시킵니다.
+  const exited = new Promise((_, reject) => {
+    child.once("exit", (code, signal) => {
+      reject(
+        new Error(
+          `server on ${port} exited (${signal ?? `code ${code}`}); see ${path.join(LOGS, `server-${port}.log`)}`,
+        ),
+      );
+    });
+  });
+
+  exited.catch(() => {});
+
   const deadline = Date.now() + 60_000;
 
   while (Date.now() < deadline) {
@@ -544,7 +562,7 @@ async function startServer(buildDir, port) {
       const response = await fetch(`http://localhost:${port}/`);
 
       if (response.ok && (await response.text()).includes("<canvas")) {
-        return { pid: child.pid, port };
+        return { pid: child.pid, port, exited };
       }
     } catch {}
 
@@ -1914,6 +1932,16 @@ async function connect(url) {
     }
   });
 
+  socket.addEventListener("close", () => {
+    for (const request of pending.values()) {
+      request.reject(
+        new Error(`${request.method}: Chrome closed the connection`),
+      );
+    }
+
+    pending.clear();
+  });
+
   const on = (method, listener) => {
     const set = listeners.get(method) ?? new Set();
 
@@ -1927,14 +1955,39 @@ async function connect(url) {
     send: (method, params = {}) =>
       new Promise((resolve, reject) => {
         const id = nextId++;
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(
+            new Error(
+              `${method}: Chrome did not answer in ${CDP_TIMEOUT_MS / 1000}s`,
+            ),
+          );
+        }, CDP_TIMEOUT_MS);
 
-        pending.set(id, { resolve, reject, method });
+        pending.set(id, {
+          resolve: (value) => {
+            clearTimeout(timer);
+            resolve(value);
+          },
+          reject: (error) => {
+            clearTimeout(timer);
+            reject(error);
+          },
+          method,
+        });
         socket.send(JSON.stringify({ id, method, params }));
       }),
     on,
     once: (method) =>
-      new Promise((resolve) => {
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          off();
+          reject(
+            new Error(`${method} did not arrive in ${CDP_TIMEOUT_MS / 1000}s`),
+          );
+        }, CDP_TIMEOUT_MS);
         const off = on(method, (params) => {
+          clearTimeout(timer);
           off();
           resolve(params);
         });

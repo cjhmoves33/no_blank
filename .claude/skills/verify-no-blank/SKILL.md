@@ -115,7 +115,7 @@ PR 에 붙일 비교는 커밋한 뒤 `run --before <PR 의 base 브랜치> --af
 
 ## Cleanup
 
-`node $V cleanup` 은 `%TEMP%/no-blank-verify/state.json` 에 기록된 PID(이 스크립트가 띄운 서버와 Chrome)만 종료하고, 빌드 worktree 와 Chrome 프로필, 로그를 지웁니다. 증거 폴더는 남깁니다. `shoot` 과 `run` 은 실패해도 자기가 띄운 서버와 Chrome 을 내리므로, `cleanup` 은 빌드를 지울 때와 `doctor` 가 남은 PID 를 보여 줄 때 실행합니다. pnpm 의 `node_modules` 가 junction 이라 `git worktree remove` 가 실패하면 `rmdir /s /q` 로 지우고 `git worktree prune` 합니다.
+`node $V cleanup` 은 `%TEMP%/no-blank-verify/state.json` 에 기록된 PID(이 스크립트가 띄운 서버와 Chrome)만 종료하고, 빌드 worktree 와 Chrome 프로필, 로그를 지웁니다. 증거 폴더는 남깁니다. 찍는 도중에 서버가 꺼지면 바로, Chrome 이 60초 동안 답하지 않으면 그때 실패하고 원인을 출력합니다. `shoot` 과 `run` 은 실패해도 자기가 띄운 서버와 Chrome 을 내리므로, `cleanup` 은 빌드를 지울 때와 `doctor` 가 남은 PID 를 보여 줄 때 실행합니다. pnpm 의 `node_modules` 가 junction 이라 `git worktree remove` 가 실패하면 `rmdir /s /q` 로 지우고 `git worktree prune` 합니다.
 
 ## Helpers
 
