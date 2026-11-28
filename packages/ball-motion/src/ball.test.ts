@@ -13,7 +13,7 @@ function swipe(speed: number): Blow {
 }
 
 function struck(blow: Blow): BallMotion {
-  return strikeBall(restingBall(), blow, "normal").motion;
+  return strikeBall(restingBall(), blow).motion;
 }
 
 function heldFor(motion: BallMotion): number {
@@ -21,7 +21,7 @@ function heldFor(motion: BallMotion): number {
   let held = 0;
 
   while (current.hitStopLeft > 0 && held < 1) {
-    current = advanceBall(current, 0.001, "normal").motion;
+    current = advanceBall(current, 0.001).motion;
     held += 0.001;
   }
 
@@ -46,13 +46,11 @@ describe("히트스톱", () => {
     const unheld = { ...hit, hitStopLeft: 0 };
 
     expect(
-      advanceBall(hit, 0.05, "normal").motion.swing.fromPivot.equals(
-        hit.swing.fromPivot,
-      ),
+      advanceBall(hit, 0.05).motion.swing.fromPivot.equals(hit.swing.fromPivot),
     ).toBe(true);
     expect(
-      advanceBall(hit, 0.25, "normal").motion.swing.fromPivot.distanceTo(
-        advanceBall(unheld, 0.13, "normal").motion.swing.fromPivot,
+      advanceBall(hit, 0.25).motion.swing.fromPivot.distanceTo(
+        advanceBall(unheld, 0.13).motion.swing.fromPivot,
       ),
     ).toBeLessThan(1e-9);
   });
@@ -63,11 +61,11 @@ describe("히트스톱", () => {
       ...rest,
       swing: { ...rest.swing, velocity: new Vector3(0, 0, -5) },
     };
-    const { motion, strength } = strikeBall(
-      runningAway,
-      { kind: "jab", hitFromCenter: FRONT, fist: INTO_SCREEN },
-      "normal",
-    );
+    const { motion, strength } = strikeBall(runningAway, {
+      kind: "jab",
+      hitFromCenter: FRONT,
+      fist: INTO_SCREEN,
+    });
 
     expect(strength).toBe(0);
     expect(motion.hitStopLeft).toBe(0);

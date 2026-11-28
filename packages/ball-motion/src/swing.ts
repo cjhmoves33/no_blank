@@ -9,15 +9,6 @@ export interface Swing {
   readonly joltSpeed: number;
 }
 
-export interface SwingFeel {
-  readonly fistSpeed: number;
-  readonly closingSpeedShare: number;
-  readonly maxBottomSpeed: number;
-  readonly gravity: number;
-  readonly drag: number;
-  readonly rebound: number;
-}
-
 export type Blow =
   | {
       readonly kind: "jab";
@@ -54,19 +45,18 @@ const HARDEST_SWIPE_IN_JABS = 2.5;
 const JOLT_MARGIN = 0.3;
 
 export const SWING_FEEL = {
-  normal: {
-    fistSpeed: JAB_SPEED,
-    closingSpeedShare: 0.21,
-    maxBottomSpeed: 2.4,
-    gravity: 9.81,
-    drag: dragHalvingSwingIn(5),
-    rebound: 0.35,
-  },
-  reduced: criticallyDamped({ fistSpeed: 0.4, gravity: 96 }),
-} as const satisfies Record<string, SwingFeel>;
+  fistSpeed: JAB_SPEED,
+  closingSpeedShare: 0.21,
+  maxBottomSpeed: 2.4,
+  gravity: 9.81,
+  drag: dragHalvingSwingIn(5),
+  rebound: 0.35,
+} as const;
 
 const HARDEST_SWIPE_LAUNCH_SPEED =
-  JAB_SPEED * HARDEST_SWIPE_IN_JABS * SWING_FEEL.normal.closingSpeedShare;
+  JAB_SPEED * HARDEST_SWIPE_IN_JABS * SWING_FEEL.closingSpeedShare;
+
+const HIGHEST_RISE = SWING_FEEL.maxBottomSpeed ** 2 / (2 * SWING_FEEL.gravity);
 
 const STEP = 1 / 240;
 
@@ -79,8 +69,8 @@ export function restingSwing(): Swing {
   };
 }
 
-export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
-  const { push, speed } = fistOf(blow, feel);
+export function strike(swing: Swing, blow: Blow): Struck {
+  const { push, speed } = fistOf(blow);
   const along = swing.velocity.dot(push);
 
   if (along >= speed) {
@@ -88,16 +78,15 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   }
 
   const closing = speed - along;
-  const hardest = feel.fistSpeed * HARDEST_SWIPE_IN_JABS;
+  const hardest = SWING_FEEL.fistSpeed * HARDEST_SWIPE_IN_JABS;
   const velocity = capSwingEnergy(
     swing.fromPivot,
     swing.velocity
       .clone()
       .addScaledVector(
         push,
-        Math.min(closing, hardest) * feel.closingSpeedShare,
+        Math.min(closing, hardest) * SWING_FEEL.closingSpeedShare,
       ),
-    feel,
   );
 
   return {
@@ -107,20 +96,20 @@ export function strike(swing: Swing, blow: Blow, feel: SwingFeel): Struck {
   };
 }
 
-export function advance(swing: Swing, seconds: number, feel: SwingFeel): Swing {
+export function advance(swing: Swing, seconds: number): Swing {
   const fromPivot = swing.fromPivot.clone();
   const velocity = swing.velocity.clone();
-  const slowdown = Math.exp(-feel.drag * STEP);
+  const slowdown = Math.exp(-SWING_FEEL.drag * STEP);
   let unsimulatedSeconds = swing.unsimulatedSeconds + seconds;
-  const caughtEveryStep = feel.gravity * STEP;
+  const caughtEveryStep = SWING_FEEL.gravity * STEP;
   const chain = {
-    rebound: feel.rebound,
+    rebound: SWING_FEEL.rebound,
     joltAbove: JOLT_MARGIN + caughtEveryStep,
   };
   let joltSpeed = 0;
 
   while (unsimulatedSeconds >= STEP) {
-    velocity.y -= feel.gravity * STEP;
+    velocity.y -= SWING_FEEL.gravity * STEP;
     velocity.multiplyScalar(slowdown);
     fromPivot.addScaledVector(velocity, STEP);
     joltSpeed = Math.max(joltSpeed, catchOnChain(fromPivot, velocity, chain));
@@ -137,52 +126,32 @@ export function joltOf(swing: Swing): Jolt | null {
 }
 
 export function farthestReach(): number {
-  const rise = Math.max(...Object.values(SWING_FEEL).map(highestRise));
-
-  return Math.sqrt(CHAIN_REACH ** 2 - (CHAIN_REACH - rise) ** 2);
+  return Math.sqrt(CHAIN_REACH ** 2 - (CHAIN_REACH - HIGHEST_RISE) ** 2);
 }
 
-function fistOf(
-  blow: Blow,
-  feel: SwingFeel,
-): { readonly push: Vector3; readonly speed: number } {
+function fistOf(blow: Blow): {
+  readonly push: Vector3;
+  readonly speed: number;
+} {
   switch (blow.kind) {
     case "jab":
       return {
         push: blow.hitFromCenter.clone().negate().normalize(),
-        speed: feel.fistSpeed,
+        speed: SWING_FEEL.fistSpeed,
       };
     case "swipe": {
       const inJabs = blow.speed / JAB_SPEED;
 
       return {
         push: blow.fist.clone().normalize(),
-        speed: feel.fistSpeed * inJabs,
+        speed: SWING_FEEL.fistSpeed * inJabs,
       };
     }
   }
 }
 
-function criticallyDamped({
-  fistSpeed,
-  gravity,
-}: Pick<SwingFeel, "fistSpeed" | "gravity">): SwingFeel {
-  return {
-    fistSpeed,
-    closingSpeedShare: 1,
-    maxBottomSpeed: fistSpeed,
-    gravity,
-    drag: 2 * Math.sqrt(gravity / CHAIN_REACH),
-    rebound: 0,
-  };
-}
-
 function dragHalvingSwingIn(seconds: number): number {
   return (2 * Math.LN2) / seconds;
-}
-
-function highestRise({ maxBottomSpeed, gravity }: SwingFeel): number {
-  return maxBottomSpeed ** 2 / (2 * gravity);
 }
 
 function catchOnChain(
@@ -215,13 +184,9 @@ function catchOnChain(
   return jolted ? away : 0;
 }
 
-function capSwingEnergy(
-  fromPivot: Vector3,
-  velocity: Vector3,
-  feel: SwingFeel,
-): Vector3 {
+function capSwingEnergy(fromPivot: Vector3, velocity: Vector3): Vector3 {
   const rise = fromPivot.y + CHAIN_REACH;
-  const allowed = 2 * feel.gravity * (highestRise(feel) - rise);
+  const allowed = 2 * SWING_FEEL.gravity * (HIGHEST_RISE - rise);
 
   if (allowed <= 0) {
     return new Vector3();

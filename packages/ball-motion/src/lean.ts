@@ -1,13 +1,7 @@
 import { Vector3 } from "three";
 
 import { HANGING_HEIGHT } from "./measurements";
-import {
-  criticallyDamped,
-  RESTING_SPRING,
-  settle,
-  type Spring,
-  type SpringFeel,
-} from "./spring";
+import { RESTING_SPRING, settle, type Spring } from "./spring";
 import { STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing";
 
 export interface Lean {
@@ -15,24 +9,12 @@ export interface Lean {
   readonly aboutZ: Spring;
 }
 
-export interface LeanFeel extends SpringFeel {
-  readonly kickAtFullStrength: number;
-  readonly kickPerSidewaysSpeed: number;
-}
-
-export const LEAN_FEEL = {
-  normal: {
-    stiffness: 81,
-    damping: 3.6,
-    kickAtFullStrength: 2 * SWING_FEEL.normal.closingSpeedShare,
-    kickPerSidewaysSpeed: 1.5,
-  },
-  reduced: {
-    ...criticallyDamped(81),
-    kickAtFullStrength: 0,
-    kickPerSidewaysSpeed: 0,
-  },
-} as const satisfies Record<keyof typeof SWING_FEEL, LeanFeel>;
+const LEAN_FEEL = {
+  stiffness: 81,
+  damping: 3.6,
+  kickAtFullStrength: 2 * SWING_FEEL.closingSpeedShare,
+  kickPerSidewaysSpeed: 1.5,
+} as const;
 
 export const UPRIGHT: Lean = {
   aboutX: RESTING_SPRING,
@@ -53,31 +35,29 @@ export function leanBy(
     readonly push: Vector3;
     readonly strength: number;
   },
-  feel: LeanFeel,
 ): Lean {
   const lever = hitFromCenter.clone().sub(HINGE);
   const turn = lever.clone().cross(push).divideScalar(lever.length());
 
-  return kicked(lean, turn.multiplyScalar(feel.kickAtFullStrength * strength));
+  return kicked(
+    lean,
+    turn.multiplyScalar(LEAN_FEEL.kickAtFullStrength * strength),
+  );
 }
 
-export function leanByJolt(
-  lean: Lean,
-  velocity: Vector3,
-  feel: LeanFeel,
-): Lean {
+export function leanByJolt(lean: Lean, velocity: Vector3): Lean {
   const sideways = new Vector3(velocity.x, 0, velocity.z);
 
   return kicked(
     lean,
-    sideways.cross(UP).multiplyScalar(feel.kickPerSidewaysSpeed),
+    sideways.cross(UP).multiplyScalar(LEAN_FEEL.kickPerSidewaysSpeed),
   );
 }
 
-export function settleLean(lean: Lean, seconds: number, feel: LeanFeel): Lean {
+export function settleLean(lean: Lean, seconds: number): Lean {
   return {
-    aboutX: settle(lean.aboutX, seconds, feel),
-    aboutZ: settle(lean.aboutZ, seconds, feel),
+    aboutX: settle(lean.aboutX, seconds, LEAN_FEEL),
+    aboutZ: settle(lean.aboutZ, seconds, LEAN_FEEL),
   };
 }
 

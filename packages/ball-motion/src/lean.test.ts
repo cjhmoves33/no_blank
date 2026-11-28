@@ -1,15 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import {
-  type Lean,
-  LEAN_FEEL,
-  leanBy,
-  leanByJolt,
-  type LeanFeel,
-  settleLean,
-  UPRIGHT,
-} from "./lean";
+import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean";
 
 const radius = 0.3;
 const RIGHT = new Vector3(radius, 0, 0);
@@ -18,7 +10,6 @@ const TO_THE_LEFT = new Vector3(-1, 0, 0);
 const UPWARD = new Vector3(0, 1, 0);
 const DOWN = new Vector3(0, -1, 0);
 const FRAME = 1 / 60;
-const { normal, reduced } = LEAN_FEEL;
 
 function bottomOf(lean: Lean): Vector3 {
   const turn = new Quaternion()
@@ -33,39 +24,35 @@ function bottomOf(lean: Lean): Vector3 {
   return DOWN.clone().applyQuaternion(turn);
 }
 
-function tilts(lean: Lean, seconds: number, feel: LeanFeel = normal): number[] {
+function tilts(lean: Lean, seconds: number): number[] {
   const seen: number[] = [];
   let current = lean;
 
   for (let t = 0; t < seconds; t += FRAME) {
-    current = settleLean(current, FRAME, feel);
+    current = settleLean(current, FRAME);
     seen.push(bottomOf(current).angleTo(DOWN));
   }
 
   return seen;
 }
 
-function jabbedRight(strength: number, feel: LeanFeel = normal): Lean {
-  return leanBy(
-    UPRIGHT,
-    { hitFromCenter: RIGHT, push: TO_THE_LEFT, strength },
-    feel,
-  );
+function jabbedRight(strength: number): Lean {
+  return leanBy(UPRIGHT, { hitFromCenter: RIGHT, push: TO_THE_LEFT, strength });
 }
 
 describe("기우뚱", () => {
   it("옆구리를 맞으면 공의 아래쪽이 미는 쪽으로 먼저 나가며 기운다", () => {
-    const leaned = settleLean(jabbedRight(0.4), 0.1, normal);
+    const leaned = settleLean(jabbedRight(0.4), 0.1);
 
     expect(bottomOf(leaned).x).toBeLessThan(-0.002);
   });
 
   it("아래에서 곧게 올려 치면 기울지 않는다", () => {
-    const lifted = leanBy(
-      UPRIGHT,
-      { hitFromCenter: UNDER, push: UPWARD, strength: 1 },
-      normal,
-    );
+    const lifted = leanBy(UPRIGHT, {
+      hitFromCenter: UNDER,
+      push: UPWARD,
+      strength: 1,
+    });
 
     expect(Math.max(...tilts(lifted, 1))).toBeLessThan(1e-9);
   });
@@ -99,15 +86,11 @@ describe("기우뚱", () => {
         ];
 
         for (const push of pushes) {
-          const lean = leanBy(
-            UPRIGHT,
-            {
-              hitFromCenter: direction.clone().multiplyScalar(radius),
-              push,
-              strength: 1,
-            },
-            normal,
-          );
+          const lean = leanBy(UPRIGHT, {
+            hitFromCenter: direction.clone().multiplyScalar(radius),
+            push,
+            strength: 1,
+          });
 
           widest.push(Math.max(...tilts(lean, 2)));
         }
@@ -123,18 +106,14 @@ describe("기우뚱", () => {
     );
   });
 
-  it("동작 줄이기에서는 기울지 않는다", () => {
-    expect(Math.max(...tilts(jabbedRight(1, reduced), 1, reduced))).toBe(0);
-  });
-
   it("옆으로 가던 공이 덜컹하면 아래쪽이 가던 쪽으로 기운다", () => {
-    const jolted = leanByJolt(UPRIGHT, new Vector3(1, -2, 0), normal);
+    const jolted = leanByJolt(UPRIGHT, new Vector3(1, -2, 0));
 
-    expect(bottomOf(settleLean(jolted, 0.1, normal)).x).toBeGreaterThan(0.005);
+    expect(bottomOf(settleLean(jolted, 0.1)).x).toBeGreaterThan(0.005);
   });
 
   it("곧게 떨어지다 덜컹하면 기울지 않는다", () => {
-    const jolted = leanByJolt(UPRIGHT, new Vector3(0, -2, 0), normal);
+    const jolted = leanByJolt(UPRIGHT, new Vector3(0, -2, 0));
 
     expect(Math.max(...tilts(jolted, 1))).toBeLessThan(1e-9);
   });

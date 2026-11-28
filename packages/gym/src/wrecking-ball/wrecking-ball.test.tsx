@@ -626,27 +626,27 @@ describe("WreckingBall", () => {
     expect(swung.jolts).toEqual([]);
   });
 
-  it("동작 줄이기에서는 기우뚱하지 않는다", async () => {
-    const { renderer, ball } = await renderBall({ reducedMotion: true });
+  it("동작 줄이기를 켜도 같은 타격에는 세기가 같고, 레킹볼이 같은 자리로 밀려 같은 만큼 비틀리고 기우뚱한다", async () => {
+    const moving = await renderBall();
+    const movingStrike = moving.ball.take(jab(RIGHT));
 
-    ball.take(jab(RIGHT));
+    await moving.renderer.advanceFrames(24, FRAME);
 
-    expect(Math.max(...(await leaningOver(renderer, ball, 30)))).toBeLessThan(
+    const movingCenter = centerOf(moving.ball);
+    const movingTurn = leatherOf(moving.renderer).turn;
+
+    await moving.renderer.unmount();
+
+    const calm = await renderBall({ reducedMotion: true });
+    const calmStrike = calm.ball.take(jab(RIGHT));
+
+    await calm.renderer.advanceFrames(24, FRAME);
+
+    expect(movingCenter.x).toBeLessThan(-0.05);
+    expect(calmStrike.strength).toBe(movingStrike.strength);
+    expect(centerOf(calm.ball).distanceTo(movingCenter)).toBeLessThan(1e-9);
+    expect(leatherOf(calm.renderer).turn.angleTo(movingTurn)).toBeLessThan(
       1e-6,
     );
-  });
-
-  it("동작 줄이기를 켜면 조금만 밀렸다가 1초 안에 제자리로 돌아온다", async () => {
-    const { renderer, ball } = await renderBall({ reducedMotion: true });
-
-    ball.take(jab(RIGHT));
-    await renderer.advanceFrames(6, FRAME);
-
-    expect(centerOf(ball).length()).toBeGreaterThan(0.005);
-    expect(centerOf(ball).length()).toBeLessThan(0.03);
-
-    await renderer.advanceFrames(54, FRAME);
-
-    expect(centerOf(ball).length()).toBeLessThan(0.001);
   });
 });
