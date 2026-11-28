@@ -1,11 +1,11 @@
 import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean";
 import { RESTING_SPRING } from "./spring";
 import {
-  advance,
   type Blow,
   type Jolt,
-  joltOf,
   restingSwing,
+  STEP,
+  stepSwing,
   strike,
   type Swing,
 } from "./swing";
@@ -17,6 +17,12 @@ export interface BallMotion {
   readonly twist: Twist;
   readonly lean: Lean;
   readonly hitStopLeft: number;
+  /**
+   * 흔들림, 비틀림, 기우뚱은 STEP(1/240초) 단위로만 움직입니다. 한 STEP에 못 미쳐 남은 시간은
+   * 여기 두었다가 다음 advanceBall에서 씁니다. 그래서 같은 시간을 프레임으로 어떻게 나누어도
+   * 레킹볼이 같게 움직입니다.
+   */
+  readonly unsimulatedSeconds: number;
 }
 
 const HIT_STOP = { shortest: 0.05, longest: 0.12 } as const;
@@ -27,6 +33,7 @@ export function restingBall(): BallMotion {
     twist: RESTING_SPRING,
     lean: UPRIGHT,
     hitStopLeft: 0,
+    unsimulatedSeconds: 0,
   };
 }
 
@@ -51,6 +58,7 @@ export function strikeBall(
           ? HIT_STOP.shortest +
             (HIT_STOP.longest - HIT_STOP.shortest) * strength
           : motion.hitStopLeft,
+      unsimulatedSeconds: motion.unsimulatedSeconds,
     },
     strength,
   };
@@ -66,18 +74,35 @@ export function advanceBall(
 } {
   const held = Math.min(motion.hitStopLeft, seconds);
   const movingSeconds = seconds - held;
-  const swing = advance(motion.swing, movingSeconds);
-  const settled = settleLean(motion.lean, movingSeconds);
-  const jolt = joltOf(swing);
+  let { swing, twist, lean } = motion;
+  let unsimulatedSeconds = motion.unsimulatedSeconds + movingSeconds;
+  let strongest: Jolt | null = null;
+
+  while (unsimulatedSeconds >= STEP) {
+    const { swing: stepped, jolt } = stepSwing(swing);
+
+    swing = stepped;
+    twist = spinDown(twist, STEP);
+    lean = settleLean(lean, STEP);
+
+    if (jolt) {
+      lean = leanByJolt(lean, swing.velocity);
+      strongest =
+        strongest && strongest.strength >= jolt.strength ? strongest : jolt;
+    }
+
+    unsimulatedSeconds -= STEP;
+  }
 
   return {
     motion: {
       swing,
-      twist: spinDown(motion.twist, movingSeconds),
-      lean: jolt ? leanByJolt(settled, swing.velocity) : settled,
+      twist,
+      lean,
       hitStopLeft: motion.hitStopLeft - held,
+      unsimulatedSeconds,
     },
-    jolt,
+    jolt: strongest,
     movingSeconds,
   };
 }

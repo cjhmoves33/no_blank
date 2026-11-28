@@ -5,8 +5,6 @@ import { CHAIN_REACH } from "./measurements";
 export interface Swing {
   readonly fromPivot: Vector3;
   readonly velocity: Vector3;
-  readonly unsimulatedSeconds: number;
-  readonly joltSpeed: number;
 }
 
 export type Blow =
@@ -58,14 +56,18 @@ const HARDEST_SWIPE_LAUNCH_SPEED =
 
 const HIGHEST_RISE = SWING_FEEL.maxBottomSpeed ** 2 / (2 * SWING_FEEL.gravity);
 
-const STEP = 1 / 240;
+export const STEP = 1 / 240;
+
+const SLOWDOWN_PER_STEP = Math.exp(-SWING_FEEL.drag * STEP);
+
+const CAUGHT_EVERY_STEP = SWING_FEEL.gravity * STEP;
+
+const JOLT_ABOVE = JOLT_MARGIN + CAUGHT_EVERY_STEP;
 
 export function restingSwing(): Swing {
   return {
     fromPivot: new Vector3(0, -CHAIN_REACH, 0),
     velocity: new Vector3(),
-    unsimulatedSeconds: 0,
-    joltSpeed: 0,
   };
 }
 
@@ -96,33 +98,26 @@ export function strike(swing: Swing, blow: Blow): Struck {
   };
 }
 
-export function advance(swing: Swing, seconds: number): Swing {
+export function stepSwing(swing: Swing): {
+  readonly swing: Swing;
+  readonly jolt: Jolt | null;
+} {
   const fromPivot = swing.fromPivot.clone();
   const velocity = swing.velocity.clone();
-  const slowdown = Math.exp(-SWING_FEEL.drag * STEP);
-  let unsimulatedSeconds = swing.unsimulatedSeconds + seconds;
-  const caughtEveryStep = SWING_FEEL.gravity * STEP;
-  const chain = {
-    rebound: SWING_FEEL.rebound,
-    joltAbove: JOLT_MARGIN + caughtEveryStep,
+
+  velocity.y -= SWING_FEEL.gravity * STEP;
+  velocity.multiplyScalar(SLOWDOWN_PER_STEP);
+  fromPivot.addScaledVector(velocity, STEP);
+
+  const joltSpeed = catchOnChain(fromPivot, velocity);
+
+  return {
+    swing: { fromPivot, velocity },
+    jolt:
+      joltSpeed > 0
+        ? { strength: Math.min(joltSpeed / HARDEST_SWIPE_LAUNCH_SPEED, 1) }
+        : null,
   };
-  let joltSpeed = 0;
-
-  while (unsimulatedSeconds >= STEP) {
-    velocity.y -= SWING_FEEL.gravity * STEP;
-    velocity.multiplyScalar(slowdown);
-    fromPivot.addScaledVector(velocity, STEP);
-    joltSpeed = Math.max(joltSpeed, catchOnChain(fromPivot, velocity, chain));
-    unsimulatedSeconds -= STEP;
-  }
-
-  return { fromPivot, velocity, unsimulatedSeconds, joltSpeed };
-}
-
-export function joltOf(swing: Swing): Jolt | null {
-  return swing.joltSpeed > 0
-    ? { strength: Math.min(swing.joltSpeed / HARDEST_SWIPE_LAUNCH_SPEED, 1) }
-    : null;
 }
 
 export function farthestReach(): number {
@@ -154,14 +149,7 @@ function dragHalvingSwingIn(seconds: number): number {
   return (2 * Math.LN2) / seconds;
 }
 
-function catchOnChain(
-  fromPivot: Vector3,
-  velocity: Vector3,
-  {
-    rebound,
-    joltAbove,
-  }: { readonly rebound: number; readonly joltAbove: number },
-): number {
+function catchOnChain(fromPivot: Vector3, velocity: Vector3): number {
   const distance = fromPivot.length();
 
   if (distance <= CHAIN_REACH) {
@@ -177,9 +165,12 @@ function catchOnChain(
     return 0;
   }
 
-  const jolted = away > joltAbove;
+  const jolted = away > JOLT_ABOVE;
 
-  velocity.addScaledVector(outward, -away * (jolted ? 1 + rebound : 1));
+  velocity.addScaledVector(
+    outward,
+    -away * (jolted ? 1 + SWING_FEEL.rebound : 1),
+  );
 
   return jolted ? away : 0;
 }
