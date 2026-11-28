@@ -77,6 +77,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@no-blank/ball-motion':
+        specifier: workspace:*
+        version: link:../../packages/ball-motion
       '@no-blank/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -92,6 +95,9 @@ importers:
       pino:
         specifier: ^10.4.0
         version: 10.4.0
+      three:
+        specifier: 'catalog:'
+        version: 0.187.0
     devDependencies:
       '@electric-sql/pglite':
         specifier: 0.5.16
@@ -108,6 +114,9 @@ importers:
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
+      '@types/three':
+        specifier: 'catalog:'
+        version: 0.187.0
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
