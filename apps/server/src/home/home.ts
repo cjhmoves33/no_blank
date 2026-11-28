@@ -5,20 +5,12 @@ import {
   restingBall,
   strikeBall,
 } from "@no-blank/ball-motion";
+import type { GloveColor, Point, ServerMessage } from "@no-blank/shared";
 
 /** 홈에 연결한 사람 하나입니다. 다시 연결하면 새 ConnectionId 를 받습니다. */
 export type ConnectionId = string;
 
-const GLOVE_COLORS = ["red", "blue", "yellow", "green"] as const;
-
-type GloveColor = (typeof GLOVE_COLORS)[number];
-
-/** 체육관 안의 위치입니다. 단위는 미터입니다. */
-interface Point {
-  readonly x: number;
-  readonly y: number;
-  readonly z: number;
-}
+const GLOVE_COLORS: readonly GloveColor[] = ["red", "blue", "yellow", "green"];
 
 interface Visitor {
   readonly id: ConnectionId;
@@ -48,32 +40,9 @@ export type HomeEvent =
   | { readonly kind: "struck"; readonly id: ConnectionId; readonly blow: Blow }
   | { readonly kind: "ticked"; readonly seconds: number };
 
-type HomeMessage =
-  | {
-      readonly kind: "welcome";
-      readonly you:
-        | { readonly as: "visitor"; readonly color: GloveColor }
-        | { readonly as: "spectator" };
-      readonly visitors: readonly {
-        readonly color: GloveColor;
-        readonly glove: Point | null;
-      }[];
-      readonly ball: BallMotion;
-    }
-  | { readonly kind: "promoted"; readonly color: GloveColor }
-  | { readonly kind: "visitorArrived"; readonly color: GloveColor }
-  | { readonly kind: "visitorLeft"; readonly color: GloveColor }
-  | {
-      readonly kind: "gloveMoved";
-      readonly color: GloveColor;
-      readonly at: Point | null;
-    }
-  | { readonly kind: "struck"; readonly color: GloveColor; readonly blow: Blow }
-  | { readonly kind: "ball"; readonly ball: BallMotion };
-
 interface Delivery {
   readonly to: ConnectionId;
-  readonly message: HomeMessage;
+  readonly message: ServerMessage;
 }
 
 interface Stepped {
@@ -130,8 +99,8 @@ function arrive(home: Home, id: ConnectionId): Stepped {
 
 function welcome(
   home: Home,
-  you: Extract<HomeMessage, { kind: "welcome" }>["you"],
-): HomeMessage {
+  you: Extract<ServerMessage, { kind: "welcome" }>["you"],
+): ServerMessage {
   return {
     kind: "welcome",
     you,
@@ -271,6 +240,6 @@ function everyoneBut(home: Home, id: ConnectionId): ConnectionId[] {
   return everyone(home).filter((present) => present !== id);
 }
 
-function send(to: readonly ConnectionId[], message: HomeMessage): Delivery[] {
+function send(to: readonly ConnectionId[], message: ServerMessage): Delivery[] {
   return to.map((id) => ({ to: id, message }));
 }

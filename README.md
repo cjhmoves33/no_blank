@@ -13,7 +13,7 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 | `apps/workbench`       | 체육관의 한 부분을 따로 꺼내 가까이 보는 개발용 Next.js 앱(작업대)입니다. 배포하지 않습니다.                                                                                                |
 | `packages/gym`         | web이 그리는 체육관의 3D 장면입니다. 빌드하지 않고 TS 소스를 그대로 내보내며, 가져다 쓰는 앱이 컴파일합니다.                                                                                |
 | `packages/ball-motion` | 레킹볼의 흔들림, 비틀림, 기우뚱, 히트스톱을 계산합니다. React와 화면을 모르며, gym처럼 TS 소스를 그대로 내보냅니다. 빌드한 서버만 `--conditions=built`로 실행해서 컴파일한 `dist`를 씁니다. |
-| `packages/shared`      | web과 server가 함께 사용하는 API 응답 타입입니다.                                                                                                                                           |
+| `packages/shared`      | web과 server가 함께 사용하는 API 응답과 홈 메시지의 타입, 그리고 그 파서입니다.                                                                                                             |
 | `docker-compose.yml`   | db, migrate, server, web 컨테이너 구성입니다.                                                                                                                                               |
 
 ## 요구 사항
