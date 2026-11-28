@@ -20,7 +20,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # github-actions 는 semver-*-days 를 지원하지 않습니다.
+    # workflow 가 action 을 메이저 태그(@v7)로 참조해서 업데이트는 메이저 버전뿐이므로, 메이저 기준인 30일을 씁니다.
     cooldown:
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 3
+      default-days: 30
