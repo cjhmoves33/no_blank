@@ -1,29 +1,20 @@
 import { once } from "node:events";
 
 import { restingBall } from "@no-blank/ball-motion";
-import {
-  type ErrorResponse,
-  type HealthResponse,
-  parseGreetingResponse,
-} from "@no-blank/shared";
+import type { HealthResponse } from "@no-blank/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "./app.js";
-import { greetings } from "./db/schema.js";
-import { createTestDb } from "./test/create-test-db.js";
 
 describe("API", () => {
-  let testDb: Awaited<ReturnType<typeof createTestDb>>;
   let app: Awaited<ReturnType<typeof buildApp>>;
 
   beforeEach(async () => {
-    testDb = await createTestDb();
-    app = await buildApp({ db: testDb.db });
+    app = await buildApp();
   });
 
   afterEach(async () => {
     await app.close();
-    await testDb.close();
   });
 
   it("GET /api/health 는 200 과 status: ok 를 반환한다", async () => {
@@ -33,28 +24,6 @@ describe("API", () => {
     expect(res.json()).toMatchObject({
       status: "ok",
     } satisfies HealthResponse);
-  });
-
-  it("GET /api/greeting 은 seed 마이그레이션이 넣은 Hello World 를 반환한다", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/greeting" });
-
-    expect(res.statusCode).toBe(200);
-    expect(parseGreetingResponse(res.json())).toEqual({
-      message: "Hello World",
-    });
-  });
-
-  it("greetings 가 비어 있으면 GET /api/greeting 은 404 를 반환한다", async () => {
-    await testDb.db.delete(greetings);
-
-    const res = await app.inject({ method: "GET", url: "/api/greeting" });
-
-    expect(res.statusCode).toBe(404);
-    expect(res.json()).toEqual({
-      statusCode: 404,
-      error: "Not Found",
-      message: "No greeting found",
-    } satisfies ErrorResponse);
   });
 
   it("정의되지 않은 경로는 404 를 반환한다", async () => {

@@ -9,8 +9,6 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Reply: HealthResponse }>("/health", async (_request, _reply) => {
     // TODO(you): 헬스 체크가 무엇을 보장해야 할지 결정해 주세요.
     //  - 지금은 "프로세스가 살아 있다(liveness)"만 응답합니다.
-    //  - DB까지 확인하는 readiness 로 바꾸려면 app.db.execute(sql`select 1`) 로 핑을 보내고,
-    //    실패 시 _reply.code(503) 과 함께 { status: 'error', checks: { db: 'down' } } 를 반환하세요.
     return { status: "ok" };
   });
 };

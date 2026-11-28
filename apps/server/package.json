@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "files": [
-    "dist",
-    "drizzle"
+    "dist"
   ],
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
@@ -13,30 +12,20 @@
     "start": "node --conditions=built --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --max-warnings 0",
-    "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/websocket": "^11.3.7",
     "@no-blank/ball-motion": "workspace:*",
     "@no-blank/shared": "workspace:*",
-    "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
-    "pg": "^8.23.1",
-    "pino": "^10.4.0",
     "three": "catalog:"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16",
-    "@electric-sql/pglite-socket": "^0.2.19",
     "@no-blank/eslint-config": "workspace:*",
     "@types/node": "catalog:",
-    "@types/pg": "^8.23.1",
     "@types/three": "catalog:",
     "@types/ws": "^8.18.2",
-    "drizzle-kit": "^0.31.11",
     "eslint": "catalog:",
     "tsx": "^4.23.15",
     "typescript": "catalog:",
