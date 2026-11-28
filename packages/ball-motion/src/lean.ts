@@ -37,7 +37,15 @@ export function leanBy(
   },
 ): Lean {
   const lever = hitFromCenter.clone().sub(HINGE);
-  const turn = lever.clone().cross(push).divideScalar(lever.length());
+  const reach = lever.length();
+
+  // 기우뚱의 축을 맞힌 타격에는 기울일 지렛대가 없습니다. 레킹볼 표면에서는 생기지 않지만,
+  // 서버는 밖에서 온 타격을 받으므로 0 으로 나누어 NaN 이 되지 않게 합니다.
+  if (reach === 0) {
+    return lean;
+  }
+
+  const turn = lever.clone().cross(push).divideScalar(reach);
 
   return kicked(
     lean,
