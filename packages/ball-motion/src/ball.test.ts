@@ -13,7 +13,7 @@ function swipe(speed: number): Blow {
 }
 
 function struck(blow: Blow): BallMotion {
-  return strikeBall(restingBall(), blow, "normal").motion;
+  return strikeBall(restingBall(), blow).motion;
 }
 
 function heldFor(motion: BallMotion): number {
@@ -21,7 +21,7 @@ function heldFor(motion: BallMotion): number {
   let held = 0;
 
   while (current.hitStopLeft > 0 && held < 1) {
-    current = advanceBall(current, 0.001, "normal").motion;
+    current = advanceBall(current, 0.001).motion;
     held += 0.001;
   }
 
@@ -46,13 +46,11 @@ describe("히트스톱", () => {
     const unheld = { ...hit, hitStopLeft: 0 };
 
     expect(
-      advanceBall(hit, 0.05, "normal").motion.swing.fromPivot.equals(
-        hit.swing.fromPivot,
-      ),
+      advanceBall(hit, 0.05).motion.swing.fromPivot.equals(hit.swing.fromPivot),
     ).toBe(true);
     expect(
-      advanceBall(hit, 0.25, "normal").motion.swing.fromPivot.distanceTo(
-        advanceBall(unheld, 0.13, "normal").motion.swing.fromPivot,
+      advanceBall(hit, 0.25).motion.swing.fromPivot.distanceTo(
+        advanceBall(unheld, 0.13).motion.swing.fromPivot,
       ),
     ).toBeLessThan(1e-9);
   });
@@ -63,13 +61,112 @@ describe("히트스톱", () => {
       ...rest,
       swing: { ...rest.swing, velocity: new Vector3(0, 0, -5) },
     };
-    const { motion, strength } = strikeBall(
-      runningAway,
-      { kind: "jab", hitFromCenter: FRONT, fist: INTO_SCREEN },
-      "normal",
-    );
+    const { motion, strength } = strikeBall(runningAway, {
+      kind: "jab",
+      hitFromCenter: FRONT,
+      fist: INTO_SCREEN,
+    });
 
     expect(strength).toBe(0);
     expect(motion.hitStopLeft).toBe(0);
+  });
+});
+
+describe("프레임 나누기", () => {
+  function inFrames(motion: BallMotion, seconds: number, fps: number) {
+    let current = motion;
+    const jolts: number[] = [];
+
+    for (let i = 0; i < seconds * fps; i++) {
+      const advanced = advanceBall(current, 1 / fps);
+
+      current = advanced.motion;
+
+      if (advanced.jolt) {
+        jolts.push(advanced.jolt.strength);
+      }
+    }
+
+    return { motion: current, jolts };
+  }
+
+  function numbersOf({ swing, twist, lean }: BallMotion) {
+    return {
+      fromPivot: swing.fromPivot.toArray(),
+      velocity: swing.velocity.toArray(),
+      twist: [twist.angle, twist.rate],
+      lean: [
+        lean.aboutX.angle,
+        lean.aboutX.rate,
+        lean.aboutZ.angle,
+        lean.aboutZ.rate,
+      ],
+    };
+  }
+
+  function closeTo(numbers: Record<string, number[]>) {
+    return Object.fromEntries(
+      Object.entries(numbers).map(([name, values]) => [
+        name,
+        values.map((value): unknown => expect.closeTo(value, 9)),
+      ]),
+    );
+  }
+
+  it("같은 시간을 어떤 크기의 프레임으로 나누어 흘려도 레킹볼이 같게 움직이고 같은 덜컹을 알린다", () => {
+    const uppercut = struck({
+      kind: "swipe",
+      hitFromCenter: new Vector3(-1, -2, 1).setLength(radius),
+      fist: new Vector3(1, 2, 0).normalize(),
+      speed: 100,
+    });
+    const [slowest, ...faster] = [30, 60, 144].map((fps) =>
+      inFrames(uppercut, 2, fps),
+    );
+
+    if (!slowest) {
+      throw new Error("프레임 속도가 하나 이상 있어야 합니다.");
+    }
+
+    expect(slowest.jolts.length).toBeGreaterThan(0);
+
+    for (const { motion, jolts } of faster) {
+      expect(numbersOf(motion)).toEqual(closeTo(numbersOf(slowest.motion)));
+      expect(jolts).toEqual(slowest.jolts);
+    }
+  });
+
+  it("긴 프레임 하나에 덜컹이 여러 번 있으면 가장 센 덜컹 하나를 알린다", () => {
+    const rest = restingBall();
+    const thrownUp = {
+      ...rest,
+      swing: { ...rest.swing, velocity: new Vector3(0, 1.5, 0) },
+    };
+    const { jolts } = inFrames(thrownUp, 2, 60);
+
+    expect(jolts.length).toBeGreaterThan(1);
+    expect(advanceBall(thrownUp, 2).jolt?.strength).toBe(Math.max(...jolts));
+  });
+});
+
+describe("덜컹에 따른 기우뚱", () => {
+  function draggedOutward(sideways: number): BallMotion {
+    const rest = restingBall();
+
+    return {
+      ...rest,
+      swing: { ...rest.swing, velocity: new Vector3(sideways, -1, 0) },
+    };
+  }
+
+  it("옆으로 움직이다 사슬이 팽팽해지면 옆 속도만큼 기우뚱하고, 곧장 아래로 당겨지면 기우뚱하지 않는다", () => {
+    const sideways = advanceBall(draggedOutward(1), 1 / 60);
+    const straight = advanceBall(draggedOutward(0), 1 / 60);
+
+    expect(sideways.jolt).not.toBeNull();
+    expect(straight.jolt).not.toBeNull();
+    expect(Math.abs(sideways.motion.lean.aboutZ.rate)).toBeGreaterThan(1);
+    expect(straight.motion.lean.aboutX.rate).toBe(0);
+    expect(straight.motion.lean.aboutZ.rate).toBe(0);
   });
 });

@@ -1,4 +1,3 @@
-import type { BallFeel } from "@no-blank/ball-motion";
 import type { Vector3 } from "three";
 
 import { GYM } from "../measurements";
@@ -17,7 +16,9 @@ export interface DentFeel {
 export const DENT_FEEL = {
   normal: { fadeSeconds: 0.035, overshootRate: (2 * Math.PI) / 0.14 },
   reduced: { fadeSeconds: 0.035, overshootRate: 0 },
-} as const satisfies Record<BallFeel, DentFeel>;
+} as const satisfies Record<string, DentFeel>;
+
+export type ImpactFeel = keyof typeof DENT_FEEL;
 
 const DEEPEST = 0.06;
 const DENT_WIDTH = 0.1;

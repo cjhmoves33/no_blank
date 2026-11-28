@@ -1,7 +1,6 @@
 // @refresh reset
 import {
   advanceBall,
-  type BallFeel,
   type BallMotion,
   type Blow,
   CHAIN_REACH,
@@ -34,7 +33,14 @@ import { SWIVEL_EYE, SwivelEye } from "../chain/swivel";
 import { STEEL } from "../finishes";
 import { GYM } from "../measurements";
 import { Hanging, type HangingHandle } from "./hanging";
-import { age, DENT_FEEL, dentDepth, type Impact, impactOf } from "./impact";
+import {
+  age,
+  DENT_FEEL,
+  dentDepth,
+  type Impact,
+  type ImpactFeel,
+  impactOf,
+} from "./impact";
 import { Leather, type LeatherHandle } from "./leather";
 import type { BallShape } from "./press";
 import { flattening, SQUASH_FEEL, squashMatrix } from "./squash";
@@ -96,7 +102,7 @@ export function WreckingBall({
     () => ({
       worldShape: () => (ball.current ? shapeOf(ball.current) : null),
       take: (blow) => {
-        const struck = strikeBall(motion.current, blow, feel);
+        const struck = strikeBall(motion.current, blow);
         const { strength } = struck;
         const toLeather = ball.current?.quaternion.clone().invert();
         const dent = toLeather
@@ -121,12 +127,12 @@ export function WreckingBall({
         return { strength };
       },
     }),
-    [feel],
+    [],
   );
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
-    const advanced = advanceBall(motion.current, seconds, feel);
+    const advanced = advanceBall(motion.current, seconds);
 
     motion.current = advanced.motion;
     impact.current = impact.current
@@ -196,7 +202,7 @@ function showImpact(
     readonly leather: LeatherHandle | null;
     readonly squashed: Group | null;
     readonly hanging: HangingHandle | null;
-    readonly feel: BallFeel;
+    readonly feel: ImpactFeel;
   },
 ): void {
   leather?.dent(

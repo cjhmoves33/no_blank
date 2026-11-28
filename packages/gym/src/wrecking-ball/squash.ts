@@ -1,7 +1,6 @@
-import type { BallFeel } from "@no-blank/ball-motion";
 import { Matrix4, type Vector3 } from "three";
 
-import type { Impact } from "./impact";
+import type { Impact, ImpactFeel } from "./impact";
 
 export interface SquashFeel {
   readonly flattestAtFullStrength: number;
@@ -16,7 +15,7 @@ export const SQUASH_FEEL = {
     settleSeconds: 0.4,
   },
   reduced: { flattestAtFullStrength: 0, wobblesPerSecond: 6, settleSeconds: 0 },
-} as const satisfies Record<BallFeel, SquashFeel>;
+} as const satisfies Record<ImpactFeel, SquashFeel>;
 
 // 지수 감쇠는 시간 상수의 세 배가 지나면 처음의 5% 아래로 줄어듭니다.
 const TIME_CONSTANTS_TO_SETTLE = 3;
