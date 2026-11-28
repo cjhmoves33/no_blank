@@ -1,8 +1,13 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { advanceBall, type BallMotion, restingBall, strikeBall } from "./ball";
-import type { Blow } from "./swing";
+import {
+  advanceBall,
+  type BallMotion,
+  restingBall,
+  strikeBall,
+} from "./ball.ts";
+import type { Blow } from "./swing.ts";
 
 const radius = 0.3;
 const FRONT = new Vector3(0, 0, radius);

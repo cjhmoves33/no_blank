@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 
-import { CHAIN_REACH } from "./measurements";
+import { CHAIN_REACH } from "./measurements.ts";
 
 export interface Swing {
   readonly fromPivot: Vector3;

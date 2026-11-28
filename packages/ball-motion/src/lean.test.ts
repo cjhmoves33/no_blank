@@ -1,7 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean";
+import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean.ts";
 
 const radius = 0.3;
 const RIGHT = new Vector3(radius, 0, 0);

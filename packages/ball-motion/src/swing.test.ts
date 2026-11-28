@@ -1,9 +1,14 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { advanceBall, type BallMotion, restingBall, strikeBall } from "./ball";
-import { CHAIN_REACH } from "./measurements";
-import { type Blow, farthestReach, SWING_FEEL } from "./swing";
+import {
+  advanceBall,
+  type BallMotion,
+  restingBall,
+  strikeBall,
+} from "./ball.ts";
+import { CHAIN_REACH } from "./measurements.ts";
+import { type Blow, farthestReach, SWING_FEEL } from "./swing.ts";
 
 const radius = 0.3;
 const REST = new Vector3(0, -CHAIN_REACH, 0);

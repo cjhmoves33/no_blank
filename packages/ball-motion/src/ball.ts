@@ -1,5 +1,5 @@
-import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean";
-import { RESTING_SPRING } from "./spring";
+import { type Lean, leanBy, leanByJolt, settleLean, UPRIGHT } from "./lean.ts";
+import { RESTING_SPRING } from "./spring.ts";
 import {
   type Blow,
   type Jolt,
@@ -8,8 +8,8 @@ import {
   stepSwing,
   strike,
   type Swing,
-} from "./swing";
-import { spinDown, type Twist, twistBy } from "./twist";
+} from "./swing.ts";
+import { spinDown, type Twist, twistBy } from "./twist.ts";
 
 /** 레킹볼의 흔들림, 비틀림, 기우뚱, 그리고 히트스톱으로 아직 멈춰 있어야 할 시간입니다. */
 export interface BallMotion {

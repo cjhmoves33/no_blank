@@ -19,11 +19,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@no-blank/ball-motion": "workspace:*",
     "@no-blank/shared": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "pg": "^8.23.1",
-    "pino": "^10.4.0"
+    "pino": "^10.4.0",
+    "three": "catalog:"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.16",
@@ -31,6 +33,7 @@
     "@no-blank/eslint-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "^8.23.1",
+    "@types/three": "catalog:",
     "drizzle-kit": "^0.31.11",
     "eslint": "catalog:",
     "tsx": "^4.23.15",

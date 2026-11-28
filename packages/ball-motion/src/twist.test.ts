@@ -1,9 +1,9 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { RESTING_SPRING } from "./spring";
-import type { Blow } from "./swing";
-import { spinDown, type Twist, twistBy } from "./twist";
+import { RESTING_SPRING } from "./spring.ts";
+import type { Blow } from "./swing.ts";
+import { spinDown, type Twist, twistBy } from "./twist.ts";
 
 const radius = 0.3;
 const INTO_SCREEN = new Vector3(0, 0, -1);
