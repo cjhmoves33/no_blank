@@ -37,7 +37,13 @@ export function leanBy(
   },
 ): Lean {
   const lever = hitFromCenter.clone().sub(HINGE);
-  const turn = lever.clone().cross(push).divideScalar(lever.length());
+  const reach = lever.length();
+
+  if (reach === 0) {
+    return lean;
+  }
+
+  const turn = lever.clone().cross(push).divideScalar(reach);
 
   return kicked(
     lean,

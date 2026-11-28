@@ -20,4 +20,6 @@ WORKDIR /app
 COPY --from=build /out ./
 USER node
 EXPOSE 4000
-CMD ["node", "dist/server.js"]
+# ball-motion 은 기본으로 TS 소스를 내보내는데, Node 는 node_modules 안의 TS 를 실행하지 않습니다.
+# built 조건으로 ball-motion 이 빌드한 dist 를 고릅니다.
+CMD ["node", "--conditions=built", "dist/server.js"]

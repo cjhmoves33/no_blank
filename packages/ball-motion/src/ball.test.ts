@@ -175,3 +175,41 @@ describe("덜컹에 따른 기우뚱", () => {
     expect(straight.motion.lean.aboutZ.rate).toBe(0);
   });
 });
+
+describe("밖에서 온 타격", () => {
+  function numbersOf(value: unknown): number[] {
+    if (typeof value === "number") {
+      return [value];
+    }
+
+    if (typeof value === "object" && value !== null) {
+      return Object.values(value).flatMap(numbersOf);
+    }
+
+    return [];
+  }
+
+  it("기우뚱의 축이나 레킹볼 중심을 맞혀도, 레킹볼 상태는 모두 유한한 숫자로 남는다", () => {
+    const blows: Blow[] = [
+      {
+        kind: "jab",
+        hitFromCenter: new Vector3(0, 0.75, 0),
+        fist: INTO_SCREEN,
+      },
+      { kind: "jab", hitFromCenter: new Vector3(), fist: INTO_SCREEN },
+      {
+        kind: "swipe",
+        hitFromCenter: new Vector3(0, 0.75, 0),
+        fist: new Vector3(),
+        speed: 3,
+      },
+    ];
+
+    for (const blow of blows) {
+      const struck = strikeBall(restingBall(), blow).motion;
+      const later = advanceBall(struck, 1).motion;
+
+      expect(numbersOf(later).every(Number.isFinite)).toBe(true);
+    }
+  });
+});

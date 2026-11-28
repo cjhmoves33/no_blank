@@ -21,7 +21,9 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@no-blank/ball-motion": "workspace:*",
     "@no-blank/eslint-config": "workspace:*",
+    "@types/three": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

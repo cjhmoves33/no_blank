@@ -6,15 +6,15 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 브라우저 → web (Next.js, :3000) → server (Fastify, :4000) → db (PostgreSQL, :5432)
 ```
 
-| 경로                   | 설명                                                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`             | Next.js 16 (App Router, SSR). 지금은 실행 중에 API를 호출하지 않습니다. API를 호출하는 예시는 `src/lib/api.ts`입니다. |
-| `apps/server`          | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.                                                                  |
-| `apps/workbench`       | 체육관의 한 부분을 따로 꺼내 가까이 보는 개발용 Next.js 앱(작업대)입니다. 배포하지 않습니다.                          |
-| `packages/gym`         | web이 그리는 체육관의 3D 장면입니다. 빌드하지 않고 TS 소스를 그대로 내보내며, 가져다 쓰는 앱이 컴파일합니다.          |
-| `packages/ball-motion` | 레킹볼의 흔들림, 비틀림, 기우뚱, 히트스톱을 계산합니다. React와 화면을 모르며, gym처럼 TS 소스를 그대로 내보냅니다.   |
-| `packages/shared`      | web과 server가 함께 사용하는 API 응답 타입입니다.                                                                     |
-| `docker-compose.yml`   | db, migrate, server, web 컨테이너 구성입니다.                                                                         |
+| 경로                   | 설명                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`             | Next.js 16 (App Router, SSR). 지금은 실행 중에 API를 호출하지 않습니다. API를 호출하는 예시는 `src/lib/api.ts`입니다.                                                                       |
+| `apps/server`          | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.                                                                                                                                        |
+| `apps/workbench`       | 체육관의 한 부분을 따로 꺼내 가까이 보는 개발용 Next.js 앱(작업대)입니다. 배포하지 않습니다.                                                                                                |
+| `packages/gym`         | web이 그리는 체육관의 3D 장면입니다. 빌드하지 않고 TS 소스를 그대로 내보내며, 가져다 쓰는 앱이 컴파일합니다.                                                                                |
+| `packages/ball-motion` | 레킹볼의 흔들림, 비틀림, 기우뚱, 히트스톱을 계산합니다. React와 화면을 모르며, gym처럼 TS 소스를 그대로 내보냅니다. 빌드한 서버만 `--conditions=built`로 실행해서 컴파일한 `dist`를 씁니다. |
+| `packages/shared`      | web과 server가 함께 사용하는 API 응답과 홈 메시지의 타입, 그리고 그 파서입니다.                                                                                                             |
+| `docker-compose.yml`   | db, migrate, server, web 컨테이너 구성입니다.                                                                                                                                               |
 
 ## 요구 사항
 
@@ -64,12 +64,13 @@ pnpm dev
 
 `git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. pnpm 11은 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다(`verifyDepsBeforeRun`의 기본값 `install`).
 
-| 서비스 | 주소                                                   |
-| ------ | ------------------------------------------------------ |
-| web    | http://localhost:3000                                  |
-| server | http://localhost:4000/api/greeting                     |
-| 작업대 | http://localhost:3200                                  |
-| db     | `postgres://no_blank:no_blank@localhost:5432/no_blank` |
+| 서비스       | 주소                                                   |
+| ------------ | ------------------------------------------------------ |
+| web          | http://localhost:3000                                  |
+| server       | http://localhost:4000/api/greeting                     |
+| 홈 WebSocket | ws://localhost:4000/api/home                           |
+| 작업대       | http://localhost:3200                                  |
+| db           | `postgres://no_blank:no_blank@localhost:5432/no_blank` |
 
 ## 커밋 검사와 CI
 
@@ -79,7 +80,7 @@ pnpm dev
 
 ## 테스트
 
-- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
+- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. 홈 WebSocket(`/api/home`) 테스트만은 임의의 로컬 포트에 서버를 띄우고 Node의 `WebSocket`으로 연결합니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
 - **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
 
 ## DB 스키마 변경 방법
