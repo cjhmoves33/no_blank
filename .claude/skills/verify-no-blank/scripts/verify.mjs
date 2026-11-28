@@ -352,7 +352,7 @@ function prepareBuild(name, ref) {
     exec("pnpm", ["install", "--frozen-lockfile", "--prefer-offline"], dir, {
       HUSKY: "0",
     });
-    exec("pnpm", ["--filter", "@no-blank/web", "build"], dir);
+    exec("pnpm", ["--filter", "@no-blank/web...", "build"], dir);
   }
 
   writeFileSync(
