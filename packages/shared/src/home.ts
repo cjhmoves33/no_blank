@@ -84,6 +84,191 @@ export function parseClientMessage(input: unknown): ClientMessage {
   throw invalid("a ClientMessage");
 }
 
+type Welcome = Extract<ServerMessage, { kind: "welcome" }>;
+
+/** 서버가 보낸 값을 ServerMessage 로 검증합니다. 수는 유한해야 하고, 알 수 없는 필드는 버립니다. */
+export function parseServerMessage(input: unknown): ServerMessage {
+  const kind = kindOf(input);
+
+  switch (kind) {
+    case "welcome":
+      return parseWelcome(input);
+    case "promoted":
+    case "visitorArrived":
+    case "visitorLeft":
+      return { kind, color: parseColorOf(input) };
+    case "gloveMoved":
+      return parseGloveMoved(input);
+    case "struck":
+      return parseStruck(input);
+    case "ball":
+      return parseBallMessage(input);
+  }
+
+  throw invalid("a ServerMessage");
+}
+
+function kindOf(input: unknown): unknown {
+  return typeof input === "object" && input !== null && "kind" in input
+    ? input.kind
+    : undefined;
+}
+
+function parseWelcome(input: unknown): Welcome {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "you" in input &&
+    "visitors" in input &&
+    Array.isArray(input.visitors) &&
+    "ball" in input
+  ) {
+    return {
+      kind: "welcome",
+      you: parseYou(input.you),
+      visitors: input.visitors.map(parseVisitor),
+      ball: parseBall(input.ball),
+    };
+  }
+
+  throw invalid("a welcome");
+}
+
+function parseYou(input: unknown): Welcome["you"] {
+  if (typeof input === "object" && input !== null && "as" in input) {
+    if (input.as === "spectator") {
+      return { as: "spectator" };
+    }
+
+    if (input.as === "visitor") {
+      return { as: "visitor", color: parseColorOf(input) };
+    }
+  }
+
+  throw invalid("a visitor or a spectator");
+}
+
+function parseVisitor(input: unknown): Welcome["visitors"][number] {
+  if (typeof input === "object" && input !== null && "glove" in input) {
+    return { color: parseColorOf(input), glove: parsePointOrNull(input.glove) };
+  }
+
+  throw invalid("{ color, glove }");
+}
+
+function parseGloveMoved(input: unknown): ServerMessage {
+  if (typeof input === "object" && input !== null && "at" in input) {
+    return {
+      kind: "gloveMoved",
+      color: parseColorOf(input),
+      at: parsePointOrNull(input.at),
+    };
+  }
+
+  throw invalid("a gloveMoved");
+}
+
+function parseStruck(input: unknown): ServerMessage {
+  if (typeof input === "object" && input !== null && "blow" in input) {
+    return {
+      kind: "struck",
+      color: parseColorOf(input),
+      blow: parseBlow(input.blow),
+    };
+  }
+
+  throw invalid("a struck");
+}
+
+function parseBallMessage(input: unknown): ServerMessage {
+  if (typeof input === "object" && input !== null && "ball" in input) {
+    return { kind: "ball", ball: parseBall(input.ball) };
+  }
+
+  throw invalid("a ball");
+}
+
+function parseColorOf(input: unknown): GloveColor {
+  if (typeof input === "object" && input !== null && "color" in input) {
+    switch (input.color) {
+      case "red":
+      case "blue":
+      case "yellow":
+      case "green":
+        return input.color;
+    }
+  }
+
+  throw invalid("a glove color");
+}
+
+function parseBall(input: unknown): BallMotion {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "swing" in input &&
+    "twist" in input &&
+    "lean" in input &&
+    "hitStopLeft" in input &&
+    "unsimulatedSeconds" in input
+  ) {
+    return {
+      swing: parseSwing(input.swing),
+      twist: parseSpring(input.twist),
+      lean: parseLean(input.lean),
+      hitStopLeft: parseFinite(input.hitStopLeft),
+      unsimulatedSeconds: parseFinite(input.unsimulatedSeconds),
+    };
+  }
+
+  throw invalid("a BallMotion");
+}
+
+function parseSwing(input: unknown): BallMotion["swing"] {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "fromPivot" in input &&
+    "velocity" in input
+  ) {
+    return {
+      fromPivot: parsePoint(input.fromPivot),
+      velocity: parsePoint(input.velocity),
+    };
+  }
+
+  throw invalid("{ fromPivot, velocity }");
+}
+
+function parseLean(input: unknown): BallMotion["lean"] {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "aboutX" in input &&
+    "aboutZ" in input
+  ) {
+    return {
+      aboutX: parseSpring(input.aboutX),
+      aboutZ: parseSpring(input.aboutZ),
+    };
+  }
+
+  throw invalid("{ aboutX, aboutZ }");
+}
+
+function parseSpring(input: unknown): BallMotion["twist"] {
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    "angle" in input &&
+    "rate" in input
+  ) {
+    return { angle: parseFinite(input.angle), rate: parseFinite(input.rate) };
+  }
+
+  throw invalid("{ angle, rate }");
+}
+
 function parseBlow(input: unknown): Blow {
   if (
     typeof input === "object" &&
@@ -130,6 +315,10 @@ function parsePoint(input: unknown): Point {
   throw invalid("{ x, y, z }");
 }
 
+function parsePointOrNull(input: unknown): Point | null {
+  return input === null ? null : parsePoint(input);
+}
+
 function parseFinite(input: unknown): number {
   if (typeof input === "number" && Number.isFinite(input)) {
     return input;
@@ -139,5 +328,5 @@ function parseFinite(input: unknown): number {
 }
 
 function invalid(expected: string): Error {
-  return new Error(`Invalid ClientMessage: expected ${expected}`);
+  return new Error(`Invalid home message: expected ${expected}`);
 }
