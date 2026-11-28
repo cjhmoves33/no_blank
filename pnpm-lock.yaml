@@ -37,8 +37,8 @@ catalogs:
       specifier: 19.3.0
       version: 19.3.0
     react-dom:
-      specifier: 19.3.0
-      version: 19.3.0
+      specifier: 19.3.1
+      version: 19.3.1
     three:
       specifier: 0.187.0
       version: 0.187.0
@@ -137,16 +137,16 @@ importers:
         version: link:../../packages/shared
       '@react-three/fiber':
         specifier: 'catalog:'
-        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)
+        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0)
       next:
         specifier: 'catalog:'
-        version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)
       react:
         specifier: 'catalog:'
         version: 19.3.0
       react-dom:
         specifier: 'catalog:'
-        version: 19.3.0(react@19.3.0)
+        version: 19.3.1(react@19.3.0)
       three:
         specifier: 'catalog:'
         version: 0.187.0
@@ -192,16 +192,16 @@ importers:
         version: link:../../packages/gym
       '@react-three/fiber':
         specifier: 'catalog:'
-        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)
+        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0)
       next:
         specifier: 'catalog:'
-        version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)
       react:
         specifier: 'catalog:'
         version: 19.3.0
       react-dom:
         specifier: 'catalog:'
-        version: 19.3.0(react@19.3.0)
+        version: 19.3.1(react@19.3.0)
       three:
         specifier: 'catalog:'
         version: 0.187.0
@@ -306,10 +306,10 @@ importers:
         version: link:../eslint-config
       '@react-three/fiber':
         specifier: 'catalog:'
-        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)
+        version: 9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0)
       '@react-three/test-renderer':
         specifier: 'catalog:'
-        version: 9.1.1(@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0))(react@19.3.0)(three@0.187.0)
+        version: 9.1.1(@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0))(react@19.3.0)(three@0.187.0)
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
@@ -327,7 +327,7 @@ importers:
         version: 19.3.0
       react-dom:
         specifier: 'catalog:'
-        version: 19.3.0(react@19.3.0)
+        version: 19.3.1(react@19.3.0)
       three:
         specifier: 'catalog:'
         version: 0.187.0
@@ -3654,10 +3654,10 @@ packages:
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
 
-  react-dom@19.3.0:
-    resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
+  react-dom@19.3.1:
+    resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
     peerDependencies:
-      react: ^19.3.0
+      react: ^19.3.1
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -5159,7 +5159,7 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)':
+  '@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0)':
     dependencies:
       '@babel/runtime': 7.29.14
       '@types/webxr': 0.5.24
@@ -5167,21 +5167,21 @@ snapshots:
       buffer: 6.0.3
       its-fine: 2.1.1(@types/react@19.3.0)(react@19.3.0)
       react: 19.3.0
-      react-use-measure: 2.1.7(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-use-measure: 2.1.7(react-dom@19.3.1(react@19.3.0))(react@19.3.0)
       scheduler: 0.28.0
       suspend-react: 0.1.3(react@19.3.0)
       three: 0.187.0
       use-sync-external-store: 1.7.0(react@19.3.0)
       zustand: 5.1.0(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
     optionalDependencies:
-      react-dom: 19.3.0(react@19.3.0)
+      react-dom: 19.3.1(react@19.3.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@react-three/test-renderer@9.1.1(@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0))(react@19.3.0)(three@0.187.0)':
+  '@react-three/test-renderer@9.1.1(@react-three/fiber@9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0))(react@19.3.0)(three@0.187.0)':
     dependencies:
-      '@react-three/fiber': 9.8.2(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.187.0)
+      '@react-three/fiber': 9.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.0))(react@19.3.0)(three@0.187.0)
       react: 19.3.0
       three: 0.187.0
 
@@ -7011,7 +7011,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  next@16.4.6(@babel/core@7.29.13(supports-color@7.2.0))(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.0))(react@19.3.0):
     dependencies:
       '@next/env': 16.4.6
       '@swc/helpers': 0.5.23
@@ -7019,7 +7019,7 @@ snapshots:
       caniuse-lite: 1.0.30001826
       postcss: 8.5.23
       react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
+      react-dom: 19.3.1(react@19.3.0)
       styled-jsx: 5.1.6(@babel/core@7.29.13(supports-color@7.2.0))(react@19.3.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.4.6
@@ -7283,18 +7283,18 @@ snapshots:
 
   quick-format-unescaped@4.0.4: {}
 
-  react-dom@19.3.0(react@19.3.0):
+  react-dom@19.3.1(react@19.3.0):
     dependencies:
       react: 19.3.0
       scheduler: 0.28.0
 
   react-is@16.13.1: {}
 
-  react-use-measure@2.1.7(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  react-use-measure@2.1.7(react-dom@19.3.1(react@19.3.0))(react@19.3.0):
     dependencies:
       react: 19.3.0
     optionalDependencies:
-      react-dom: 19.3.0(react@19.3.0)
+      react-dom: 19.3.1(react@19.3.0)
 
   react@19.3.0: {}
 
