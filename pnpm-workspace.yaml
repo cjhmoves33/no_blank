@@ -28,3 +28,9 @@ allowBuilds:
 
 # Node 24.13.1 미만은 한글이 들어간 경로에서 fs.rmSync 가 실패합니다(nodejs/node#61067).
 engineStrict: true
+
+# 배포된 지 하루가 안 된 버전은 하루가 지난 버전이 범위 안에 있으면 고르지 않습니다.
+# minimumReleaseAge 를 적으면 엄격 모드가 함께 켜져서, 하루가 안 된 버전만 있는 경우 설치를 거부합니다.
+# 그러면 Dependabot 보안 업데이트 PR 이 막 배포된 패치를 lockfile 에 넣었을 때 CI 의 frozen 설치가 실패하므로 엄격 모드는 끕니다.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: false

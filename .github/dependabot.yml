@@ -1,0 +1,26 @@
+version: 2
+
+# 보안 업데이트는 저장소 설정에서 켜져 있고, cooldown 과 상관없이 바로 PR 을 만듭니다.
+# 아래는 버전 업데이트 설정입니다.
+# groups 를 쓰지 않습니다. 묶음 안의 패키지 하나가 cooldown 을 넘기면 아직 기다려야 하는 패키지까지 묶음 PR 에 들어온다는 보고가 있어서, 패키지마다 PR 을 받습니다.
+updates:
+  - package-ecosystem: npm
+    directories:
+      - /
+      - /apps/*
+      - /packages/*
+    schedule:
+      interval: weekly
+    cooldown:
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # github-actions 는 semver-*-days 를 지원하지 않습니다.
+    # workflow 가 action 을 메이저 태그(@v7)로 참조해서 업데이트는 메이저 버전뿐이므로, 메이저 기준인 30일을 씁니다.
+    cooldown:
+      default-days: 30
