@@ -1,20 +1,21 @@
 # no_blank
 
-Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 TypeScript 풀스택 모노레포입니다.
+Next.js(SSR) 클라이언트와 Fastify API 서버로 구성된 TypeScript 풀스택 모노레포입니다.
 
 ```
-브라우저 → web (Next.js, :3000) → server (Fastify, :4000) → db (PostgreSQL, :5432)
+브라우저 → web (Next.js, :3000)                 페이지
+브라우저 → server (Fastify, :4000, /api/home)   홈 WebSocket
 ```
 
 | 경로                   | 설명                                                                                                                                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`             | Next.js 16 (App Router, SSR). 브라우저가 홈 WebSocket(`/api/home`)에 연결합니다. API를 호출하는 예시는 `src/lib/api.ts`입니다.                                                              |
-| `apps/server`          | Fastify 5 API 서버. Drizzle ORM으로 DB에 접근합니다.                                                                                                                                        |
+| `apps/web`             | Next.js 16 (App Router, SSR). 브라우저가 홈 WebSocket(`/api/home`)에 연결합니다. 연결 코드는 `src/lib/home-connection.ts`입니다.                                                            |
+| `apps/server`          | Fastify 5 API 서버. 홈 WebSocket(`/api/home`)과 헬스 체크(`/api/health`)를 제공합니다.                                                                                                      |
 | `apps/workbench`       | 체육관의 한 부분을 따로 꺼내 가까이 보는 개발용 Next.js 앱(작업대)입니다. 배포하지 않습니다.                                                                                                |
 | `packages/gym`         | web이 그리는 체육관의 3D 장면입니다. 빌드하지 않고 TS 소스를 그대로 내보내며, 가져다 쓰는 앱이 컴파일합니다.                                                                                |
 | `packages/ball-motion` | 레킹볼의 흔들림, 비틀림, 기우뚱, 히트스톱을 계산합니다. React와 화면을 모르며, gym처럼 TS 소스를 그대로 내보냅니다. 빌드한 서버만 `--conditions=built`로 실행해서 컴파일한 `dist`를 씁니다. |
 | `packages/shared`      | web과 server가 함께 사용하는 API 응답과 홈 메시지의 타입, 그리고 그 파서입니다.                                                                                                             |
-| `docker-compose.yml`   | db, migrate, server, web 컨테이너 구성입니다.                                                                                                                                               |
+| `docker-compose.yml`   | server, web 컨테이너 구성입니다.                                                                                                                                                            |
 
 ## 요구 사항
 
@@ -26,51 +27,42 @@ Next.js(SSR) 클라이언트, Fastify API 서버, PostgreSQL DB로 구성된 Typ
 
 ## Docker로 전체 실행
 
-DB, 마이그레이션, API 서버, 웹 서버를 모두 컨테이너로 실행합니다. Node.js와 pnpm이 없어도 실행할 수 있습니다.
+API 서버와 웹 서버를 컨테이너로 실행합니다. Node.js와 pnpm이 없어도 실행할 수 있습니다.
 
 ```bash
 docker compose up --build
 ```
 
-http://localhost:3000 에 접속하면 3D 장면이 표시되고, http://localhost:4000/api/greeting 은 DB에서 읽어 온 "Hello World"를 응답합니다.
+http://localhost:3000 에 접속하면 3D 장면이 표시되고, http://localhost:4000/api/health 는 서버가 살아 있으면 `{"status":"ok"}`를 응답합니다.
 
-종료와 초기화는 다음 명령으로 합니다.
+종료는 다음 명령으로 합니다.
 
 ```bash
-docker compose down      # 컨테이너 종료 (DB 데이터는 유지)
-docker compose down -v   # 컨테이너 종료 및 DB 데이터 삭제
+docker compose down
 ```
-
-DB 계정을 바꾸려면 루트의 `.env.example`을 `.env`로 복사해서 값을 수정합니다. 파일이 없으면 기본값(`no_blank`)을 사용합니다.
 
 ## 로컬 개발 환경 실행
 
-코드를 수정하면서 개발할 때는 DB만 컨테이너로 띄우고, web과 server는 로컬에서 watch 모드로 실행합니다.
+코드를 수정하면서 개발할 때는 web과 server를 로컬에서 watch 모드로 실행합니다.
 
 ```bash
 # 1. 의존성 설치
 pnpm install
 
-# 2. 서버 환경 변수 파일 생성 (기본값이 docker compose 의 db 설정과 일치합니다)
-cp apps/server/.env.example apps/server/.env
-
-# 3. DB 컨테이너 실행 및 마이그레이션 적용
-pnpm db:up
-pnpm db:migrate
-
-# 4. shared, server, web, 작업대를 동시에 watch 모드로 실행
+# 2. shared, server, web, 작업대를 동시에 watch 모드로 실행
 pnpm dev
 ```
 
+서버의 `HOST`나 `PORT`를 바꾸려면 `apps/server/.env`에 적습니다. server의 `dev`와 `start` 스크립트는 이 파일이 있으면 읽습니다.
+
 `git pull`로 다른 사람이 추가한 의존성을 받은 경우에도 `pnpm install`을 따로 실행할 필요가 없습니다. pnpm 11은 스크립트를 실행하기 전에 `node_modules`가 lockfile과 다르면 자동으로 설치합니다(`verifyDepsBeforeRun`의 기본값 `install`).
 
-| 서비스       | 주소                                                   |
-| ------------ | ------------------------------------------------------ |
-| web          | http://localhost:3000                                  |
-| server       | http://localhost:4000/api/greeting                     |
-| 홈 WebSocket | ws://localhost:4000/api/home                           |
-| 작업대       | http://localhost:3200                                  |
-| db           | `postgres://no_blank:no_blank@localhost:5432/no_blank` |
+| 서비스       | 주소                             |
+| ------------ | -------------------------------- |
+| web          | http://localhost:3000            |
+| server       | http://localhost:4000/api/health |
+| 홈 WebSocket | ws://localhost:4000/api/home     |
+| 작업대       | http://localhost:3200            |
 
 ## 커밋 검사와 CI
 
@@ -80,25 +72,13 @@ pnpm dev
 
 ## 테스트
 
-- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. 홈 WebSocket(`/api/home`) 테스트만은 임의의 로컬 포트에 서버를 띄우고 Node의 `WebSocket`으로 연결합니다. DB는 프로세스 안에서 띄운 PostgreSQL(PGlite)을 사용합니다. 운영과 같은 드라이버(node-postgres)로 접속하고 운영과 같은 마이그레이션을 적용하므로, Docker 없이도 실제 SQL로 검증합니다. (`apps/server/src/test/create-test-db.ts`)
-- **테스트 전용 패키지:** PGlite처럼 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
-
-## DB 스키마 변경 방법
-
-1. `apps/server/src/db/schema.ts`에서 테이블 정의를 수정합니다.
-2. `pnpm db:generate`를 실행하면 `apps/server/drizzle/`에 마이그레이션 SQL이 생성됩니다.
-3. 생성된 SQL을 확인한 뒤 `pnpm db:migrate`로 적용합니다.
-4. 생성된 마이그레이션 파일은 커밋합니다. Docker로 실행할 때 `migrate` 컨테이너가 같은 파일을 적용합니다.
-
-데이터를 넣는 마이그레이션은 `pnpm --filter @no-blank/server exec drizzle-kit generate --custom --name <이름>`으로 빈 SQL 파일을 만든 뒤 직접 작성합니다. (예: `0001_seed_hello_world.sql`)
+- **API 테스트:** `apps/server/src/app.test.ts`는 서버를 띄우지 않고 Fastify의 `app.inject()`로 요청을 보냅니다. 홈 WebSocket(`/api/home`) 테스트만은 임의의 로컬 포트에 서버를 띄우고 Node의 `WebSocket`으로 연결합니다.
+- **테스트 전용 패키지:** 테스트에서만 쓰는 패키지는 그 앱의 `devDependencies`에 직접 선언합니다. pnpm 11은 직접 선언한 개발 의존성을 운영 설치(`pnpm deploy --prod`)에서 뺍니다. 다른 워크스페이스 패키지를 거쳐 들여오면 운영 이미지에 섞일 수 있습니다.
 
 ## 환경 변수
 
-| 변수                                                  | 사용처         | 기본값                  | 설명                                                                                                                                                    |
-| ----------------------------------------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                        | server         | 없음 (필수)             | PostgreSQL 접속 주소입니다.                                                                                                                             |
-| `HOST`                                                | server         | `localhost`             | 서버가 수신할 주소입니다. 컨테이너에서는 `0.0.0.0`을 사용합니다.                                                                                        |
-| `PORT`                                                | server         | `4000`                  | 서버 포트입니다.                                                                                                                                        |
-| `API_URL`                                             | web            | `http://localhost:4000` | 서버 컴포넌트가 호출할 API 주소입니다. 요청 시점에 읽히므로 컨테이너 실행 시 주입할 수 있습니다.                                                        |
-| `NEXT_PUBLIC_API_URL`                                 | web            | `http://localhost:4000` | 브라우저가 쓸 서버 주소입니다. 빌드할 때 값이 박힙니다. 접속 주소는 이 값에 `/api/home`을 붙이고, `https`이면 `wss`, `http`이면 `ws`로 바꾸어 만듭니다. |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | docker compose | `no_blank`              | DB 계정과 데이터베이스 이름입니다.                                                                                                                      |
+| 변수                  | 사용처 | 기본값                  | 설명                                                                                                                                                    |
+| --------------------- | ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HOST`                | server | `localhost`             | 서버가 수신할 주소입니다. 컨테이너에서는 `0.0.0.0`을 사용합니다.                                                                                        |
+| `PORT`                | server | `4000`                  | 서버 포트입니다.                                                                                                                                        |
+| `NEXT_PUBLIC_API_URL` | web    | `http://localhost:4000` | 브라우저가 쓸 서버 주소입니다. 빌드할 때 값이 박힙니다. 접속 주소는 이 값에 `/api/home`을 붙이고, `https`이면 `wss`, `http`이면 `ws`로 바꾸어 만듭니다. |

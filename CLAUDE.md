@@ -12,23 +12,22 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 
 새 코드를 쓰기 전에 같은 종류의 예시 파일을 먼저 읽습니다.
 
-| 만들 것                  | 예시                                                           |
-| ------------------------ | -------------------------------------------------------------- |
-| API 라우트               | `apps/server/src/routes/greeting.ts`                           |
-| API 테스트               | `apps/server/src/app.test.ts`                                  |
-| API 응답 타입과 파서     | `packages/shared/src/api.ts`                                   |
-| 환경 변수 파서           | `apps/server/src/env.ts`                                       |
-| web에서 API 호출         | `apps/web/src/lib/api.ts`                                      |
-| web 테스트               | `apps/web/src/lib/api.test.ts`                                 |
-| DB 스키마와 마이그레이션 | `apps/server/src/db/schema.ts`, README의 "DB 스키마 변경 방법" |
-| 3D 장면                  | `packages/gym/src/gym.tsx`                                     |
-| 3D 오브젝트              | `packages/gym/src/wrecking-ball/wrecking-ball.tsx`             |
-| 체육관 소품              | `packages/gym/src/props/heavy-bags.tsx`                        |
-| 그림 텍스처가 있는 소품  | `packages/gym/src/props/wall-clock.tsx`                        |
-| 소품의 자리와 크기 검사  | `packages/gym/src/props/plan.ts`, `plan.test.ts`               |
-| 3D 오브젝트 테스트       | `packages/gym/src/wrecking-ball/wrecking-ball.test.tsx`        |
-| 효과음                   | `apps/web/src/audio/sounds.ts`                                 |
-| 효과음 재생 테스트       | `apps/web/src/audio/play-sound.test.ts`                        |
+| 만들 것                 | 예시                                                    |
+| ----------------------- | ------------------------------------------------------- |
+| API 라우트              | `apps/server/src/routes/health.ts`                      |
+| API 테스트              | `apps/server/src/app.test.ts`                           |
+| API 응답 타입과 파서    | `packages/shared/src/home.ts`                           |
+| 환경 변수 파서          | `apps/server/src/env.ts`                                |
+| web에서 API 호출        | `apps/web/src/lib/home-connection.ts`                   |
+| web 테스트              | `apps/web/src/lib/home-connection.test.ts`              |
+| 3D 장면                 | `packages/gym/src/gym.tsx`                              |
+| 3D 오브젝트             | `packages/gym/src/wrecking-ball/wrecking-ball.tsx`      |
+| 체육관 소품             | `packages/gym/src/props/heavy-bags.tsx`                 |
+| 그림 텍스처가 있는 소품 | `packages/gym/src/props/wall-clock.tsx`                 |
+| 소품의 자리와 크기 검사 | `packages/gym/src/props/plan.ts`, `plan.test.ts`        |
+| 3D 오브젝트 테스트      | `packages/gym/src/wrecking-ball/wrecking-ball.test.tsx` |
+| 효과음                  | `apps/web/src/audio/sounds.ts`                          |
+| 효과음 재생 테스트      | `apps/web/src/audio/play-sound.test.ts`                 |
 
 ## 범위를 지킵니다
 
@@ -37,12 +36,16 @@ no_blank는 3D 그래픽과 음악·효과음을 쓸 데스크톱 웹 사이드 
 - 새 의존성은 표준 기능이나 이미 있는 의존성으로 안 될 때만 추가하고, 그 이유를 PR에 적습니다.
 
 ```ts
-// 하지 않습니다: 호출 하나를 위해 범용 클라이언트를 새로 만듭니다.
-export function createApiClient(options: ApiClientOptions) { ... }
+// 하지 않습니다: 파서 하나를 위해 범용 검증 도구를 새로 만듭니다.
+export function createParser(schema: ParserSchema) { ... }
 
-// 합니다: 이미 있는 apiGet을 그대로 씁니다.
-export function getItems(): Promise<ItemList> {
-  return apiGet({ path: "/api/items", parse: parseItemList });
+// 합니다: 새 파서가 home.ts에 이미 있는 parsePoint를 그대로 씁니다.
+function parseSwing(input: unknown): BallMotion["swing"] {
+  ...
+  return {
+    fromPivot: parsePoint(input.fromPivot),
+    velocity: parsePoint(input.velocity),
+  };
 }
 ```
 
@@ -53,10 +56,10 @@ export function getItems(): Promise<ItemList> {
 
 ```ts
 // 하지 않습니다: 내부 구현이 바뀌면 깨지는 검증입니다.
-expect(apiGetSpy).toHaveBeenCalledTimes(1);
+expect(parseServerMessageSpy).toHaveBeenCalledTimes(1);
 
 // 합니다: 사용하는 쪽이 받는 결과를 검증합니다.
-await expect(getGreeting()).resolves.toEqual({ message: "Hello World" });
+expect(received).toEqual([{ kind: "visitorArrived", color: "blue" }]);
 ```
 
 ## 그 밖의 약속
