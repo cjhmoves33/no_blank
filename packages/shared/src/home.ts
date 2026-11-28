@@ -1,7 +1,8 @@
-/**
- * 홈의 WebSocket(/api/home)으로 주고받는 메시지입니다. 메시지는 JSON 이므로 three 의 Vector3 대신
- * Point 를 쓰고, 그 밖의 모양은 ball-motion 의 BallMotion, Blow 와 같습니다.
- */
+import type {
+  BallMotion as SimulatedBall,
+  Blow as SimulatedBlow,
+} from "@no-blank/ball-motion";
+import type { Vector3 } from "three";
 
 /** x, y, z 세 축의 값입니다. 위치는 미터, 속도는 초당 미터입니다. */
 export interface Point {
@@ -10,42 +11,24 @@ export interface Point {
   readonly z: number;
 }
 
-export type Blow =
-  | {
-      readonly kind: "jab";
-      readonly hitFromCenter: Point;
-      readonly fist: Point;
-    }
-  | {
-      readonly kind: "swipe";
-      readonly hitFromCenter: Point;
-      readonly fist: Point;
-      readonly speed: number;
-    };
+type OnWire<T> = T extends Vector3
+  ? Point
+  : T extends object
+    ? { readonly [K in keyof T]: OnWire<T[K]> }
+    : T;
 
-interface Spring {
-  readonly angle: number;
-  readonly rate: number;
-}
+export type Blow = OnWire<SimulatedBlow>;
 
-export interface BallMotion {
-  readonly swing: { readonly fromPivot: Point; readonly velocity: Point };
-  readonly twist: Spring;
-  readonly lean: { readonly aboutX: Spring; readonly aboutZ: Spring };
-  readonly hitStopLeft: number;
-  readonly unsimulatedSeconds: number;
-}
+export type BallMotion = OnWire<SimulatedBall>;
 
 export type GloveColor = "red" | "blue" | "yellow" | "green";
 
-/** 방문자가 서버로 보내는 메시지입니다. */
 export type ClientMessage =
   | { readonly kind: "gloveMoved"; readonly at: Point }
   | { readonly kind: "wentAway" }
   | { readonly kind: "cameBack" }
   | { readonly kind: "struck"; readonly blow: Blow };
 
-/** 서버가 연결 하나에 보내는 메시지입니다. */
 export type ServerMessage =
   | {
       readonly kind: "welcome";
