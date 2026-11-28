@@ -1,5 +1,4 @@
-export type { ErrorResponse, GreetingResponse, HealthResponse } from "./api.js";
-export { parseGreetingResponse } from "./api.js";
+export type { ErrorResponse, HealthResponse } from "./api.js";
 export type {
   BallMotion,
   Blow,
