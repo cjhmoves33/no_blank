@@ -7,7 +7,7 @@ catalog:
   "@types/node": ^24.19.2
   eslint: ^9.39.5
   # Vitest 5 는 vite 를 peer 의존성으로 요구합니다.
-  vitest: ^5.1.0
+  vitest: ^5.1.1
   vite: ^8.3.8
   next: 16.4.6
   eslint-config-next: 16.4.6
