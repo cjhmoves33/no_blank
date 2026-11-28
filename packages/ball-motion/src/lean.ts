@@ -1,8 +1,8 @@
 import { Vector3 } from "three";
 
-import { HANGING_HEIGHT } from "./measurements";
-import { RESTING_SPRING, settle, type Spring } from "./spring";
-import { STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing";
+import { HANGING_HEIGHT } from "./measurements.ts";
+import { RESTING_SPRING, settle, type Spring } from "./spring.ts";
+import { STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing.ts";
 
 export interface Lean {
   readonly aboutX: Spring;

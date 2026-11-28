@@ -1,5 +1,5 @@
-import type { Spring } from "./spring";
-import { type Blow, STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing";
+import type { Spring } from "./spring.ts";
+import { type Blow, STRAIGHT_CHAIN_AXIS, SWING_FEEL } from "./swing.ts";
 
 export type Twist = Spring;
 
