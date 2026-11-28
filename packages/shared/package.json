@@ -25,6 +25,7 @@
     "@no-blank/eslint-config": "workspace:*",
     "@types/three": "catalog:",
     "eslint": "catalog:",
+    "three": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

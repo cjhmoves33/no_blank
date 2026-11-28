@@ -19,7 +19,7 @@ V=.claude/skills/verify-no-blank/scripts/verify.mjs
 
 1. 원격 ref 를 쓸 때는 먼저 `git fetch` 합니다. 스크립트는 ref 를 받은 그대로 씁니다.
 2. 비교할 두 상태를 빌드합니다. `node $V prepare <이름> <git ref | WORKTREE>`
-   - `%TEMP%/no-blank-verify/builds/<이름>` 에 git worktree 를 만들고, `pnpm install --frozen-lockfile --prefer-offline`(HUSKY=0)과 `pnpm --filter @no-blank/web build` 를 실행합니다. 한 번에 25초쯤 걸립니다.
+   - `%TEMP%/no-blank-verify/builds/<이름>` 에 git worktree 를 만들고, `pnpm install --frozen-lockfile --prefer-offline`(HUSKY=0)과 `pnpm --filter "@no-blank/web..." build` 를 실행합니다. web 이 실행할 때 가져오는 shared 의 `dist` 도 함께 빌드하도록, apps/web/Dockerfile 과 같은 필터를 씁니다. 한 번에 25초쯤 걸립니다.
    - 같은 이름의 빌드가 이미 같은 파일 트리(git tree 해시)로 빌드되어 있으면 다시 빌드하지 않고 `(reused)` 를 출력합니다. 그래서 main 을 한 번 빌드해 두면 다음 비교부터는 after 만 빌드합니다. `cleanup` 은 빌드를 지우므로, 재사용하려면 비교 사이에 `cleanup` 하지 않습니다.
    - `WORKTREE` 는 커밋하지 않은 변경과 추적하지 않는 파일까지 담은 작업 트리를 커밋 하나로 찍어 빌드합니다. 실제 index 와 작업 트리는 건드리지 않습니다.
    - 준비됨: 명령이 `prepare <이름>: <ref> @ <커밋>` 를 출력하고 0 으로 끝나며, `doctor` 가 그 빌드를 `built` 로 보여 줍니다.

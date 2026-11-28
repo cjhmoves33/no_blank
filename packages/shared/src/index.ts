@@ -8,4 +8,4 @@ export type {
   Point,
   ServerMessage,
 } from "./home.js";
-export { parseClientMessage } from "./home.js";
+export { parseClientMessage, parseServerMessage } from "./home.js";

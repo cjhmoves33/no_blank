@@ -2,11 +2,12 @@
 
 import { Gym, LATE_AFTERNOON } from "@no-blank/gym";
 import { catchError } from "next/error";
-import { useEffect, useSyncExternalStore } from "react";
+import { type RefObject, useEffect, useRef, useSyncExternalStore } from "react";
 
 import { playSound } from "@/audio/play-sound";
 import { loadRecordings } from "@/audio/recordings";
 import { joltSound, strikeSound } from "@/audio/sounds";
+import { connectToHome } from "@/lib/home-connection";
 
 const HideOnError = catchError(() => null);
 
@@ -16,13 +17,16 @@ const PAGE = { background: LATE_AFTERNOON.background };
 
 export function HomeScene() {
   const reducedMotion = usePrefersReducedMotion();
+  const gym = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void loadRecordings();
   }, []);
 
+  useHomeConnection(gym);
+
   return (
-    <div className="h-dvh w-full" style={PAGE}>
+    <div ref={gym} className="h-dvh w-full" style={PAGE}>
       <HideOnError>
         <Gym
           reducedMotion={reducedMotion}
@@ -36,6 +40,32 @@ export function HomeScene() {
       </HideOnError>
     </div>
   );
+}
+
+function useHomeConnection(gym: RefObject<HTMLElement | null>): void {
+  useEffect(() => {
+    const connection = connectToHome(() => {});
+    const element = gym.current;
+
+    function noticeActivity(): void {
+      connection.noticeActivity();
+    }
+
+    function noticeReturn(): void {
+      if (document.visibilityState === "visible") {
+        connection.noticeActivity();
+      }
+    }
+
+    element?.addEventListener("pointermove", noticeActivity);
+    document.addEventListener("visibilitychange", noticeReturn);
+
+    return () => {
+      element?.removeEventListener("pointermove", noticeActivity);
+      document.removeEventListener("visibilitychange", noticeReturn);
+      connection.close();
+    };
+  }, [gym]);
 }
 
 function usePrefersReducedMotion(): boolean {
