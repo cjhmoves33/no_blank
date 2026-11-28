@@ -2,8 +2,6 @@ pnpm-lock.yaml
 .claude/*
 !.claude/skills/
 
-apps/server/drizzle/
-
 # next dev 가 다시 생성하는 파일
 apps/web/AGENTS.md
 apps/web/next-env.d.ts

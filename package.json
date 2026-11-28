@@ -16,10 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm typecheck && pnpm test && pnpm build",
-    "db:up": "docker compose up -d db",
-    "db:generate": "pnpm --filter @no-blank/server db:generate",
-    "db:migrate": "pnpm --filter @no-blank/server db:migrate"
+    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
