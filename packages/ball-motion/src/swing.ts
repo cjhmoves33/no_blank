@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 
-import { GYM } from "../measurements";
+import { CHAIN_REACH } from "./measurements";
 
 export interface Swing {
   readonly fromPivot: Vector3;
@@ -31,7 +31,7 @@ export type Blow =
       readonly speed: number;
     };
 
-export interface Strike {
+interface Strike {
   readonly strength: number;
 }
 
@@ -44,9 +44,6 @@ export interface Struck {
   readonly strike: Strike;
   readonly push: Vector3;
 }
-
-export const CHAIN_REACH =
-  GYM.wreckingBall.pivotY - GYM.wreckingBall.restCenter[1];
 
 export const STRAIGHT_CHAIN_AXIS = new Vector3(0, 1, 0);
 

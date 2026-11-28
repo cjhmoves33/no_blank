@@ -1,0 +1,26 @@
+{
+  "name": "@no-blank/ball-motion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "three": "catalog:"
+  },
+  "devDependencies": {
+    "@no-blank/eslint-config": "workspace:*",
+    "@types/three": "catalog:",
+    "eslint": "catalog:",
+    "three": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

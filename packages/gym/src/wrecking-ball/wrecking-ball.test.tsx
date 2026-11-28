@@ -1,3 +1,4 @@
+import { type Blow, CHAIN_REACH, type Jolt } from "@no-blank/ball-motion";
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { createRef } from "react";
 import {
@@ -15,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LINK_PITCH } from "../chain/chain";
 import { GYM } from "../measurements";
-import { type Blow, CHAIN_REACH, type Jolt } from "./swing";
 import { WreckingBall, type WreckingBallHandle } from "./wrecking-ball";
 
 // 테스트는 캔버스가 없는 node 환경에서 돌므로, 가죽 그림만 빼고 그립니다.
@@ -389,6 +389,26 @@ describe("WreckingBall", () => {
     await renderer.advanceFrames(30, FRAME);
 
     expect(farthestFrom(renderer, rest)).toBeLessThan(1e-6);
+  });
+
+  it("히트스톱 동안에는 패임과 출렁임이 가장 깊은 채로 머문다", async () => {
+    const { renderer, ball } = await renderBall();
+    const rest = leatherPoints(renderer);
+
+    ball.take(jab(RIGHT));
+    await renderer.advanceFrames(1, FRAME);
+
+    const depth = deepestSink(renderer, rest).depth;
+    const stretch = stretchAlong(renderer, new Vector3(1, 0, 0));
+
+    // 오른쪽 가장자리 잽의 히트스톱은 0.078초이므로 세 프레임째까지 멈춰 있습니다.
+    await renderer.advanceFrames(2, FRAME);
+
+    expect(deepestSink(renderer, rest).depth).toBeCloseTo(depth, 9);
+    expect(stretchAlong(renderer, new Vector3(1, 0, 0))).toBeCloseTo(
+      stretch,
+      9,
+    );
   });
 
   it("이미 비틀리거나 기운 공을 쳐도 패임은 맞은 자리에 생긴다", async () => {

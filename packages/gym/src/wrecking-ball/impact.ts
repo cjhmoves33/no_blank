@@ -1,12 +1,11 @@
+import type { BallFeel } from "@no-blank/ball-motion";
 import type { Vector3 } from "three";
 
 import { GYM } from "../measurements";
-import type { SWING_FEEL } from "./swing";
 
 export interface Impact {
   readonly onLeather: Vector3;
   readonly strength: number;
-  readonly hitStopLeft: number;
   readonly sinceHitStop: number;
 }
 
@@ -18,9 +17,8 @@ export interface DentFeel {
 export const DENT_FEEL = {
   normal: { fadeSeconds: 0.035, overshootRate: (2 * Math.PI) / 0.14 },
   reduced: { fadeSeconds: 0.035, overshootRate: 0 },
-} as const satisfies Record<keyof typeof SWING_FEEL, DentFeel>;
+} as const satisfies Record<BallFeel, DentFeel>;
 
-const HIT_STOP = { shortest: 0.05, longest: 0.12 } as const;
 const DEEPEST = 0.06;
 const DENT_WIDTH = 0.1;
 const IMPACT_LIFE = 0.45;
@@ -35,35 +33,19 @@ export function impactOf(onLeather: Vector3, strength: number): Impact | null {
   return {
     onLeather: onLeather.clone().normalize(),
     strength,
-    hitStopLeft:
-      HIT_STOP.shortest + (HIT_STOP.longest - HIT_STOP.shortest) * strength,
     sinceHitStop: 0,
   };
 }
 
-export function age(
-  impact: Impact,
-  seconds: number,
-): { readonly impact: Impact | null; readonly movingSeconds: number } {
-  const held = Math.min(impact.hitStopLeft, seconds);
-  const movingSeconds = seconds - held;
+/** 히트스톱이 끝난 뒤 흐른 시간만 받습니다. 히트스톱 동안 패임은 가장 깊은 채로 머뭅니다. */
+export function age(impact: Impact, movingSeconds: number): Impact | null {
   const sinceHitStop = impact.sinceHitStop + movingSeconds;
 
-  return {
-    impact:
-      sinceHitStop > IMPACT_LIFE
-        ? null
-        : { ...impact, hitStopLeft: impact.hitStopLeft - held, sinceHitStop },
-    movingSeconds,
-  };
+  return sinceHitStop > IMPACT_LIFE ? null : { ...impact, sinceHitStop };
 }
 
 export function dentDepth(impact: Impact, feel: DentFeel): number {
   const deepest = DEEPEST * impact.strength;
-
-  if (impact.hitStopLeft > 0) {
-    return deepest;
-  }
 
   return (
     deepest *

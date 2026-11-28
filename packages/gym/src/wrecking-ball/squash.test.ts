@@ -20,7 +20,7 @@ function struck(strength: number): Impact {
 }
 
 function afterHitStop(impact: Impact, seconds: number): Impact | null {
-  return age(impact, impact.hitStopLeft + seconds).impact;
+  return age(impact, seconds);
 }
 
 function flatteningOver(impact: Impact, seconds: number): number[] {
@@ -80,10 +80,10 @@ describe("출렁임", () => {
     let byFrames: Impact | null = impact;
 
     for (let i = 0; i < 12; i++) {
-      byFrames = byFrames ? age(byFrames, FRAME).impact : null;
+      byFrames = byFrames ? age(byFrames, FRAME) : null;
     }
 
-    const atOnce = age(impact, 12 * FRAME).impact;
+    const atOnce = age(impact, 12 * FRAME);
 
     if (!byFrames || !atOnce) {
       throw new Error("타격이 아직 남아 있어야 합니다.");

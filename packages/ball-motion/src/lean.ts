@@ -1,6 +1,6 @@
-import { Quaternion, Vector3 } from "three";
+import { Vector3 } from "three";
 
-import { HANGING_HEIGHT } from "./hanging";
+import { HANGING_HEIGHT } from "./measurements";
 import {
   criticallyDamped,
   RESTING_SPRING,
@@ -40,8 +40,6 @@ export const UPRIGHT: Lean = {
 };
 
 const UP = new Vector3(0, 1, 0);
-const X = new Vector3(1, 0, 0);
-const Z = new Vector3(0, 0, 1);
 const HINGE = STRAIGHT_CHAIN_AXIS.clone().multiplyScalar(HANGING_HEIGHT);
 
 export function leanBy(
@@ -81,12 +79,6 @@ export function settleLean(lean: Lean, seconds: number, feel: LeanFeel): Lean {
     aboutX: settle(lean.aboutX, seconds, feel),
     aboutZ: settle(lean.aboutZ, seconds, feel),
   };
-}
-
-export function leanTurn(lean: Lean): Quaternion {
-  return new Quaternion()
-    .setFromAxisAngle(X, lean.aboutX.angle)
-    .multiply(new Quaternion().setFromAxisAngle(Z, lean.aboutZ.angle));
 }
 
 function kicked(lean: Lean, turn: Vector3): Lean {

@@ -14,7 +14,7 @@ import {
   type PressStep,
   touches,
 } from "./wrecking-ball/press";
-import type { Strike } from "./wrecking-ball/swing";
+import type { Strike } from "./wrecking-ball/wrecking-ball";
 import type { WreckingBallHandle } from "./wrecking-ball/wrecking-ball";
 
 export interface RingControlsProps {

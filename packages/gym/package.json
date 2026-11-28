@@ -11,6 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@no-blank/ball-motion": "workspace:*"
+  },
   "peerDependencies": {
     "@react-three/fiber": "catalog:",
     "react": "catalog:",

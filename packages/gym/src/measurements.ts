@@ -1,10 +1,14 @@
+import { CHAIN_REACH } from "@no-blank/ball-motion";
+
+const BALL_REST_Y = 2.3;
+
 /** 길이는 미터입니다. 원점은 링 가운데 아래의 건물 바닥이고, y 가 위쪽입니다. */
 export const GYM = {
   wreckingBall: {
-    restCenter: [0, 2.3, 0],
+    restCenter: [0, BALL_REST_Y, 0],
     radius: 0.3,
     lidHeight: 0.234,
-    pivotY: 3.8,
+    pivotY: BALL_REST_Y + CHAIN_REACH,
   },
   mat: { y: 1, half: 3.65 },
   ropes: {
