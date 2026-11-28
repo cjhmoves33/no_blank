@@ -3,7 +3,7 @@ packages:
   - packages/*
 
 catalog:
-  typescript: ^5.9.3
+  typescript: ^7.0.2
   "@types/node": ^24.19.2
   eslint: ^9.39.5
   # Vitest 5 는 vite 를 peer 의존성으로 요구합니다.
