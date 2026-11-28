@@ -16,26 +16,25 @@ function struck(blow: Blow): BallMotion {
   return strikeBall(restingBall(), blow, "normal").motion;
 }
 
-function stillFor(motion: BallMotion): number {
-  const start = motion.swing.fromPivot;
+function heldFor(motion: BallMotion): number {
   let current = motion;
-  let still = 0;
+  let held = 0;
 
-  while (current.swing.fromPivot.equals(start) && still < 1) {
+  while (current.hitStopLeft > 0 && held < 1) {
     current = advanceBall(current, 0.001, "normal").motion;
-    still += 0.001;
+    held += 0.001;
   }
 
-  return still - 0.001;
+  return held;
 }
 
 describe("히트스톱", () => {
   it("센 타격일수록 길게 멈추고, 0.05초에서 0.12초 사이다", () => {
-    const weakest = stillFor(struck(swipe(0.01)));
-    const jab = stillFor(
+    const weakest = heldFor(struck(swipe(0.01)));
+    const jab = heldFor(
       struck({ kind: "jab", hitFromCenter: FRONT, fist: INTO_SCREEN }),
     );
-    const hardest = stillFor(struck(swipe(100)));
+    const hardest = heldFor(struck(swipe(100)));
 
     expect(weakest).toBeCloseTo(0.05, 2);
     expect(jab).toBeGreaterThan(weakest);
