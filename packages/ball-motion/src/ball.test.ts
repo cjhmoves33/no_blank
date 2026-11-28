@@ -148,3 +148,25 @@ describe("프레임 나누기", () => {
     expect(advanceBall(thrownUp, 2).jolt?.strength).toBe(Math.max(...jolts));
   });
 });
+
+describe("덜컹에 따른 기우뚱", () => {
+  function draggedOutward(sideways: number): BallMotion {
+    const rest = restingBall();
+
+    return {
+      ...rest,
+      swing: { ...rest.swing, velocity: new Vector3(sideways, -1, 0) },
+    };
+  }
+
+  it("옆으로 움직이다 사슬이 팽팽해지면 옆 속도만큼 기우뚱하고, 곧장 아래로 당겨지면 기우뚱하지 않는다", () => {
+    const sideways = advanceBall(draggedOutward(1), 1 / 60);
+    const straight = advanceBall(draggedOutward(0), 1 / 60);
+
+    expect(sideways.jolt).not.toBeNull();
+    expect(straight.jolt).not.toBeNull();
+    expect(Math.abs(sideways.motion.lean.aboutZ.rate)).toBeGreaterThan(1);
+    expect(straight.motion.lean.aboutX.rate).toBe(0);
+    expect(straight.motion.lean.aboutZ.rate).toBe(0);
+  });
+});
