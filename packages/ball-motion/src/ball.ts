@@ -71,7 +71,11 @@ export function advanceBall(
   motion: BallMotion,
   seconds: number,
   feel: BallFeel,
-): { readonly motion: BallMotion; readonly jolt: Jolt | null } {
+): {
+  readonly motion: BallMotion;
+  readonly jolt: Jolt | null;
+  readonly movingSeconds: number;
+} {
   const held = Math.min(motion.hitStopLeft, seconds);
   const movingSeconds = seconds - held;
   const swing = advance(motion.swing, movingSeconds, SWING_FEEL[feel]);
@@ -88,5 +92,6 @@ export function advanceBall(
       hitStopLeft: motion.hitStopLeft - held,
     },
     jolt,
+    movingSeconds,
   };
 }

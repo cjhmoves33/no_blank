@@ -126,12 +126,12 @@ export function WreckingBall({
 
   useFrame((_state, delta) => {
     const seconds = Math.min(delta, LONGEST_FRAME);
-    const movingSeconds =
-      seconds - Math.min(motion.current.hitStopLeft, seconds);
     const advanced = advanceBall(motion.current, seconds, feel);
 
     motion.current = advanced.motion;
-    impact.current = impact.current ? age(impact.current, movingSeconds) : null;
+    impact.current = impact.current
+      ? age(impact.current, advanced.movingSeconds)
+      : null;
 
     if (advanced.jolt) {
       onJolt(advanced.jolt);
