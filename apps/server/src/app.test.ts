@@ -79,7 +79,6 @@ describe("API", () => {
       origin = await app.listen({ host: "127.0.0.1", port: 0 });
     });
 
-    /** 홈에 연결하고, 서버가 보낸 welcome 을 받을 때까지 기다립니다. */
     async function connect() {
       const url = new URL("/api/home", origin);
 

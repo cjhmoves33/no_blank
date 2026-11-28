@@ -12,10 +12,6 @@ declare module "fastify" {
   }
 }
 
-/**
- * ws 의 기본 한도는 100 MiB 입니다. 방문자가 보내는 메시지는 가장 큰 휘두르기도 300바이트를 넘지
- * 않으므로, 1 KiB 를 넘는 메시지는 읽지 않고 그 연결을 끊습니다.
- */
 const MAX_MESSAGE_BYTES = 1024;
 
 export interface AppOptions {
